@@ -1,0 +1,33 @@
+# Layanan pendukung untuk development lokal.
+# Aplikasi Next.js dijalankan langsung di host dengan `npm run dev`.
+name: cuti-esdm-dev
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cuti}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cuti_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-cuti_esdm}
+      TZ: Asia/Makassar
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # HTML → PDF (Chromium) dan DOCX/XLSX → PDF (LibreOffice).
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    restart: unless-stopped
+    profiles: ["pdf"]
+    ports:
+      - "${GOTENBERG_PORT:-3100}:3000"
+
+volumes:
+  db-data:

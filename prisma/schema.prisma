@@ -1,0 +1,886 @@
+// =====================================================================
+// Skema database — Absensi & Cuti ESDM Kalsel
+// Konvensi: model & field camelCase (Bahasa Indonesia), tabel & kolom
+//           snake_case lewat @map / @@map. Semua id UUID kecuali log.
+// Rancangan & alasannya: docs/RANCANGAN.md
+// =====================================================================
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── ENUM ─────────────────────────────
+
+enum StatusKepegawaian {
+  PNS
+  PPPK
+  PPPK_PARUH_WAKTU
+  NON_ASN
+}
+
+enum JenisKelamin {
+  L
+  P
+}
+
+enum JenisJabatan {
+  STRUKTURAL
+  FUNGSIONAL
+  PELAKSANA
+  NON_ASN
+}
+
+/// Level surat cuti. Eselon dihitung dari jabatan struktural + kelas
+/// lewat tabel mapping_eselon; fungsional & pelaksana selalu STAF.
+enum LevelSurat {
+  ESELON_II
+  ESELON_III
+  ESELON_IV
+  STAF
+}
+
+/// Peran yang di-assign. PEGAWAI melekat pada semua akun;
+/// ATASAN diturunkan dari relasi pegawai.atasan_langsung_id.
+enum Peran {
+  ADMIN
+  KEPEGAWAIAN
+}
+
+enum PeranAkses {
+  PEGAWAI
+  ATASAN
+  KEPEGAWAIAN
+  ADMIN
+}
+
+enum JenisUnit {
+  DINAS
+  SEKRETARIAT
+  BIDANG
+  UPTD
+  SUBBAG
+  SEKSI
+}
+
+enum StatusCuti {
+  DIAJUKAN
+  DISETUJUI_ATASAN
+  DIVERIFIKASI
+  DISETUJUI
+  SURAT_TERBIT
+  SELESAI
+  DITOLAK
+  DIBATALKAN
+}
+
+enum SatuanHitung {
+  HARI_KERJA
+  HARI_KALENDER
+}
+
+enum JenisMutasiSaldo {
+  SALDO_AWAL
+  PEMOTONGAN
+  PENGEMBALIAN
+  PENYESUAIAN
+  TUTUP_TAHUN
+}
+
+enum JenisHariLibur {
+  LIBUR_NASIONAL
+  CUTI_BERSAMA
+  LIBUR_DAERAH
+}
+
+enum TahapPersetujuan {
+  ATASAN_LANGSUNG
+  KEPEGAWAIAN
+  PEJABAT_BERWENANG
+}
+
+/// EKSTERNAL = keputusan Gubernur/BKD dicatat Kepegawaian + lampiran.
+enum ModePenyetuju {
+  PENGGUNA
+  EKSTERNAL
+}
+
+enum StatusSurat {
+  DRAFT
+  TERKUNCI
+}
+
+enum JenisCetak {
+  SURAT_CETAK
+  SURAT_PDF
+  DAFTAR_HADIR
+  REKAP_ABSEN
+  REKAP_CUTI
+  DOKUMEN_GABUNGAN
+}
+
+enum StatusAbsen {
+  HADIR
+  TERLAMBAT
+  CUTI
+  DINAS_LUAR
+  SAKIT
+  IZIN
+  TUGAS
+  ALPA
+}
+
+enum SumberAbsen {
+  MANDIRI
+  ATASAN
+  KEPEGAWAIAN
+  SISTEM
+}
+
+enum JenisKeterangan {
+  DINAS_LUAR
+  SAKIT
+  IZIN
+  TUGAS
+}
+
+enum RuangDokumen {
+  PRIBADI
+  ORGANISASI
+  LAMPIRAN_CUTI
+  LAMPIRAN_KETERANGAN
+}
+
+enum KategoriDokumenPribadi {
+  SK_CPNS
+  SK_PPPK
+  SK_PANGKAT
+  SK_JABATAN
+  IJAZAH
+  KTP
+  KK
+  LAINNYA
+}
+
+enum StatusEmail {
+  ANTRI
+  TERKIRIM
+  GAGAL
+}
+
+// ─────────────────────── AKUN & AUTENTIKASI ───────────────────────
+
+model User {
+  id                 String    @id @default(uuid()) @db.Uuid
+  /// NIP 18 digit tanpa spasi, ID Non-ASN, atau "admin".
+  loginId            String    @unique @map("login_id")
+  pegawaiId          String?   @unique @map("pegawai_id") @db.Uuid
+  passwordHash       String    @map("password_hash")
+  aktif              Boolean   @default(true)
+  gagalBerturut      Int       @default(0) @map("gagal_berturut")
+  terkunciSampai     DateTime? @map("terkunci_sampai") @db.Timestamptz
+  wajibGantiPassword Boolean   @default(false) @map("wajib_ganti_password")
+  terakhirLogin      DateTime? @map("terakhir_login") @db.Timestamptz
+  dibuatPada         DateTime  @default(now()) @map("dibuat_pada") @db.Timestamptz
+  diubahPada         DateTime  @updatedAt @map("diubah_pada") @db.Timestamptz
+
+  pegawai           Pegawai?              @relation(fields: [pegawaiId], references: [id])
+  peran             UserPeran[]
+  sesi              Sesi[]
+  notifikasi        Notifikasi[]
+  riwayatCuti       RiwayatStatusCuti[]
+  suratVersi        SuratCutiVersi[]
+  printLog          PrintLog[]
+  dokumenDiunggah   Dokumen[]             @relation("DokumenDiunggah")
+  dokumenDihapus    Dokumen[]             @relation("DokumenDihapus")
+  absenDicatat      Absensi[]
+  keteranganDicatat KeteranganKehadiran[]
+  mutasiSaldo       MutasiSaldoCuti[]
+  alurPersetujuan   AlurPersetujuan[]
+
+  @@map("users")
+}
+
+model UserPeran {
+  userId String @map("user_id") @db.Uuid
+  peran  Peran
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, peran])
+  @@map("user_peran")
+}
+
+/// id = SHA-256 dari token cookie; token mentah tidak pernah disimpan.
+model Sesi {
+  id              String   @id
+  userId          String   @map("user_id") @db.Uuid
+  csrfToken       String   @map("csrf_token")
+  ip              String?
+  userAgent       String?  @map("user_agent")
+  dibuatPada      DateTime @default(now()) @map("dibuat_pada") @db.Timestamptz
+  terakhirAktif   DateTime @default(now()) @map("terakhir_aktif") @db.Timestamptz
+  kedaluwarsaPada DateTime @map("kedaluwarsa_pada") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sesi")
+}
+
+model LogLogin {
+  id            BigInt   @id @default(autoincrement())
+  loginIdDicoba String   @map("login_id_dicoba")
+  userId        String?  @map("user_id") @db.Uuid
+  berhasil      Boolean
+  alasan        String?
+  ip            String?
+  userAgent     String?  @map("user_agent")
+  waktu         DateTime @default(now()) @db.Timestamptz
+
+  @@index([loginIdDicoba, waktu])
+  @@index([ip, waktu])
+  @@map("log_login")
+}
+
+/// Kode aktivasi sekali pakai untuk pegawai yang NIK-nya belum ada
+/// di data (Keputusan A). Hanya hash yang disimpan.
+model KodeAktivasi {
+  id              String    @id @default(uuid()) @db.Uuid
+  pegawaiId       String    @map("pegawai_id") @db.Uuid
+  kodeHash        String    @map("kode_hash")
+  kedaluwarsaPada DateTime  @map("kedaluwarsa_pada") @db.Timestamptz
+  dipakaiPada     DateTime? @map("dipakai_pada") @db.Timestamptz
+  dibuatOlehId    String    @map("dibuat_oleh_id") @db.Uuid
+  dibuatPada      DateTime  @default(now()) @map("dibuat_pada") @db.Timestamptz
+
+  pegawai Pegawai @relation(fields: [pegawaiId], references: [id], onDelete: Cascade)
+
+  @@index([pegawaiId])
+  @@map("kode_aktivasi")
+}
+
+// ─────────────────────── ORGANISASI & MASTER ───────────────────────
+
+model UnitKerja {
+  id               String    @id @default(uuid()) @db.Uuid
+  kode             String    @unique
+  nama             String
+  singkatan        String?
+  jenis            JenisUnit
+  parentId         String?   @map("parent_id") @db.Uuid
+  urutan           Int       @default(0)
+  /// Diisi untuk unit yang punya daftar hadir sendiri, mis. "SEKRETARIAT".
+  judulDaftarHadir String?   @map("judul_daftar_hadir")
+  aktif            Boolean   @default(true)
+
+  parent        UnitKerja?       @relation("UnitHierarki", fields: [parentId], references: [id])
+  anak          UnitKerja[]      @relation("UnitHierarki")
+  pegawai       Pegawai[]
+  jabatanKepala Jabatan?         @relation("KepalaUnit")
+  formasi       FormasiJabatan[]
+
+  @@map("unit_kerja")
+}
+
+model Jabatan {
+  id             String       @id @default(uuid()) @db.Uuid
+  nama           String       @unique
+  /// Nama di daftar hadir, mis. "Kasie Pengembangan Energi".
+  namaSingkat    String?      @map("nama_singkat")
+  jenis          JenisJabatan
+  kelasJabatan   Int?         @map("kelas_jabatan")
+  /// Khusus struktural: unit yang dipimpin jabatan ini.
+  memimpinUnitId String?      @unique @map("memimpin_unit_id") @db.Uuid
+  aktif          Boolean      @default(true)
+
+  kelas        KelasJabatan?    @relation(fields: [kelasJabatan], references: [nilai])
+  memimpinUnit UnitKerja?       @relation("KepalaUnit", fields: [memimpinUnitId], references: [id])
+  pegawai      Pegawai[]
+  formasi      FormasiJabatan[]
+
+  @@map("jabatan")
+}
+
+model KelasJabatan {
+  nilai      Int     @id
+  keterangan String?
+
+  jabatan Jabatan[]
+
+  @@map("kelas_jabatan")
+}
+
+/// Hanya berlaku untuk jenis_jabatan = STRUKTURAL (nilai awal:
+/// 15 → II, 11–12 → III, 9 → IV). Bisa diubah Admin.
+model MappingEselon {
+  id           String       @id @default(uuid()) @db.Uuid
+  jenisJabatan JenisJabatan @default(STRUKTURAL) @map("jenis_jabatan")
+  kelasMin     Int          @map("kelas_min")
+  kelasMax     Int          @map("kelas_max")
+  level        LevelSurat
+  catatan      String?
+
+  @@map("mapping_eselon")
+}
+
+/// Isi Peta Jabatan (Kepgub 100.3.3.1/01105/KUM/2025, hlm. 345–347).
+model FormasiJabatan {
+  id          String  @id @default(uuid()) @db.Uuid
+  jabatanId   String  @map("jabatan_id") @db.Uuid
+  unitKerjaId String  @map("unit_kerja_id") @db.Uuid
+  kelas       Int
+  bezetting   Int?
+  kebutuhan   Int?
+  sumber      String?
+
+  jabatan   Jabatan   @relation(fields: [jabatanId], references: [id])
+  unitKerja UnitKerja @relation(fields: [unitKerjaId], references: [id])
+
+  @@unique([jabatanId, unitKerjaId, kelas])
+  @@map("formasi_jabatan")
+}
+
+/// PNS: I/a–IV/e + nama pangkat. PPPK: golongan I–XVII tanpa nama pangkat.
+model PangkatGolongan {
+  id          String            @id @default(uuid()) @db.Uuid
+  kode        String            @unique
+  golongan    String
+  namaPangkat String?           @map("nama_pangkat")
+  untuk       StatusKepegawaian
+  urutan      Int
+
+  pegawai Pegawai[]
+
+  @@map("pangkat_golongan")
+}
+
+// ───────────────────────────── PEGAWAI ─────────────────────────────
+
+model Pegawai {
+  id                 String            @id @default(uuid()) @db.Uuid
+  nip                String?           @unique @db.VarChar(18)
+  idNonAsn           String?           @unique @map("id_non_asn")
+  statusKepegawaian  StatusKepegawaian @map("status_kepegawaian")
+  gelarDepan         String?           @map("gelar_depan")
+  nama               String
+  gelarBelakang      String?           @map("gelar_belakang")
+  /// Sensitif (UU PDP): hanya Kepegawaian, Admin, dan ybs.
+  nik                String?           @unique @db.VarChar(16)
+  tempatLahir        String?           @map("tempat_lahir")
+  tanggalLahir       DateTime?         @map("tanggal_lahir") @db.Date
+  jenisKelamin       JenisKelamin?     @map("jenis_kelamin")
+  pendidikanTerakhir String?           @map("pendidikan_terakhir")
+  /// Sensitif.
+  alamatDomisili     String?           @map("alamat_domisili")
+  /// Sensitif.
+  noHp               String?           @map("no_hp")
+  email              String?
+  pangkatGolonganId  String?           @map("pangkat_golongan_id") @db.Uuid
+  tmtPangkat         DateTime?         @map("tmt_pangkat") @db.Date
+  jabatanId          String?           @map("jabatan_id") @db.Uuid
+  tmtJabatan         DateTime?         @map("tmt_jabatan") @db.Date
+  /// Unit terkecil (Seksi/Subbag), atau Bidang/Sekretariat untuk pimpinannya.
+  unitKerjaId        String            @map("unit_kerja_id") @db.Uuid
+  /// Terisi otomatis dari struktur saat simpan/impor; bisa dikoreksi Kepegawaian.
+  atasanLangsungId   String?           @map("atasan_langsung_id") @db.Uuid
+  /// Kosong = dihitung dari jabatan + kelas + mapping_eselon.
+  levelSuratOverride LevelSurat?       @map("level_surat_override")
+  tanggalMasuk       DateTime?         @map("tanggal_masuk") @db.Date
+  aktif              Boolean           @default(true)
+  /// Urutan baris pada daftar hadir fisik.
+  urutanDaftarHadir  Int?              @map("urutan_daftar_hadir")
+  dibuatPada         DateTime          @default(now()) @map("dibuat_pada") @db.Timestamptz
+  diubahPada         DateTime          @updatedAt @map("diubah_pada") @db.Timestamptz
+
+  pangkatGolongan PangkatGolongan? @relation(fields: [pangkatGolonganId], references: [id])
+  jabatan         Jabatan?         @relation(fields: [jabatanId], references: [id])
+  unitKerja       UnitKerja        @relation(fields: [unitKerjaId], references: [id])
+  atasanLangsung  Pegawai?         @relation("AtasanBawahan", fields: [atasanLangsungId], references: [id])
+  bawahan         Pegawai[]        @relation("AtasanBawahan")
+
+  user                 User?
+  pengajuanCuti        PengajuanCuti[]        @relation("PemohonCuti")
+  penanggungJawabCuti  PengajuanCuti[]        @relation("PenanggungJawabCuti")
+  atasanPadaCuti       PengajuanCuti[]        @relation("AtasanPadaCuti")
+  saldoCuti            SaldoCuti[]
+  absensi              Absensi[]
+  keteranganKehadiran  KeteranganKehadiran[]
+  dokumen              Dokumen[]
+  pejabatPenandatangan PejabatPenandatangan[]
+  kodeAktivasi         KodeAktivasi[]
+
+  @@index([unitKerjaId])
+  @@index([jabatanId])
+  @@index([statusKepegawaian, aktif])
+  @@index([nama])
+  @@map("pegawai")
+}
+
+// ─────────────────────────────── CUTI ───────────────────────────────
+
+model JenisCuti {
+  id                 String       @id @default(uuid()) @db.Uuid
+  /// TAHUNAN, BESAR, SAKIT, MELAHIRKAN, ALASAN_PENTING, CLTN
+  kode               String       @unique
+  nama               String
+  satuanHitung       SatuanHitung @map("satuan_hitung")
+  potongSaldoTahunan Boolean      @map("potong_saldo_tahunan")
+  maksHari           Int?         @map("maks_hari")
+  wajibLampiran      Boolean      @default(false) @map("wajib_lampiran")
+  /// true untuk Cuti Sakit & Cuti Karena Alasan Penting.
+  bolehTanggalLampau Boolean      @default(false) @map("boleh_tanggal_lampau")
+  aktif              Boolean      @default(true)
+
+  aturan    AturanCuti[]
+  pengajuan PengajuanCuti[]
+  template  TemplateSurat[]
+
+  @@map("jenis_cuti")
+}
+
+/// Konfigurasi terpisah per status kepegawaian (PNS / PPPK / Non-ASN).
+model AturanCuti {
+  id                String            @id @default(uuid()) @db.Uuid
+  jenisCutiId       String            @map("jenis_cuti_id") @db.Uuid
+  statusKepegawaian StatusKepegawaian @map("status_kepegawaian")
+  berlaku           Boolean           @default(true)
+  hakPerTahun       Int?              @map("hak_per_tahun")
+  maksHari          Int?              @map("maks_hari")
+  catatan           String?
+
+  jenisCuti JenisCuti @relation(fields: [jenisCutiId], references: [id])
+
+  @@unique([jenisCutiId, statusKepegawaian])
+  @@map("aturan_cuti")
+}
+
+model PengajuanCuti {
+  id                String     @id @default(uuid()) @db.Uuid
+  pegawaiId         String     @map("pegawai_id") @db.Uuid
+  jenisCutiId       String     @map("jenis_cuti_id") @db.Uuid
+  tanggalMulai      DateTime   @map("tanggal_mulai") @db.Date
+  tanggalSelesai    DateTime   @map("tanggal_selesai") @db.Date
+  jumlahHari        Int        @map("jumlah_hari")
+  alasan            String
+  alamatSelamaCuti  String     @map("alamat_selama_cuti")
+  noHpSelamaCuti    String     @map("no_hp_selama_cuti")
+  penanggungJawabId String?    @map("penanggung_jawab_id") @db.Uuid
+  /// Snapshot saat diajukan.
+  atasanLangsungId  String?    @map("atasan_langsung_id") @db.Uuid
+  /// Snapshot saat diajukan.
+  levelSurat        LevelSurat @map("level_surat")
+  status            StatusCuti @default(DIAJUKAN)
+  tahunSaldo        Int?       @map("tahun_saldo")
+  /// Nama, NIP, pangkat, jabatan, unit saat diajukan.
+  snapshotIdentitas Json       @map("snapshot_identitas")
+  dibuatPada        DateTime   @default(now()) @map("dibuat_pada") @db.Timestamptz
+  diubahPada        DateTime   @updatedAt @map("diubah_pada") @db.Timestamptz
+
+  pegawai         Pegawai   @relation("PemohonCuti", fields: [pegawaiId], references: [id])
+  jenisCuti       JenisCuti @relation(fields: [jenisCutiId], references: [id])
+  penanggungJawab Pegawai?  @relation("PenanggungJawabCuti", fields: [penanggungJawabId], references: [id])
+  atasanLangsung  Pegawai?  @relation("AtasanPadaCuti", fields: [atasanLangsungId], references: [id])
+
+  riwayat  RiwayatStatusCuti[]
+  surat    SuratCuti[]
+  lampiran Dokumen[]
+  mutasi   MutasiSaldoCuti[]
+  absensi  Absensi[]
+
+  @@index([pegawaiId, status])
+  @@index([status])
+  @@index([tanggalMulai, tanggalSelesai])
+  @@map("pengajuan_cuti")
+}
+
+model RiwayatStatusCuti {
+  id          String      @id @default(uuid()) @db.Uuid
+  pengajuanId String      @map("pengajuan_id") @db.Uuid
+  dariStatus  StatusCuti? @map("dari_status")
+  keStatus    StatusCuti  @map("ke_status")
+  olehUserId  String      @map("oleh_user_id") @db.Uuid
+  catatan     String?
+  waktu       DateTime    @default(now()) @db.Timestamptz
+
+  pengajuan PengajuanCuti @relation(fields: [pengajuanId], references: [id])
+  oleh      User          @relation(fields: [olehUserId], references: [id])
+
+  @@index([pengajuanId, waktu])
+  @@map("riwayat_status_cuti")
+}
+
+/// tersedia = hak_tahun_ini + sisa_n1 + sisa_n2 + penyesuaian − terpakai
+/// (PP 11/2017 Ps. 312: sisa N-1 maks 6, sisa N-2 maks 6 → total maks 24;
+/// batas akumulasi disimpan di tabel pengaturan).
+model SaldoCuti {
+  id          String @id @default(uuid()) @db.Uuid
+  pegawaiId   String @map("pegawai_id") @db.Uuid
+  tahun       Int
+  hakTahunIni Int    @default(12) @map("hak_tahun_ini")
+  sisaN1      Int    @default(0) @map("sisa_n1")
+  sisaN2      Int    @default(0) @map("sisa_n2")
+  penyesuaian Int    @default(0)
+  terpakai    Int    @default(0)
+
+  pegawai Pegawai           @relation(fields: [pegawaiId], references: [id])
+  mutasi  MutasiSaldoCuti[]
+
+  @@unique([pegawaiId, tahun])
+  @@map("saldo_cuti")
+}
+
+model MutasiSaldoCuti {
+  id          String           @id @default(uuid()) @db.Uuid
+  saldoId     String           @map("saldo_id") @db.Uuid
+  pengajuanId String?          @map("pengajuan_id") @db.Uuid
+  jenis       JenisMutasiSaldo
+  /// Positif menambah saldo, negatif mengurangi.
+  jumlah      Int
+  catatan     String?
+  olehUserId  String?          @map("oleh_user_id") @db.Uuid
+  waktu       DateTime         @default(now()) @db.Timestamptz
+
+  saldo     SaldoCuti      @relation(fields: [saldoId], references: [id])
+  pengajuan PengajuanCuti? @relation(fields: [pengajuanId], references: [id])
+  oleh      User?          @relation(fields: [olehUserId], references: [id])
+
+  @@index([saldoId])
+  @@map("mutasi_saldo_cuti")
+}
+
+model HariLibur {
+  id      String         @id @default(uuid()) @db.Uuid
+  tanggal DateTime       @unique @db.Date
+  nama    String
+  jenis   JenisHariLibur
+
+  @@map("hari_libur")
+}
+
+/// Tahap persetujuan per level, diatur Admin.
+model AlurPersetujuan {
+  id              String           @id @default(uuid()) @db.Uuid
+  level           LevelSurat
+  urutan          Int
+  tahap           TahapPersetujuan
+  mode            ModePenyetuju    @default(PENGGUNA)
+  /// Untuk PEJABAT_BERWENANG mode PENGGUNA, mis. akun (Plt.) Kepala Dinas.
+  penyetujuUserId String?          @map("penyetuju_user_id") @db.Uuid
+  aktif           Boolean          @default(true)
+
+  penyetuju User? @relation(fields: [penyetujuUserId], references: [id])
+
+  @@unique([level, urutan])
+  @@map("alur_persetujuan")
+}
+
+// ─────────────────────────────── SURAT ───────────────────────────────
+
+/// Satu level bisa punya >1 dokumen, mis. Eselon III:
+/// NOTA_DINAS_SEKDA + PERMOHONAN_BKD.
+model TemplateSurat {
+  id                String     @id @default(uuid()) @db.Uuid
+  level             LevelSurat
+  /// NOTA_DINAS_GUBERNUR | NOTA_DINAS_SEKDA | PERMOHONAN_BKD | SURAT_IZIN
+  kodeDokumen       String     @map("kode_dokumen")
+  nama              String
+  /// Kosong = berlaku untuk semua jenis cuti.
+  jenisCutiId       String?    @map("jenis_cuti_id") @db.Uuid
+  /// DIVERIFIKASI untuk surat permohonan, DISETUJUI untuk surat izin.
+  dapatDicetakSejak StatusCuti @map("dapat_dicetak_sejak")
+  formatNomor       String     @default("{klasifikasi}/{urut}/DESDM/{tahun}") @map("format_nomor")
+  sifat             String?
+  lampiran          String?
+  hal               String
+  /// HTML blok tujuan, mis. "Yth. Kepala Badan Kepegawaian Daerah ...".
+  tujuanHtml        String     @map("tujuan_html")
+  /// string[]; boleh berisi placeholder seperti {{kepala_unit_pemohon}}.
+  tembusan          Json
+  /// string[] kotak lembar disposisi pada Nota Dinas, mis.
+  /// ["Asisten Perekonomian dan Pembangunan", "Sekretaris Daerah"].
+  disposisi         Json?
+  /// Badan surat (HTML) dengan placeholder {{...}}.
+  isiHtml           String     @map("isi_html")
+  ukuranKertas      String     @default("A4") @map("ukuran_kertas")
+  versi             Int        @default(1)
+  aktif             Boolean    @default(true)
+  diubahOlehId      String?    @map("diubah_oleh_id") @db.Uuid
+  diubahPada        DateTime   @updatedAt @map("diubah_pada") @db.Timestamptz
+
+  jenisCuti JenisCuti?  @relation(fields: [jenisCutiId], references: [id])
+  surat     SuratCuti[]
+
+  @@unique([level, kodeDokumen, jenisCutiId])
+  @@map("template_surat")
+}
+
+/// Pejabat bisa berganti, termasuk Plt./Plh.
+model PejabatPenandatangan {
+  id            String      @id @default(uuid()) @db.Uuid
+  /// Kosong = default untuk semua level / dokumen.
+  level         LevelSurat?
+  kodeDokumen   String?     @map("kode_dokumen")
+  awalan        String?
+  jabatanTeks   String      @map("jabatan_teks")
+  pegawaiId     String?     @map("pegawai_id") @db.Uuid
+  nama          String
+  pangkat       String?
+  nip           String?     @db.VarChar(18)
+  berlakuMulai  DateTime    @map("berlaku_mulai") @db.Date
+  berlakuSampai DateTime?   @map("berlaku_sampai") @db.Date
+  aktif         Boolean     @default(true)
+
+  pegawai Pegawai? @relation(fields: [pegawaiId], references: [id])
+
+  @@index([level, kodeDokumen, berlakuMulai])
+  @@map("pejabat_penandatangan")
+}
+
+model SuratCuti {
+  id            String      @id @default(uuid()) @db.Uuid
+  pengajuanId   String      @map("pengajuan_id") @db.Uuid
+  templateId    String      @map("template_id") @db.Uuid
+  kodeDokumen   String      @map("kode_dokumen")
+  tahun         Int
+  /// Otomatis = maks(tahun)+1, boleh diedit.
+  nomorUrut     Int?        @map("nomor_urut")
+  nomorLengkap  String?     @map("nomor_lengkap")
+  status        StatusSurat @default(DRAFT)
+  versiTerakhir Int         @default(1) @map("versi_terakhir")
+  dibuatPada    DateTime    @default(now()) @map("dibuat_pada") @db.Timestamptz
+
+  pengajuan PengajuanCuti    @relation(fields: [pengajuanId], references: [id])
+  template  TemplateSurat    @relation(fields: [templateId], references: [id])
+  versi     SuratCutiVersi[]
+
+  @@unique([pengajuanId, kodeDokumen])
+  @@unique([tahun, nomorUrut])
+  @@map("surat_cuti")
+}
+
+/// Versi terkunci (dikunci_pada terisi) tidak boleh diubah;
+/// perubahan berikutnya membuat versi baru.
+model SuratCutiVersi {
+  id           String    @id @default(uuid()) @db.Uuid
+  suratId      String    @map("surat_id") @db.Uuid
+  versi        Int
+  /// HTML yang sudah disanitasi.
+  isiHtml      String    @map("isi_html")
+  /// Identitas, nomor, tanggal, penandatangan, tembusan saat versi dibuat.
+  dataSnapshot Json      @map("data_snapshot")
+  dibuatOlehId String    @map("dibuat_oleh_id") @db.Uuid
+  dibuatPada   DateTime  @default(now()) @map("dibuat_pada") @db.Timestamptz
+  dikunciPada  DateTime? @map("dikunci_pada") @db.Timestamptz
+
+  surat      SuratCuti  @relation(fields: [suratId], references: [id])
+  dibuatOleh User       @relation(fields: [dibuatOlehId], references: [id])
+  printLog   PrintLog[]
+
+  @@unique([suratId, versi])
+  @@map("surat_cuti_versi")
+}
+
+model PrintLog {
+  id           String     @id @default(uuid()) @db.Uuid
+  jenis        JenisCetak
+  suratVersiId String?    @map("surat_versi_id") @db.Uuid
+  olehUserId   String     @map("oleh_user_id") @db.Uuid
+  waktu        DateTime   @default(now()) @db.Timestamptz
+  /// Mis. unit & tanggal daftar hadir, atau id dokumen yang digabung.
+  info         Json?
+
+  suratVersi SuratCutiVersi? @relation(fields: [suratVersiId], references: [id])
+  oleh       User            @relation(fields: [olehUserId], references: [id])
+
+  @@index([suratVersiId])
+  @@index([waktu])
+  @@map("print_log")
+}
+
+// ─────────────────────────────── ABSEN ───────────────────────────────
+
+/// Satu baris per pegawai per hari kerja.
+/// Prioritas status: CUTI > keterangan (DL/sakit/izin/tugas) > absen mandiri > ALPA.
+model Absensi {
+  id                    String      @id @default(uuid()) @db.Uuid
+  pegawaiId             String      @map("pegawai_id") @db.Uuid
+  tanggal               DateTime    @db.Date
+  status                StatusAbsen
+  jamMasuk              DateTime?   @map("jam_masuk") @db.Timestamptz
+  sumber                SumberAbsen
+  keterangan            String?
+  pengajuanCutiId       String?     @map("pengajuan_cuti_id") @db.Uuid
+  keteranganKehadiranId String?     @map("keterangan_kehadiran_id") @db.Uuid
+  dicatatOlehId         String?     @map("dicatat_oleh_id") @db.Uuid
+  ip                    String?
+  dibuatPada            DateTime    @default(now()) @map("dibuat_pada") @db.Timestamptz
+  diubahPada            DateTime    @updatedAt @map("diubah_pada") @db.Timestamptz
+
+  pegawai             Pegawai              @relation(fields: [pegawaiId], references: [id])
+  pengajuanCuti       PengajuanCuti?       @relation(fields: [pengajuanCutiId], references: [id])
+  keteranganKehadiran KeteranganKehadiran? @relation(fields: [keteranganKehadiranId], references: [id])
+  dicatatOleh         User?                @relation(fields: [dicatatOlehId], references: [id])
+
+  @@unique([pegawaiId, tanggal])
+  @@index([tanggal, status])
+  @@map("absensi")
+}
+
+/// Dinas luar / sakit / izin / tugas untuk rentang tanggal,
+/// dicatat oleh atasan atau Kepegawaian.
+model KeteranganKehadiran {
+  id             String          @id @default(uuid()) @db.Uuid
+  pegawaiId      String          @map("pegawai_id") @db.Uuid
+  jenis          JenisKeterangan
+  tanggalMulai   DateTime        @map("tanggal_mulai") @db.Date
+  tanggalSelesai DateTime        @map("tanggal_selesai") @db.Date
+  keterangan     String
+  nomorSurat     String?         @map("nomor_surat")
+  lampiranId     String?         @map("lampiran_id") @db.Uuid
+  dicatatOlehId  String          @map("dicatat_oleh_id") @db.Uuid
+  dibuatPada     DateTime        @default(now()) @map("dibuat_pada") @db.Timestamptz
+
+  pegawai     Pegawai   @relation(fields: [pegawaiId], references: [id])
+  lampiran    Dokumen?  @relation(fields: [lampiranId], references: [id])
+  dicatatOleh User      @relation(fields: [dicatatOlehId], references: [id])
+  absensi     Absensi[]
+
+  @@index([pegawaiId, tanggalMulai])
+  @@map("keterangan_kehadiran")
+}
+
+// ─────────────────────────────── DOKUMEN ───────────────────────────────
+
+model FolderDokumen {
+  id         String   @id @default(uuid()) @db.Uuid
+  nama       String
+  parentId   String?  @map("parent_id") @db.Uuid
+  urutan     Int      @default(0)
+  dibuatPada DateTime @default(now()) @map("dibuat_pada") @db.Timestamptz
+
+  parent  FolderDokumen?  @relation("FolderHierarki", fields: [parentId], references: [id])
+  anak    FolderDokumen[] @relation("FolderHierarki")
+  akses   AksesFolder[]
+  dokumen Dokumen[]
+
+  @@map("folder_dokumen")
+}
+
+model AksesFolder {
+  folderId    String     @map("folder_id") @db.Uuid
+  peran       PeranAkses
+  bolehLihat  Boolean    @default(true) @map("boleh_lihat")
+  bolehKelola Boolean    @default(false) @map("boleh_kelola")
+
+  folder FolderDokumen @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
+  @@id([folderId, peran])
+  @@map("akses_folder")
+}
+
+/// File disimpan di STORAGE_DIR/<nama_file_simpan> (UUID, di luar folder publik).
+model Dokumen {
+  id               String                  @id @default(uuid()) @db.Uuid
+  ruang            RuangDokumen
+  pemilikPegawaiId String?                 @map("pemilik_pegawai_id") @db.Uuid
+  folderId         String?                 @map("folder_id") @db.Uuid
+  pengajuanCutiId  String?                 @map("pengajuan_cuti_id") @db.Uuid
+  kategoriPribadi  KategoriDokumenPribadi? @map("kategori_pribadi")
+  namaTampilan     String                  @map("nama_tampilan")
+  namaFileAsli     String                  @map("nama_file_asli")
+  namaFileSimpan   String                  @unique @map("nama_file_simpan")
+  ekstensi         String
+  mime             String
+  ukuran           Int
+  sha256           String
+  /// Dokumen pribadi (KTP, KK, dll.) dienkripsi AES-256-GCM saat disimpan.
+  terenkripsi      Boolean                 @default(false)
+  diunggahOlehId   String                  @map("diunggah_oleh_id") @db.Uuid
+  diunggahPada     DateTime                @default(now()) @map("diunggah_pada") @db.Timestamptz
+  dihapusPada      DateTime?               @map("dihapus_pada") @db.Timestamptz
+  dihapusOlehId    String?                 @map("dihapus_oleh_id") @db.Uuid
+
+  pemilik       Pegawai?              @relation(fields: [pemilikPegawaiId], references: [id])
+  folder        FolderDokumen?        @relation(fields: [folderId], references: [id])
+  pengajuanCuti PengajuanCuti?        @relation(fields: [pengajuanCutiId], references: [id])
+  diunggahOleh  User                  @relation("DokumenDiunggah", fields: [diunggahOlehId], references: [id])
+  dihapusOleh   User?                 @relation("DokumenDihapus", fields: [dihapusOlehId], references: [id])
+  keterangan    KeteranganKehadiran[]
+
+  @@index([pemilikPegawaiId])
+  @@index([folderId])
+  @@index([pengajuanCutiId])
+  @@index([dihapusPada])
+  @@map("dokumen")
+}
+
+// ───────────────────── AUDIT, PENGATURAN, NOTIFIKASI ─────────────────────
+
+/// Tanpa FK ke users agar log tetap utuh. Nilai sensitif di-mask.
+model AuditLog {
+  id        BigInt   @id @default(autoincrement())
+  waktu     DateTime @default(now()) @db.Timestamptz
+  userId    String?  @map("user_id") @db.Uuid
+  /// LOGIN, UBAH_PEGAWAI, LIHAT_DATA_SENSITIF, SETUJUI_CUTI, CETAK_SURAT,
+  /// UNDUH_DOKUMEN, dst.
+  aksi      String
+  entitas   String
+  entitasId String?  @map("entitas_id")
+  sebelum   Json?
+  sesudah   Json?
+  ip        String?
+  userAgent String?  @map("user_agent")
+
+  @@index([entitas, entitasId])
+  @@index([userId, waktu])
+  @@index([waktu])
+  @@map("audit_log")
+}
+
+/// Key-value. Nilai yang belum ada di dokumen (jam masuk, batas
+/// terlambat, batas alpa) disimpan NULL = "[ISI]" sampai Admin mengisi.
+model Pengaturan {
+  kunci        String   @id
+  nilai        Json?
+  deskripsi    String
+  diubahOlehId String?  @map("diubah_oleh_id") @db.Uuid
+  diubahPada   DateTime @updatedAt @map("diubah_pada") @db.Timestamptz
+
+  @@map("pengaturan")
+}
+
+model Notifikasi {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  judul      String
+  isi        String
+  tautan     String?
+  dibacaPada DateTime? @map("dibaca_pada") @db.Timestamptz
+  dibuatPada DateTime  @default(now()) @map("dibuat_pada") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, dibacaPada])
+  @@map("notifikasi")
+}
+
+/// Antrean email; dikirim worker hanya jika SMTP dikonfigurasi.
+model EmailKeluar {
+  id            String      @id @default(uuid()) @db.Uuid
+  kepada        String
+  subjek        String
+  isiHtml       String      @map("isi_html")
+  status        StatusEmail @default(ANTRI)
+  percobaan     Int         @default(0)
+  galatTerakhir String?     @map("galat_terakhir")
+  dibuatPada    DateTime    @default(now()) @map("dibuat_pada") @db.Timestamptz
+  dikirimPada   DateTime?   @map("dikirim_pada") @db.Timestamptz
+
+  @@index([status])
+  @@map("email_keluar")
+}

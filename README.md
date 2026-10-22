@@ -4,7 +4,7 @@ Aplikasi web internal Dinas Energi dan Sumber Daya Mineral Provinsi Kalimantan S
 
 Rancangan lengkap (struktur, skema, halaman, alur): [docs/RANCANGAN.md](docs/RANCANGAN.md).
 
-> Status: **tahap 5 selesai** — login NIP & aktivasi, RBAC, dashboard, database pegawai (impor/ekspor Excel), absen & daftar hadir, serta cuti: pengajuan dengan hitung hari kerja otomatis, persetujuan berjenjang (atasan → Kepegawaian → pejabat; Eselon II–IV dengan keputusan Gubernur/BKD), saldo & tutup tahun, rekap cuti tahunan, notifikasi. Surat cuti per eselon dan ruang dokumen menyusul di tahap 6–7.
+> Status: **tahap 6 selesai** — login NIP & aktivasi, RBAC, dashboard, database pegawai (impor/ekspor Excel), absen & daftar hadir, cuti (hitung hari kerja otomatis, persetujuan berjenjang, saldo & tutup tahun, rekap, notifikasi), dan surat cuti per eselon (editor, pratinjau A4, nomor, versi terkunci, cetak & PDF). Ruang dokumen menyusul di tahap 7.
 
 ## Prasyarat
 
@@ -21,6 +21,8 @@ npm run db:migrate            # menerapkan migrasi
 npm run db:seed               # data master + data dummy fiktif
 npm run dev                   # http://localhost:3000 → login dengan akun demo
 ```
+
+Unduh PDF surat memerlukan Gotenberg (`docker compose -f docker-compose.dev.yml --profile pdf up -d`, port 3100, `GOTENBERG_URL` di `.env`). Tanpa Gotenberg, surat tetap bisa dicetak atau disimpan sebagai PDF dari dialog cetak browser.
 
 ## Data seed
 
@@ -67,6 +69,20 @@ Tanpa tugas ini tampilan tetap benar (Alpa dihitung saat halaman dibuka), tetapi
 | Eselon II | Kepegawaian → pejabat | Gubernur (eksternal), dicatat Kepegawaian |
 
 Saldo cuti tahunan "dipesan" selama pengajuan diproses, dipotong saat disetujui, dan dikembalikan bila dibatalkan. **Saldo & Rekap Cuti** (Kepegawaian) dipakai untuk koreksi saldo, impor saldo awal dari Excel, membuat saldo tahun berikutnya (sisa dibawa sesuai batas akumulasi di Pengaturan), serta mencetak/mengekspor Rekap Cuti Tahunan ASN.
+
+## Surat cuti
+
+| Level | Dokumen | Bisa dicetak sejak |
+|---|---|---|
+| Staf | Surat Izin Cuti (cetak pertama → status Surat Terbit) | Disetujui pejabat |
+| Eselon IV | Permohonan Cuti kepada Kepala BKD | Diverifikasi Kepegawaian |
+| Eselon III | Nota Dinas ke Sekretaris Daerah + Permohonan ke Kepala BKD | Diverifikasi Kepegawaian |
+| Eselon II | Nota Dinas ke Gubernur (dengan kotak disposisi) | Diverifikasi Kepegawaian |
+
+- Surat dibuka dari **Detail cuti → Surat**. Kepegawaian, Admin, dan pemohon bisa mengedit badan surat, hal, tanggal, dan tembusan; identitas pemohon, NIP, jumlah hari, dan tanggal cuti tampil sebagai isian terkunci dari data pengajuan. Nomor urut hanya diatur Kepegawaian/Admin.
+- **Cetak** atau **Unduh PDF** mengunci versi itu beserta nomornya. Perubahan sesudahnya disimpan sebagai versi baru; versi lama tetap bisa dicetak ulang persis sama. Setiap cetak dan unduh PDF tercatat di riwayat cetak.
+- Pratinjau, halaman cetak, dan PDF memakai HTML yang sama (A4, Times New Roman 12 pt, kop dengan lambang).
+- **Admin → Template surat & penandatangan**: ubah template per level (placeholder seperti `{{nama}}`, `{{blok_identitas}}`), tambah pejabat penandatangan termasuk Plt./Plh. dengan periode berlaku (dipilih menurut tanggal surat), dan pilih nomor urut otomatis atau diisi tangan. Kode klasifikasi (`800.1.11.4`) dan kode instansi (`DESDM`) ada di Pengaturan.
 
 ## Mengimpor data pegawai (Excel)
 

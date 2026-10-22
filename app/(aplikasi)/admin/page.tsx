@@ -10,7 +10,7 @@ const MENU: { href: string; judul: string; isi: string; ikon: LucideIcon; tahap?
   { href: "/admin/pengaturan", judul: "Pengaturan", isi: "Jam masuk, toleransi terlambat, batas alpa, hari kerja, jaringan kantor, kop instansi, aturan cuti.", ikon: SettingsIcon },
   { href: "/admin/hari-libur", judul: "Hari libur & cuti bersama", isi: "Daftar libur nasional, cuti bersama, dan libur daerah per tahun.", ikon: CalendarXIcon },
   { href: "/pegawai", judul: "Pengguna & akun", isi: "Reset password, buka kunci, nonaktifkan akun, dan peran — lewat tab Akun di detail pegawai.", ikon: UsersIcon },
-  { href: "/admin", judul: "Template surat & penandatangan", isi: "Template per eselon, pejabat penandatangan (termasuk Plt.), dan penomoran surat.", ikon: FileSignatureIcon, tahap: 6 },
+  { href: "/admin/surat/template", judul: "Template surat & penandatangan", isi: "Template per eselon, pejabat penandatangan (termasuk Plt.), dan penomoran surat.", ikon: FileSignatureIcon },
   { href: "/admin", judul: "Master data", isi: "Unit kerja, jabatan & kelas, mapping eselon, pangkat/golongan, jenis & aturan cuti.", ikon: ScrollTextIcon, tahap: 8 },
   { href: "/admin", judul: "Audit log & log login", isi: "Jejak perubahan data, akses data sensitif, cetak, dan unduh dokumen.", ikon: FileClockIcon, tahap: 8 },
 ];

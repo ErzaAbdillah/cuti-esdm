@@ -37,6 +37,11 @@ export function bisaDibatalkan(status: StatusCuti, tanggalMulai: Date, hariIni: 
   return !STATUS_AKHIR.has(status) && hariIni.getTime() < tanggalMulai.getTime();
 }
 
+/** Surat bisa disiapkan & dicetak sejak status `sejak` (template), selama pengajuan tidak ditolak/dibatalkan. */
+export function suratTersedia(status: StatusCuti, sejak: StatusCuti): boolean {
+  return URUTAN.includes(status) && URUTAN.indexOf(status) >= URUTAN.indexOf(sejak);
+}
+
 /** Surat dianggap terbit setelah keputusan pejabat. */
 export function bisaTerbitSurat(status: StatusCuti): boolean {
   return status === "DISETUJUI";

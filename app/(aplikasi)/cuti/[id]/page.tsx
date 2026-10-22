@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, CircleCheckIcon, HourglassIcon, PaperclipIcon } from "lucide-react";
+import { ArrowLeftIcon, ChevronRightIcon, CircleCheckIcon, FileTextIcon, HourglassIcon, LockIcon, PaperclipIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -17,6 +17,7 @@ import { bolehLihatPengajuan } from "@/server/layanan/akses-cuti";
 import { tahapPengajuan } from "@/server/layanan/cuti";
 import { bolehPutuskan, modeTahap } from "@/server/layanan/wewenang-cuti";
 import { detailPengajuan } from "@/server/kueri/cuti";
+import { daftarSuratPengajuan } from "@/server/kueri/surat";
 
 export const metadata: Metadata = { title: "Detail Cuti" };
 
@@ -44,6 +45,7 @@ export default async function DetailCuti({ params, searchParams }: PageProps<"/c
   const pemohon = u.pegawai?.id === p.pegawaiId;
   const bolehTolak = bisaDitolak(p.status) && !pemohon && (pemutus || punyaPeran(u, "KEPEGAWAIAN"));
   const tujuanEksternal = p.levelSurat === "ESELON_II" ? "Gubernur" : "Kepala BKD";
+  const daftarSurat = await daftarSuratPengajuan(p);
 
   return (
     <div className="grid gap-5">
@@ -123,7 +125,39 @@ export default async function DetailCuti({ params, searchParams }: PageProps<"/c
                 </ul>
               </div>
             )}
-            <p className="mt-4 rounded-lg bg-sky-50 p-3 text-xs text-slate-700">Surat cuti per eselon (pratinjau, edit, cetak, PDF) tersedia di tahap 6.</p>
+            {daftarSurat.length > 0 && (
+              <div className="mt-5">
+                <h2 className="mb-2 text-sm font-semibold text-judul">Surat</h2>
+                <ul className="grid gap-2">
+                  {daftarSurat.map((s) => (
+                    <li key={s.kode}>
+                      <Link
+                        href={`/cuti/${p.id}/surat/${s.kode}`}
+                        className="flex items-center gap-3 rounded-lg border border-sky-100 bg-white/70 p-3 hover:border-sky-300 hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-ring"
+                      >
+                        <FileTextIcon className="size-5 shrink-0 text-primary" aria-hidden />
+                        <span className="grid flex-1 gap-0.5">
+                          <span className="text-sm font-medium text-slate-900">{s.nama}</span>
+                          <span className="text-xs text-slate-600">
+                            {!s.tersedia
+                              ? s.versiTerkunci
+                                ? "Arsip — terkunci"
+                                : `Bisa disiapkan setelah ${LABEL_STATUS_CUTI[s.sejak]}`
+                              : s.versiTerkunci
+                                ? `Versi ${s.versiTerkunci.versi} terkunci${s.nomor ? ` · ${s.nomor}` : ""} · dicetak ${s.jumlahCetak}×`
+                                : s.versiTerakhir
+                                  ? `Draft versi ${s.versiTerakhir.versi}`
+                                  : "Belum disiapkan"}
+                          </span>
+                        </span>
+                        {s.versiTerkunci && <LockIcon className="size-4 text-emerald-700" aria-label="Terkunci" />}
+                        <ChevronRightIcon className="size-4 text-slate-500" aria-hidden />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </CardContent>
         </Card>
 

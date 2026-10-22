@@ -19,3 +19,15 @@ export async function bolehLihatPengajuan(
   const tahap = await tahapPengajuan(p);
   return !!tahap && (await bolehPutuskan(u, p, tahap));
 }
+
+/**
+ * Menyiapkan, mengedit, dan mencetak surat: Kepegawaian, Admin, dan pemohon
+ * sendiri (identitas & data cuti tetap terkunci). Nomor surat hanya Kepegawaian/Admin.
+ */
+export function bolehUbahSurat(u: PenggunaSaatIni, p: { pegawaiId: string }): boolean {
+  return punyaPeran(u, "KEPEGAWAIAN", "ADMIN") || u.pegawai?.id === p.pegawaiId;
+}
+
+export function bolehAturNomorSurat(u: PenggunaSaatIni): boolean {
+  return punyaPeran(u, "KEPEGAWAIAN", "ADMIN");
+}

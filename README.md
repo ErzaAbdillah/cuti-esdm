@@ -138,6 +138,8 @@ Development dan production terpisah: `APP_ENV=production` membuat seeder dummy m
 - Backup berisi data pribadi: simpan di lokasi terbatas aksesnya. Berkas pribadi di dalam tar tetap terenkripsi — **simpan `BERKAS_KUNCI` terpisah dari backup**; tanpa kunci itu dokumen pribadi tidak bisa dibuka.
 - Pulihkan (lihat komentar di [scripts/restore.sh](scripts/restore.sh)): hentikan `app` & `cron`, jalankan `restore.sh <db-*.dump> [berkas-*.tar.gz]` di container `backup`, lalu nyalakan lagi. Prosedur ini sudah diuji dengan memulihkan ke database terpisah dan membandingkan jumlah baris.
 
+Alternatif lewat terminal (aturan validasi sama): `npm run impor:pegawai -- data-impor/pegawai.xlsx` untuk memeriksa, tambahkan `--simpan` untuk menyimpan.
+
 ## Data asli
 
 Data pegawai asli **tidak boleh di-commit**. File `*.xlsx`, `*.csv`, folder `data-impor/`, `.data/`, dan `backups/` sudah dikecualikan di `.gitignore`. Data asli masuk ke production hanya lewat fitur impor Excel (tahap 3).

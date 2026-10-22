@@ -17,7 +17,8 @@
     "db:reset": "prisma migrate reset --force && prisma generate && tsx prisma/seed/index.ts",
     "postinstall": "prisma generate",
     "test:e2e": "playwright test",
-    "admin:buat": "tsx prisma/seed/admin.ts"
+    "admin:buat": "tsx prisma/seed/admin.ts",
+    "impor:pegawai": "tsx --env-file-if-exists=.env --conditions=react-server scripts/impor-pegawai.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.2.2",

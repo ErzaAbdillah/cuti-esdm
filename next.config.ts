@@ -21,6 +21,10 @@ const nextConfig: NextConfig = {
   // Semua halaman membutuhkan sesi; Cache Components (static shell) tidak dipakai.
   poweredByHeader: false,
   serverExternalPackages: ["@node-rs/argon2"],
+  experimental: {
+    // Lampiran cuti & dokumen maks. 10 MB (spesifikasi [9]) + overhead form.
+    serverActions: { bodySizeLimit: "11mb" },
+  },
   turbopack: {
     rules: {
       "*.css": {

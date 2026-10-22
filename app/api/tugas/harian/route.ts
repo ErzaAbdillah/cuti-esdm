@@ -1,11 +1,14 @@
 import { timingSafeEqual } from "node:crypto";
 import { hariIniWita } from "@/lib/tanggal";
 import { tandaiAlpa } from "@/server/layanan/absen";
+import { selesaikanCutiLewat } from "@/server/layanan/cuti";
+import { kirimAntreanEmail } from "@/server/notifikasi";
 
 /**
  * Tugas terjadwal, dipanggil layanan cron (docker-compose) tiap ±10 menit:
  *   curl -X POST -H "Authorization: Bearer $TUGAS_TOKEN" http://app:3000/api/tugas/harian
- * Idempoten. Menandai Alpa untuk 7 hari kerja terakhir yang batasnya sudah lewat.
+ * Idempoten: menandai Alpa untuk 7 hari terakhir yang batasnya lewat, menandai cuti
+ * Selesai, dan mengirim antrean email (bila SMTP diisi).
  */
 function tokenSah(req: Request): boolean {
   const harapan = process.env.TUGAS_TOKEN;
@@ -21,5 +24,7 @@ export async function POST(req: Request) {
   const sampai = hariIniWita();
   const dari = new Date(sampai.getTime() - 7 * 24 * 60 * 60 * 1000);
   const alpa = await tandaiAlpa(dari, sampai);
-  return Response.json({ ok: true, alpa });
+  const cutiSelesai = await selesaikanCutiLewat(sampai);
+  const email = await kirimAntreanEmail();
+  return Response.json({ ok: true, alpa, cutiSelesai, email });
 }

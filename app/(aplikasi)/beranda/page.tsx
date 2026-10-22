@@ -163,22 +163,17 @@ export default async function Beranda() {
         </section>
       )}
 
-      {(d.atasan !== null || d.kepegawaian) && (
+      {(d.menunggu !== null || d.kepegawaian) && (
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Tugas saya">
-          {d.atasan !== null && (
-            <Kartu judul="Menunggu persetujuan Anda" ikon={<StampIcon />}
+          {d.menunggu !== null && (
+            <Kartu judul="Menunggu tindakan Anda" ikon={<StampIcon />}
               aksi={<Button asChild variant="outline" className="w-full bg-white/70"><Link href="/cuti/proses">Buka antrean <ArrowRightIcon data-icon="inline-end" /></Link></Button>}
             >
-              <p className="text-3xl font-bold text-judul">{d.atasan} <span className="text-base font-medium text-slate-600">pengajuan bawahan</span></p>
+              <p className="text-3xl font-bold text-judul">{d.menunggu} <span className="text-base font-medium text-slate-600">pengajuan cuti</span></p>
             </Kartu>
           )}
           {d.kepegawaian && (
             <>
-              <Kartu judul="Menunggu verifikasi" ikon={<StampIcon />}
-                aksi={<Button asChild variant="outline" className="w-full bg-white/70"><Link href="/cuti/proses">Buka antrean <ArrowRightIcon data-icon="inline-end" /></Link></Button>}
-              >
-                <p className="text-3xl font-bold text-judul">{d.kepegawaian.menungguVerifikasi} <span className="text-base font-medium text-slate-600">pengajuan</span></p>
-              </Kartu>
               <Kartu judul="Kehadiran hari ini" ikon={<UsersIcon />}
                 aksi={<Button asChild variant="outline" className="w-full bg-white/70"><Link href="/absen/daftar-hadir">Daftar hadir <ArrowRightIcon data-icon="inline-end" /></Link></Button>}
               >

@@ -503,12 +503,13 @@ model RiwayatStatusCuti {
   pengajuanId String      @map("pengajuan_id") @db.Uuid
   dariStatus  StatusCuti? @map("dari_status")
   keStatus    StatusCuti  @map("ke_status")
-  olehUserId  String      @map("oleh_user_id") @db.Uuid
+  /// Kosong = dilakukan sistem (mis. status Selesai otomatis).
+  olehUserId  String?     @map("oleh_user_id") @db.Uuid
   catatan     String?
   waktu       DateTime    @default(now()) @db.Timestamptz
 
   pengajuan PengajuanCuti @relation(fields: [pengajuanId], references: [id])
-  oleh      User          @relation(fields: [olehUserId], references: [id])
+  oleh      User?         @relation(fields: [olehUserId], references: [id])
 
   @@index([pengajuanId, waktu])
   @@map("riwayat_status_cuti")

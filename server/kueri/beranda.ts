@@ -1,11 +1,10 @@
 import "server-only";
-import type { StatusCuti } from "@/lib/generated/prisma/enums";
 import { DEF_PENGATURAN } from "@/lib/pengaturan";
 import { hariIniWita } from "@/lib/tanggal";
 import { type PenggunaSaatIni, punyaPeran } from "../auth/pengguna";
 import { db } from "../db";
-
-const STATUS_PROSES: StatusCuti[] = ["DIAJUKAN", "DISETUJUI_ATASAN", "DIVERIFIKASI", "DISETUJUI"];
+import { hariDipesan } from "../layanan/cuti";
+import { antreanSaya } from "./cuti";
 
 export async function dataBeranda(u: PenggunaSaatIni) {
   const hariIni = hariIniWita();
@@ -14,12 +13,7 @@ export async function dataBeranda(u: PenggunaSaatIni) {
 
   const [saldo, dipesan, pengajuan, absen, dokumen, libur] = await Promise.all([
     pegawaiId ? db.saldoCuti.findUnique({ where: { pegawaiId_tahun: { pegawaiId, tahun } } }) : null,
-    pegawaiId
-      ? db.pengajuanCuti.aggregate({
-          _sum: { jumlahHari: true },
-          where: { pegawaiId, status: { in: STATUS_PROSES }, tahunSaldo: tahun, jenisCuti: { potongSaldoTahunan: true } },
-        })
-      : null,
+    pegawaiId ? hariDipesan(pegawaiId, tahun) : 0,
     pegawaiId
       ? db.pengajuanCuti.findMany({
           where: { pegawaiId },
@@ -39,18 +33,17 @@ export async function dataBeranda(u: PenggunaSaatIni) {
     db.hariLibur.findUnique({ where: { tanggal: hariIni } }),
   ]);
 
-  const atasan = punyaPeran(u, "ATASAN") && pegawaiId
-    ? await db.pengajuanCuti.count({ where: { atasanLangsungId: pegawaiId, status: "DIAJUKAN" } })
-    : null;
+  // Antrean persetujuan: atasan, Kepegawaian, dan pejabat penyetuju (mis. Kepala Dinas).
+  const antrean = (await antreanSaya(u)).length;
+  const menunggu = antrean > 0 || punyaPeran(u, "ATASAN", "KEPEGAWAIAN") ? antrean : null;
 
-  let kepegawaian: { menungguVerifikasi: number; hadir: number; jumlahPegawai: number } | null = null;
+  let kepegawaian: { hadir: number; jumlahPegawai: number } | null = null;
   if (punyaPeran(u, "KEPEGAWAIAN")) {
-    const [menungguVerifikasi, hadir, jumlahPegawai] = await Promise.all([
-      db.pengajuanCuti.count({ where: { status: "DISETUJUI_ATASAN" } }),
+    const [hadir, jumlahPegawai] = await Promise.all([
       db.absensi.count({ where: { tanggal: hariIni, status: { in: ["HADIR", "TERLAMBAT"] } } }),
       db.pegawai.count({ where: { aktif: true } }),
     ]);
-    kepegawaian = { menungguVerifikasi, hadir, jumlahPegawai };
+    kepegawaian = { hadir, jumlahPegawai };
   }
 
   let pengaturanKosong: string[] = [];
@@ -65,12 +58,12 @@ export async function dataBeranda(u: PenggunaSaatIni) {
     hariIni,
     tahun,
     saldo,
-    dipesan: dipesan?._sum.jumlahHari ?? 0,
+    dipesan,
     pengajuan,
     absen,
     dokumen,
     libur,
-    atasan,
+    menunggu,
     kepegawaian,
     pengaturanKosong,
   };

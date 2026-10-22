@@ -15,7 +15,8 @@ export const metadata: Metadata = { title: "Keterangan Kehadiran" };
 export default async function Keterangan() {
   const u = await wajibPeran("ATASAN", "KEPEGAWAIAN");
   const kepegawaian = punyaPeran(u, "KEPEGAWAIAN");
-  const lingkup: Prisma.PegawaiWhereInput = kepegawaian ? { aktif: true } : { aktif: true, atasanLangsungId: u.pegawai?.id ?? "-" };
+  // Atasan selalu punya data pegawai (peran ATASAN diturunkan dari bawahan).
+  const lingkup: Prisma.PegawaiWhereInput = kepegawaian ? { aktif: true } : { aktif: true, atasanLangsungId: u.pegawai!.id };
 
   const [pegawai, terbaru] = await Promise.all([
     db.pegawai.findMany({ where: lingkup, include: { jabatan: true }, orderBy: { nama: "asc" } }),

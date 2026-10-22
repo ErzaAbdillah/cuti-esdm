@@ -1,4 +1,4 @@
-import type { LevelSurat, StatusAbsen, StatusCuti } from "@/lib/generated/prisma/enums";
+import type { LevelSurat, StatusAbsen, StatusCuti, TahapPersetujuan } from "@/lib/generated/prisma/enums";
 
 export const LABEL_STATUS_CUTI: Record<StatusCuti, string> = {
   DIAJUKAN: "Diajukan",
@@ -50,4 +50,10 @@ export const LABEL_LEVEL_SURAT: Record<LevelSurat, string> = {
   ESELON_III: "Eselon III",
   ESELON_IV: "Eselon IV",
   STAF: "Staf",
+};
+
+export const LABEL_TAHAP: Record<TahapPersetujuan, string> = {
+  ATASAN_LANGSUNG: "Persetujuan atasan langsung",
+  KEPEGAWAIAN: "Verifikasi Kepegawaian",
+  PEJABAT_BERWENANG: "Keputusan pejabat berwenang",
 };

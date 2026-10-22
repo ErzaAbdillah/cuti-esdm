@@ -40,6 +40,7 @@ export const MENU: GrupMenu[] = [
     item: [
       { href: "/cuti", label: "Cuti Saya", ikon: "cuti", peran: ["PEGAWAI"] },
       { href: "/cuti/proses", label: "Proses Cuti", ikon: "proses", peran: ["ATASAN", "KEPEGAWAIAN", "ADMIN"] },
+      { href: "/cuti/saldo", label: "Saldo & Rekap Cuti", ikon: "rekap", peran: ["KEPEGAWAIAN"] },
     ],
   },
   {

@@ -4,7 +4,7 @@ Aplikasi web internal Dinas Energi dan Sumber Daya Mineral Provinsi Kalimantan S
 
 Rancangan lengkap (struktur, skema, halaman, alur): [docs/RANCANGAN.md](docs/RANCANGAN.md).
 
-> Status: **tahap 4 selesai** — login NIP & aktivasi, RBAC, dashboard, database pegawai (impor/ekspor Excel), serta absen: Absen Masuk, daftar hadir per unit & cetak sesuai form fisik, keterangan DL/sakit/izin/tugas, rekap bulanan, dan penanda Alpa. Modul cuti, surat, dan dokumen menyusul di tahap 5–7.
+> Status: **tahap 5 selesai** — login NIP & aktivasi, RBAC, dashboard, database pegawai (impor/ekspor Excel), absen & daftar hadir, serta cuti: pengajuan dengan hitung hari kerja otomatis, persetujuan berjenjang (atasan → Kepegawaian → pejabat; Eselon II–IV dengan keputusan Gubernur/BKD), saldo & tutup tahun, rekap cuti tahunan, notifikasi. Surat cuti per eselon dan ruang dokumen menyusul di tahap 6–7.
 
 ## Prasyarat
 
@@ -57,6 +57,16 @@ curl -fsS -X POST -H "Authorization: Bearer $TUGAS_TOKEN" http://localhost:3000/
 ```
 
 Tanpa tugas ini tampilan tetap benar (Alpa dihitung saat halaman dibuka), tetapi barisnya belum tersimpan di database.
+
+## Alur cuti
+
+| Level | Tahap persetujuan | Keputusan akhir |
+|---|---|---|
+| Staf (fungsional, pelaksana, PPPK) | Atasan langsung → Kepegawaian → pejabat | (Plt.) Kepala Dinas di aplikasi — akun pegawai yang terdaftar sebagai pejabat penandatangan |
+| Eselon IV & III | Atasan langsung → Kepegawaian → pejabat | Kepala BKD (eksternal): Kepegawaian mengunggah surat izin → status Surat Terbit |
+| Eselon II | Kepegawaian → pejabat | Gubernur (eksternal), dicatat Kepegawaian |
+
+Saldo cuti tahunan "dipesan" selama pengajuan diproses, dipotong saat disetujui, dan dikembalikan bila dibatalkan. **Saldo & Rekap Cuti** (Kepegawaian) dipakai untuk koreksi saldo, impor saldo awal dari Excel, membuat saldo tahun berikutnya (sisa dibawa sesuai batas akumulasi di Pengaturan), serta mencetak/mengekspor Rekap Cuti Tahunan ASN.
 
 ## Mengimpor data pegawai (Excel)
 

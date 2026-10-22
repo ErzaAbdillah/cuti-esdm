@@ -20,6 +20,8 @@ const csp = [
 const nextConfig: NextConfig = {
   // Semua halaman membutuhkan sesi; Cache Components (static shell) tidak dipakai.
   poweredByHeader: false,
+  // Image Docker produksi menjalankan .next/standalone/server.js.
+  output: "standalone",
   serverExternalPackages: ["@node-rs/argon2"],
   experimental: {
     // Lampiran cuti & dokumen maks. 10 MB (spesifikasi [9]) + overhead form.

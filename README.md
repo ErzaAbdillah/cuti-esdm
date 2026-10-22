@@ -4,7 +4,7 @@ Aplikasi web internal Dinas Energi dan Sumber Daya Mineral Provinsi Kalimantan S
 
 Rancangan lengkap (struktur, skema, halaman, alur): [docs/RANCANGAN.md](docs/RANCANGAN.md).
 
-> Status: **tahap 7 selesai** — login NIP & aktivasi, RBAC, dashboard, database pegawai (impor/ekspor Excel), absen & daftar hadir, cuti (hitung hari kerja otomatis, persetujuan berjenjang, saldo & tutup tahun, rekap, notifikasi), dan surat cuti per eselon (editor, pratinjau A4, nomor, versi terkunci, cetak & PDF)., serta ruang dokumen pribadi & organisasi dengan cetak gabungan. Tahap 8: audit log, master data, deployment production.
+> Status: **tahap 1–8 selesai** — login NIP & aktivasi, RBAC, dashboard, database pegawai (impor/ekspor Excel), absen & daftar hadir, cuti dengan persetujuan berjenjang & saldo, surat cuti per eselon (editor, versi, cetak & PDF), ruang dokumen dengan cetak gabungan, audit log & log login, master data, serta deployment Docker dengan backup harian.
 
 ## Prasyarat
 
@@ -40,6 +40,7 @@ Akun demo memakai password `SEED_PASSWORD_DEV` dari `.env`. Daftar NIP-nya ada d
 | Perintah | Fungsi |
 |---|---|
 | `npm test` | Unit test (Vitest) |
+| `npm run test:e2e` | E2E Playwright terhadap server dev + data seed (sekali: `npx playwright install chromium`) |
 | `npm run typecheck` | Pemeriksaan TypeScript |
 | `npm run lint` | ESLint |
 | `npm run db:generate` | Generate ulang Prisma Client setelah skema berubah |
@@ -104,6 +105,38 @@ Saldo cuti tahunan "dipesan" selama pengajuan diproses, dipotong saat disetujui,
 5. **Simpan baris valid**. Pegawai dengan NIP/ID yang sudah ada diperbarui; kolom yang tidak ada di berkas tidak mengubah data lama. Semua baris divalidasi ulang di server dan impor dicatat di audit log.
 
 Hasil **Ekspor Excel** memakai kolom yang sama, jadi bisa diedit lalu diimpor kembali. Kolom NIK/alamat/HP hanya ikut diekspor lewat tombol **Ekspor + data pribadi** (khusus Kepegawaian, tercatat di audit).
+
+## Deploy production
+
+1. Di server (Docker + reverse proxy HTTPS, mis. Caddy/Nginx ke `127.0.0.1:3000`): salin repo, lalu `cp .env.production.example .env.production` dan isi semua nilai (password DB, `BERKAS_KUNCI`, `TUGAS_TOKEN`, `APP_URL` https).
+2. Jalankan:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+```
+
+   Layanan: `db` (PostgreSQL 17), `migrate` (`prisma migrate deploy` tiap deploy), `app` (Next.js standalone), `gotenberg` (PDF), `cron` (memanggil `/api/tugas/harian` tiap 10 menit), `backup`.
+3. Data master (sekali, tanpa data dummy):
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production run --rm migrate npm run db:seed:master
+```
+
+4. Akun Admin pertama (password sementara dicetak sekali, wajib diganti saat login pertama):
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production run --rm migrate npm run admin:buat -- admin
+```
+
+5. Masuk sebagai Admin, isi pengaturan **[ISI]** (jam masuk, toleransi, batas alpa), periksa kop & penandatangan, lalu impor data pegawai dari Excel.
+
+Development dan production terpisah: `APP_ENV=production` membuat seeder dummy menolak berjalan, cookie sesi memakai prefix `__Host-` bila `APP_URL` https, dan database/berkas berada di volume Docker sendiri.
+
+## Backup & restore
+
+- Layanan `backup` membuat `db-YYYYmmdd-HHMM.dump` (pg_dump) dan `berkas-YYYYmmdd-HHMM.tar.gz` setiap hari pukul `JAM_BACKUP` WITA di `BACKUP_DIR`, dan menghapus yang lebih tua dari `RETENSI_HARI` hari. Backup manual: `docker compose -f docker-compose.prod.yml exec backup sh /scripts/backup.sh sekali`.
+- Backup berisi data pribadi: simpan di lokasi terbatas aksesnya. Berkas pribadi di dalam tar tetap terenkripsi — **simpan `BERKAS_KUNCI` terpisah dari backup**; tanpa kunci itu dokumen pribadi tidak bisa dibuka.
+- Pulihkan (lihat komentar di [scripts/restore.sh](scripts/restore.sh)): hentikan `app` & `cron`, jalankan `restore.sh <db-*.dump> [berkas-*.tar.gz]` di container `backup`, lalu nyalakan lagi. Prosedur ini sudah diuji dengan memulihkan ke database terpisah dan membandingkan jumlah baris.
 
 ## Data asli
 

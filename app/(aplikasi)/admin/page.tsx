@@ -13,8 +13,8 @@ const MENU: { href: string; judul: string; isi: string; ikon: LucideIcon; tahap?
   { href: "/admin/surat/template", judul: "Template surat & penandatangan", isi: "Template per eselon, pejabat penandatangan (termasuk Plt.), dan penomoran surat.", ikon: FileSignatureIcon },
   { href: "/admin/folder-dokumen", judul: "Folder dokumen", isi: "Folder dokumen organisasi dan hak lihat/kelola per peran.", ikon: FolderLockIcon },
   { href: "/admin/dokumen-terhapus", judul: "Dokumen terhapus", isi: "Pulihkan dokumen pribadi atau organisasi yang terhapus.", ikon: ArchiveRestoreIcon },
-  { href: "/admin", judul: "Master data", isi: "Unit kerja, jabatan & kelas, mapping eselon, pangkat/golongan, jenis & aturan cuti.", ikon: ScrollTextIcon, tahap: 8 },
-  { href: "/admin", judul: "Audit log & log login", isi: "Jejak perubahan data, akses data sensitif, cetak, dan unduh dokumen.", ikon: FileClockIcon, tahap: 8 },
+  { href: "/admin/master", judul: "Master data", isi: "Unit kerja, jabatan & kelas, mapping eselon, pangkat/golongan, jenis & aturan cuti.", ikon: ScrollTextIcon },
+  { href: "/admin/audit-log", judul: "Audit log & log login", isi: "Jejak perubahan data, akses data sensitif, cetak, dan unduh dokumen.", ikon: FileClockIcon },
 ];
 
 export default async function Admin() {

@@ -15,7 +15,9 @@
     "db:seed": "tsx prisma/seed/index.ts",
     "db:seed:master": "tsx prisma/seed/index.ts --master",
     "db:reset": "prisma migrate reset --force && prisma generate && tsx prisma/seed/index.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test:e2e": "playwright test",
+    "admin:buat": "tsx prisma/seed/admin.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.2.2",
@@ -44,6 +46,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^24.19.2",
     "@types/nodemailer": "^8.0.2",

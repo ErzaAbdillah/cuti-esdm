@@ -1,0 +1,14 @@
+.git
+node_modules
+.next
+.data
+backups
+data-impor
+*.xlsx
+*.csv
+.env
+.env.*
+!.env.example
+!.env.production.example
+.claude
+tests

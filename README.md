@@ -4,7 +4,7 @@ Aplikasi web internal Dinas Energi dan Sumber Daya Mineral Provinsi Kalimantan S
 
 Rancangan lengkap (struktur, skema, halaman, alur): [docs/RANCANGAN.md](docs/RANCANGAN.md).
 
-> Status: **tahap 6 selesai** — login NIP & aktivasi, RBAC, dashboard, database pegawai (impor/ekspor Excel), absen & daftar hadir, cuti (hitung hari kerja otomatis, persetujuan berjenjang, saldo & tutup tahun, rekap, notifikasi), dan surat cuti per eselon (editor, pratinjau A4, nomor, versi terkunci, cetak & PDF). Ruang dokumen menyusul di tahap 7.
+> Status: **tahap 7 selesai** — login NIP & aktivasi, RBAC, dashboard, database pegawai (impor/ekspor Excel), absen & daftar hadir, cuti (hitung hari kerja otomatis, persetujuan berjenjang, saldo & tutup tahun, rekap, notifikasi), dan surat cuti per eselon (editor, pratinjau A4, nomor, versi terkunci, cetak & PDF)., serta ruang dokumen pribadi & organisasi dengan cetak gabungan. Tahap 8: audit log, master data, deployment production.
 
 ## Prasyarat
 
@@ -83,6 +83,13 @@ Saldo cuti tahunan "dipesan" selama pengajuan diproses, dipotong saat disetujui,
 - **Cetak** atau **Unduh PDF** mengunci versi itu beserta nomornya. Perubahan sesudahnya disimpan sebagai versi baru; versi lama tetap bisa dicetak ulang persis sama. Setiap cetak dan unduh PDF tercatat di riwayat cetak.
 - Pratinjau, halaman cetak, dan PDF memakai HTML yang sama (A4, Times New Roman 12 pt, kop dengan lambang).
 - **Admin → Template surat & penandatangan**: ubah template per level (placeholder seperti `{{nama}}`, `{{blok_identitas}}`), tambah pejabat penandatangan termasuk Plt./Plh. dengan periode berlaku (dipilih menurut tanggal surat), dan pilih nomor urut otomatis atau diisi tangan. Kode klasifikasi (`800.1.11.4`) dan kode instansi (`DESDM`) ada di Pengaturan.
+
+## Ruang dokumen
+
+- **Dokumen Saya**: SK, ijazah, KTP, KK, dll. per kategori. Disimpan terenkripsi (AES-256-GCM, kunci `BERKAS_KUNCI`) dengan nama UUID di luar folder publik; hanya pemilik, Kepegawaian, dan Admin yang bisa membuka (Kepegawaian lewat tab Dokumen di detail pegawai).
+- **Dokumen Organisasi**: folder dengan hak *lihat*/*kelola* per peran, diatur di **Admin → Folder dokumen** (subfolder mewarisi hak induknya).
+- Unggah PDF/JPG/PNG/DOCX/XLSX maks. 10 MB; isi berkas diperiksa (bukan hanya ekstensi). Hapus bersifat lunak — **Admin → Dokumen terhapus** untuk memulihkan.
+- Centang beberapa dokumen lalu **Cetak gabungan** → satu PDF (gambar dipasang di halaman A4, DOCX/XLSX dikonversi Gotenberg). Setiap lihat, unduh, dan cetak tercatat di audit log.
 
 ## Mengimpor data pegawai (Excel)
 

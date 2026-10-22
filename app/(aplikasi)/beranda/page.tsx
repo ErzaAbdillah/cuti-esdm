@@ -153,7 +153,7 @@ export default async function Beranda() {
               <ul className="grid gap-1.5 text-sm">
                 {d.dokumen.map((dok) => (
                   <li key={dok.id} className="truncate">
-                    <span className="font-medium text-judul">{dok.namaTampilan}</span>
+                    <a href={`/api/dokumen/${dok.id}/berkas`} target="_blank" rel="noopener" className="font-medium text-judul hover:underline">{dok.namaTampilan}</a>
                     <span className="block text-xs text-slate-600">{formatTanggalJam(dok.diunggahPada)}</span>
                   </li>
                 ))}

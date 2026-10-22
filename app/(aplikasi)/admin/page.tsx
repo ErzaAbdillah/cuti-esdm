@@ -1,4 +1,4 @@
-import { CalendarXIcon, FileClockIcon, FileSignatureIcon, type LucideIcon, ScrollTextIcon, SettingsIcon, UsersIcon } from "lucide-react";
+import { ArchiveRestoreIcon, CalendarXIcon, FileClockIcon, FolderLockIcon, FileSignatureIcon, type LucideIcon, ScrollTextIcon, SettingsIcon, UsersIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,8 @@ const MENU: { href: string; judul: string; isi: string; ikon: LucideIcon; tahap?
   { href: "/admin/hari-libur", judul: "Hari libur & cuti bersama", isi: "Daftar libur nasional, cuti bersama, dan libur daerah per tahun.", ikon: CalendarXIcon },
   { href: "/pegawai", judul: "Pengguna & akun", isi: "Reset password, buka kunci, nonaktifkan akun, dan peran — lewat tab Akun di detail pegawai.", ikon: UsersIcon },
   { href: "/admin/surat/template", judul: "Template surat & penandatangan", isi: "Template per eselon, pejabat penandatangan (termasuk Plt.), dan penomoran surat.", ikon: FileSignatureIcon },
+  { href: "/admin/folder-dokumen", judul: "Folder dokumen", isi: "Folder dokumen organisasi dan hak lihat/kelola per peran.", ikon: FolderLockIcon },
+  { href: "/admin/dokumen-terhapus", judul: "Dokumen terhapus", isi: "Pulihkan dokumen pribadi atau organisasi yang terhapus.", ikon: ArchiveRestoreIcon },
   { href: "/admin", judul: "Master data", isi: "Unit kerja, jabatan & kelas, mapping eselon, pangkat/golongan, jenis & aturan cuti.", ikon: ScrollTextIcon, tahap: 8 },
   { href: "/admin", judul: "Audit log & log login", isi: "Jejak perubahan data, akses data sensitif, cetak, dan unduh dokumen.", ikon: FileClockIcon, tahap: 8 },
 ];

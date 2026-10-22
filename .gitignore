@@ -52,3 +52,6 @@ next-env.d.ts
 /data-impor
 *.xlsx
 *.csv
+
+# konfigurasi alat lokal
+/.claude

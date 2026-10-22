@@ -4,7 +4,7 @@ Aplikasi web internal Dinas Energi dan Sumber Daya Mineral Provinsi Kalimantan S
 
 Rancangan lengkap (struktur, skema, halaman, alur): [docs/RANCANGAN.md](docs/RANCANGAN.md).
 
-> Status: **tahap 1 selesai** — skema database, migrasi, seeder master, dan data dummy. Antarmuka web dibangun mulai tahap 2.
+> Status: **tahap 2 selesai** — login NIP, aktivasi akun (NIP + NIK/kode aktivasi), sesi & RBAC di server, kerangka dashboard, dan tema langit. Modul absen, cuti, pegawai, dan dokumen menyusul di tahap 3–7.
 
 ## Prasyarat
 
@@ -19,7 +19,7 @@ npm install                   # juga menjalankan prisma generate
 npm run db:up                 # PostgreSQL 17 di Docker
 npm run db:migrate            # menerapkan migrasi
 npm run db:seed               # data master + data dummy fiktif
-npm run dev                   # http://localhost:3000
+npm run dev                   # http://localhost:3000 → login dengan akun demo
 ```
 
 ## Data seed

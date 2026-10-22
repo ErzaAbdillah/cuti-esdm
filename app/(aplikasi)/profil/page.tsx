@@ -1,5 +1,6 @@
 import { TriangleAlertIcon } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { FormGantiPassword } from "@/components/auth/form-ganti-password";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +39,17 @@ export default async function Profil({ searchParams }: PageProps<"/profil">) {
         <Card>
           <CardHeader>
             <CardTitle className="text-judul">Data akun</CardTitle>
-            <CardDescription>Perubahan data diri dilakukan oleh Kepegawaian.</CardDescription>
+            <CardDescription>
+              Perubahan data diri dilakukan oleh Kepegawaian.
+              {u.pegawai && (
+                <>
+                  {" "}
+                  <Link href={`/pegawai/${u.pegawai.id}`} className="font-semibold text-primary hover:underline">
+                    Lihat data kepegawaian lengkap
+                  </Link>
+                </>
+              )}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <dl className="grid gap-3 text-sm">

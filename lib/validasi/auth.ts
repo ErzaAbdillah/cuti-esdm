@@ -7,6 +7,8 @@ export type HasilForm = {
   sukses?: string;
   /** Isian yang dikembalikan agar tidak hilang saat form di-reset (bukan password). */
   nilai?: Partial<Record<string, string>>;
+  /** Berubah tiap respons galat; dipakai sebagai key agar form dirender ulang dengan `nilai`. */
+  stempel?: number;
 };
 
 export const skemaMasuk = z.object({

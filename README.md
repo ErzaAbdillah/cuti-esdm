@@ -4,7 +4,7 @@ Aplikasi web internal Dinas Energi dan Sumber Daya Mineral Provinsi Kalimantan S
 
 Rancangan lengkap (struktur, skema, halaman, alur): [docs/RANCANGAN.md](docs/RANCANGAN.md).
 
-> Status: **tahap 3 selesai** — login NIP & aktivasi akun, RBAC, dashboard, serta database pegawai (cari, filter, detail, tambah/ubah, impor/ekspor Excel, cetak). Modul absen, cuti, surat, dan dokumen menyusul di tahap 4–7.
+> Status: **tahap 4 selesai** — login NIP & aktivasi, RBAC, dashboard, database pegawai (impor/ekspor Excel), serta absen: Absen Masuk, daftar hadir per unit & cetak sesuai form fisik, keterangan DL/sakit/izin/tugas, rekap bulanan, dan penanda Alpa. Modul cuti, surat, dan dokumen menyusul di tahap 5–7.
 
 ## Prasyarat
 
@@ -41,6 +41,22 @@ Akun demo memakai password `SEED_PASSWORD_DEV` dari `.env`. Daftar NIP-nya ada d
 | `npm run typecheck` | Pemeriksaan TypeScript |
 | `npm run lint` | ESLint |
 | `npm run db:generate` | Generate ulang Prisma Client setelah skema berubah |
+
+## Pengaturan absen yang wajib diisi Admin
+
+Jam masuk, toleransi terlambat, dan batas alpa belum tercantum di dokumen acuan, jadi nilainya **kosong ([ISI])** setelah seed. Isi di **Admin → Pengaturan**. Selama kosong: semua absen dihitung Hadir dan Alpa tidak ditandai. Hari libur & cuti bersama dikelola di **Admin → Hari libur** (2026 sudah terisi dari SKB 3 Menteri).
+
+Aturan Alpa: hanya pegawai yang **punya akun aktif** (absen online) yang otomatis ditandai Alpa setelah batas waktu, dan baru sejak hari akunnya dibuat. Pegawai yang masih tanda tangan di kertas (belum aktivasi, termasuk PJLP) dicatat kehadirannya oleh atasan/Kepegawaian dari halaman Daftar Hadir.
+
+## Tugas terjadwal
+
+`POST /api/tugas/harian` dengan header `Authorization: Bearer <TUGAS_TOKEN>` menandai Alpa untuk 7 hari kerja terakhir (idempoten). Jalankan tiap ±10 menit lewat cron, mis.:
+
+```bash
+curl -fsS -X POST -H "Authorization: Bearer $TUGAS_TOKEN" http://localhost:3000/api/tugas/harian
+```
+
+Tanpa tugas ini tampilan tetap benar (Alpa dihitung saat halaman dibuka), tetapi barisnya belum tersimpan di database.
 
 ## Mengimpor data pegawai (Excel)
 

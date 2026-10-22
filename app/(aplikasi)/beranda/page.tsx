@@ -76,7 +76,7 @@ export default async function Beranda() {
           <AlertTitle className="text-amber-950">Pengaturan absen belum lengkap [ISI]</AlertTitle>
           <AlertDescription className="text-amber-950">
             {d.pengaturanKosong.join(", ")} belum diisi. Selama kosong, status Terlambat dan Alpa tidak dihitung.{" "}
-            <Link href="/admin" className="font-semibold underline underline-offset-4">
+            <Link href="/admin/pengaturan" className="font-semibold underline underline-offset-4">
               Buka pengaturan
             </Link>
           </AlertDescription>

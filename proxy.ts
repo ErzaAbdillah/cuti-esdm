@@ -5,7 +5,7 @@ import { type NextRequest, NextResponse } from "next/server";
  * diarahkan ke /login. Validasi sesi yang sebenarnya (DB, kedaluwarsa,
  * peran) tetap dilakukan di server pada setiap halaman, aksi, dan route.
  */
-const PUBLIK = ["/login", "/daftar", "/api/sehat"];
+const PUBLIK = ["/login", "/daftar", "/api/sehat", "/api/tugas"];
 
 export function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;

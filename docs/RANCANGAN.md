@@ -57,7 +57,9 @@ Jika rancangan disetujui tanpa catatan, saya memakai **rekomendasi** di bawah in
 | Tes | Vitest (unit), Playwright (E2E) | |
 | Deploy | Docker Compose: `app`, `worker`, `db`, `gotenberg`, `backup` | Zona waktu `Asia/Makassar` (WITA) untuk jam absen |
 
-`worker` memakai image yang sama dengan `app`, tetapi menjalankan tugas terjadwal: menandai Alpa setelah batas waktu, menandai cuti Selesai, dan mengirim email.
+`worker` berupa cron ringan yang memanggil `POST /api/tugas/harian` (dilindungi `TUGAS_TOKEN`) untuk menandai Alpa, menandai cuti Selesai, dan mengirim email — logikanya tetap di aplikasi sehingga tidak perlu runtime kedua.
+
+Koneksi database selalu memakai sesi `timezone=UTC` (adapter Prisma mengirim timestamp tanpa offset); tampilan memakai WITA.
 
 ---
 
@@ -269,7 +271,9 @@ Halaman `/absen`, `/cuti/ajukan`, dan `/cuti/[id]` diuji pada lebar 360 px denga
 | `daftar_hadir.ukuran_kertas` | Legal | |
 | `instansi.*` | alamat, telepon, fax, email, website sesuai kop | |
 
-Selama masih ada nilai [ISI] yang kosong, Admin melihat banner peringatan. Hari libur dan cuti bersama 2026 diisi dari SKB 3 Menteri dan perlu diverifikasi Admin.
+Selama masih ada nilai [ISI] yang kosong, Admin melihat banner peringatan.
+
+Alpa otomatis hanya untuk pegawai yang punya akun aktif, dan baru sejak akunnya ada sebelum batas alpa hari itu. Pegawai yang masih tanda tangan di kertas (belum aktivasi, termasuk PJLP) dicatat atasan/Kepegawaian dari halaman Daftar Hadir. Hari libur dan cuti bersama 2026 diisi dari SKB 3 Menteri dan perlu diverifikasi Admin.
 
 ---
 

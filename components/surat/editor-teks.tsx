@@ -73,7 +73,7 @@ export function EditorTeks({ html, onChange, ekstensi = [], sisipan = [], muatUl
   });
 
   useEffect(() => {
-    if (editor && muatUlang > 0) editor.commands.setContent(html, { emitUpdate: true });
+    if (editor && muatUlang > 0) editor.chain().setMeta("muatUlang", true).setContent(html, { emitUpdate: true }).run();
     // Hanya saat diminta muat ulang, bukan setiap html berubah karena ketikan.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [muatUlang, editor]);

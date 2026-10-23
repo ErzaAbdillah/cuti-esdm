@@ -42,6 +42,8 @@ export interface DataLembar {
   penandatangan: Penandatangan | null;
   tembusan: string[];
   disposisi: string[];
+  /** Blok tanda tangan huruf kapital (Nota Dinas ke Gubernur). */
+  ttdKapital?: boolean;
 }
 
 /** CSS lembar — dipakai apa adanya di pratinjau, halaman cetak, dan dokumen PDF. */
@@ -107,10 +109,15 @@ export function jabatanPenandatangan(p: Penandatangan | null): string {
   return p ? `${p.awalan ? `${p.awalan} ` : ""}${p.jabatanTeks}` : "";
 }
 
-function tandaTangan(p: Penandatangan | null, kotaTanggal?: string): string {
+/** Jabatan dicetak dua baris seperti surat fisik: "… Sumber Daya Mineral" / "Provinsi Kalimantan Selatan". */
+function jabatanDuaBaris(teks: string): string {
+  return e(teks).replace(/ (provinsi )/i, "<br>$1");
+}
+
+function tandaTangan(p: Penandatangan | null, kotaTanggal?: string, kapital = false): string {
   const atas = kotaTanggal ? `<p>${e(kotaTanggal)}</p>` : "";
-  const jabatan = p ? e(jabatanPenandatangan(p)) : "(pejabat penandatangan belum diatur)";
-  const bawah = p ? `<div class="nama">${e(p.nama)}</div>${p.pangkat ? `<div>${e(p.pangkat)}</div>` : ""}${p.nip ? `<div>NIP ${e(p.nip)}</div>` : ""}` : "";
+  const jabatan = p ? jabatanDuaBaris(kapital ? jabatanPenandatangan(p).toUpperCase() : jabatanPenandatangan(p)) : "(pejabat penandatangan belum diatur)";
+  const bawah = p ? `<div class="nama">${e(kapital ? p.nama.toUpperCase() : p.nama)}</div>${p.pangkat ? `<div>${e(p.pangkat)}</div>` : ""}${p.nip ? `<div>NIP ${e(p.nip)}</div>` : ""}` : "";
   return `<div class="ttd"><div>${atas}<p>${jabatan}</p><div class="ruang"></div>${bawah}</div></div>`;
 }
 
@@ -141,12 +148,12 @@ export function htmlLembar(d: DataLembar): string {
         `<div class="judul">NOTA DINAS</div><div style="height:8pt"></div>` +
         meta([
           ["Kepada Yth", d.tujuanHtml, true],
-          ["Dari", jabatanPenandatangan(d.penandatangan) || "-"],
+          ["Dari", d.penandatangan ? jabatanDuaBaris(jabatanPenandatangan(d.penandatangan)) : "-", true],
           ["Nomor", d.nomor],
           ["Tanggal", d.tanggal],
           ["Hal", d.hal],
         ]) +
-        `<div class="garis-nota"></div>${isi}${tandaTangan(d.penandatangan)}${disposisi}${tembusan(d.tembusan, "Tembusan Yth :")}`;
+        `<div class="garis-nota"></div>${isi}${tandaTangan(d.penandatangan, undefined, d.ttdKapital)}${disposisi}${tembusan(d.tembusan, "Tembusan Yth :")}`;
       break;
     }
     case "SURAT":

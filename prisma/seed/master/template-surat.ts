@@ -1,6 +1,6 @@
 /**
  * Template surat cuti per level, disalin dari contoh surat Dinas ESDM
- * (Cuti Eselon 2/3/4/Staf .wps dan PENGANTAR CUTI KE SEKDA 2026.docx).
+ * (Cuti Eselon 2/3/4/Staf .docx dan PENGANTAR CUTI KE SEKDA 2026.docx).
  * Kop, nomor, tanggal, blok tanda tangan, tembusan, dan kotak disposisi
  * dirender sistem; `isiHtml` adalah badan surat yang bisa diedit.
  */
@@ -22,7 +22,7 @@ interface DefTemplate {
 }
 
 const TABEL_SELAMA = `<table class="tabel-isian"><tbody>
-<tr><td>Selama</td><td>:</td><td>{{jumlah_hari}} ({{jumlah_hari_terbilang}}) {{satuan_hari}} mulai tanggal {{tanggal_mulai}} sampai dengan {{tanggal_selesai}}</td></tr>
+<tr><td>Selama</td><td>:</td><td>{{jumlah_hari}} ( {{jumlah_hari_terbilang}} ) {{satuan_hari}} mulai tanggal {{tanggal_mulai}} sampai dengan {{tanggal_selesai}}</td></tr>
 <tr><td>Alamat Cuti</td><td>:</td><td>{{alamat_cuti}}</td></tr>
 </tbody></table>`;
 
@@ -36,9 +36,9 @@ const PERMOHONAN_BKD = {
   nama: "Permohonan Cuti kepada Kepala BKD",
   dapatDicetakSejak: "DIVERIFIKASI",
   sifat: "Biasa",
-  lampiran: "1 (satu) Lembar",
+  lampiran: "1 ( satu ) Lembar",
   hal: "Permohonan {{jenis_cuti}} a.n. {{nama}}",
-  tujuanHtml: "<p>Yth. Kepala Badan Kepegawaian Daerah<br>Provinsi Kalimantan Selatan<br>di<br>Tempat</p>",
+  tujuanHtml: "<p>Yth, Kepala Badan Kepegawaian Daerah Provinsi Kalimantan Selatan<br>Di Tempat</p>",
   tembusan: ["Gubernur Kalimantan Selatan"],
   isiHtml: ISI_PERMOHONAN_BKD,
 } satisfies Omit<DefTemplate, "level">;
@@ -86,7 +86,7 @@ const TEMPLATE: DefTemplate[] = [
     ],
     isiHtml: `<p>Diberikan {{jenis_cuti}} untuk Tahun {{tahun}} kepada {{sebutan_status}} :</p>
 {{blok_identitas}}
-<p>Selama {{jumlah_hari}} ({{jumlah_hari_terbilang}}) {{satuan_hari}}, terhitung mulai tanggal {{tanggal_mulai}} sampai dengan {{tanggal_selesai}} dengan ketentuan sebagai berikut :</p>
+<p>Selama {{jumlah_hari}} ( {{jumlah_hari_terbilang}} ) {{satuan_hari}}, terhitung mulai tanggal {{tanggal_mulai}} sampai dengan {{tanggal_selesai}} dengan ketentuan sebagai berikut :</p>
 <ol>
 <li>Selama menjalankan {{jenis_cuti}} wajib menyerahkan pekerjaannya kepada Atasan Langsungnya.</li>
 <li>Setelah menjalankan {{jenis_cuti}} wajib melaporkan diri kepada Atasan Langsungnya dan bekerja kembali sebagaimana biasa.</li>

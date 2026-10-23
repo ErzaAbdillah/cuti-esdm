@@ -73,7 +73,7 @@ export const BlokIdentitas = Node.create<{ identitas: IdentitasSurat | null }>({
     };
   },
   addProseMirrorPlugins() {
-    return [new Plugin({ filterTransaction: (tr, state) => !tr.docChanged || hitungBlok(tr.doc) === hitungBlok(state.doc) })];
+    return [new Plugin({ filterTransaction: (tr, state) => !tr.docChanged || !!tr.getMeta("muatUlang") || hitungBlok(tr.doc) === hitungBlok(state.doc) })];
   },
 });
 

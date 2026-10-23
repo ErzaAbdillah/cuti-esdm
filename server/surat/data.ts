@@ -8,7 +8,7 @@ import type { Prisma, TemplateSurat } from "@/lib/generated/prisma/client";
 import type { LevelSurat } from "@/lib/generated/prisma/enums";
 import type { DataKop, DataLembar, Penandatangan } from "@/lib/surat/lembar";
 import { type KunciPlaceholder, TATA_LETAK_DOKUMEN } from "@/lib/surat/placeholder";
-import { formatNomor, type IdentitasSurat, isiPlaceholder, isiTeks, rapikanTembusan, tampilkanIsi } from "@/lib/surat/render";
+import { formatNomor, formatTanggalSurat, type IdentitasSurat, isiPlaceholder, isiTeks, rapikanTembusan, tampilkanIsi } from "@/lib/surat/render";
 import { formatTanggal, hariIniWita } from "@/lib/tanggal";
 import { db } from "../db";
 import type { SnapshotIdentitas } from "../layanan/cuti";
@@ -21,6 +21,8 @@ export interface IsianSurat {
   tembusan: string[];
   /** YYYY-MM-DD */
   tanggal: string;
+  /** Hari dikosongkan untuk diisi tangan (bawaan, seperti surat fisik). */
+  hariKosong?: boolean;
 }
 
 /** Data versi: isian + (setelah dicetak) lembar yang dibekukan, agar cetak ulang identik. */
@@ -77,7 +79,7 @@ export function draftDariTemplate(t: TemplateSurat, nilai: Record<KunciPlacehold
   const tembusan = Array.isArray(t.tembusan) ? (t.tembusan as string[]) : [];
   return {
     isiHtml: isiPlaceholder(t.isiHtml, nilai, { kunciData: true }),
-    isian: { hal: isiTeks(t.hal, nilai), tembusan: rapikanTembusan(tembusan, nilai), tanggal: hariIniWita().toISOString().slice(0, 10) },
+    isian: { hal: isiTeks(t.hal, nilai), tembusan: rapikanTembusan(tembusan, nilai), tanggal: hariIniWita().toISOString().slice(0, 10), hariKosong: true },
   };
 }
 
@@ -140,7 +142,7 @@ export async function susunLembar(a: {
     tataLetak: TATA_LETAK_DOKUMEN[a.template.kodeDokumen] ?? "SURAT",
     kop,
     kota,
-    tanggal: formatTanggal(tanggal),
+    tanggal: formatTanggalSurat(a.isian.tanggal, a.isian.hariKosong ?? false),
     nomor: await nomorSurat(a.template, a.nomorUrut, tanggal.getUTCFullYear()),
     sifat: a.template.sifat,
     lampiran: a.template.lampiran,
@@ -150,6 +152,7 @@ export async function susunLembar(a: {
     penandatangan: await penandatanganUntuk(a.template.level, a.template.kodeDokumen, tanggal),
     tembusan: a.isian.tembusan,
     disposisi: Array.isArray(a.template.disposisi) ? (a.template.disposisi as string[]) : [],
+    ttdKapital: a.template.kodeDokumen === "NOTA_DINAS_GUBERNUR",
   };
 }
 

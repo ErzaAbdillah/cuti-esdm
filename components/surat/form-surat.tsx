@@ -1,6 +1,6 @@
 "use client";
 
-import { DownloadIcon, LockIcon, PrinterIcon, RotateCcwIcon, SaveIcon } from "lucide-react";
+import { DownloadIcon, LockIcon, PencilIcon, PrinterIcon, RotateCcwIcon, SaveIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useDeferredValue, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -10,8 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { type KandidatPejabat, pilihPejabat } from "@/lib/domain/pejabat";
 import type { DataLembar, Penandatangan } from "@/lib/surat/lembar";
-import { formatNomor, type IdentitasSurat, KUNCI_TERKUNCI, type KunciTerkunci, tampilkanIsi } from "@/lib/surat/render";
-import { formatTanggal } from "@/lib/tanggal";
+import { formatNomor, formatTanggalSurat, type IdentitasSurat, KUNCI_TERKUNCI, type KunciTerkunci, tampilkanIsi } from "@/lib/surat/render";
 import { type NiatSurat, simpanSurat } from "@/server/aksi/surat";
 import { BlokIdentitas, Isian } from "./ekstensi-surat";
 import { EditorTeks, type Sisipan } from "./editor-teks";
@@ -20,7 +19,7 @@ import { PratinjauA4 } from "./pratinjau-a4";
 
 interface Konten {
   isiHtml: string;
-  isian: { hal: string; tembusan: string[]; tanggal: string };
+  isian: { hal: string; tembusan: string[]; tanggal: string; hariKosong?: boolean };
 }
 
 export interface PropsFormSurat {
@@ -59,6 +58,7 @@ export function FormSurat(p: PropsFormSurat) {
   const [hal, setHal] = useState(p.awal.isian.hal);
   const [tembusan, setTembusan] = useState(p.awal.isian.tembusan.join("\n"));
   const [tanggal, setTanggal] = useState(p.awal.isian.tanggal);
+  const [hariKosong, setHariKosong] = useState(p.awal.isian.hariKosong ?? true);
   const [nomorTeks, setNomorTeks] = useState(p.nomor.urut?.toString() ?? "");
   const [muatUlang, setMuatUlang] = useState(0);
   const [galat, setGalat] = useState<string | null>(null);
@@ -83,7 +83,7 @@ export function FormSurat(p: PropsFormSurat) {
     ...p.dasar,
     hal,
     tembusan: daftarTembusan,
-    tanggal: tanggalSah ? formatTanggal(tanggalSah) : "",
+    tanggal: formatTanggalSurat(tanggal, hariKosong),
     penandatangan: ttd && { awalan: ttd.awalan, jabatanTeks: ttd.jabatanTeks, nama: ttd.nama, pangkat: ttd.pangkat, nip: ttd.nip },
     nomor: formatNomor(p.nomor.format, { klasifikasi: p.nomor.klasifikasi, kodeInstansi: p.nomor.kodeInstansi, tahun, urut: Number.isInteger(urut) ? urut : null }),
     isiHtml: tampilkanIsi(isiTunda, p.identitas, p.nilai),
@@ -108,6 +108,7 @@ export function FormSurat(p: PropsFormSurat) {
         hal,
         tembusan: daftarTembusan,
         tanggal,
+        hariKosong,
         nomorUrut: nomorBerubah ? urut : undefined,
       });
       if (h.galat) {
@@ -142,6 +143,14 @@ export function FormSurat(p: PropsFormSurat) {
     setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
   }
 
+  /** Kepegawaian/Admin: ubah data terkunci menjadi teks biasa agar salah tulis (nama, NIP, dll.) bisa diperbaiki. */
+  function editBebas() {
+    if (!window.confirm("Buka kunci data pemohon? Identitas, NIP, jumlah hari, dan tanggal cuti menjadi teks biasa yang bisa diedit di surat ini (data pegawai tidak berubah).")) return;
+    setIsiHtml(tampilkanIsi(isiHtml, p.identitas, p.nilai));
+    setMuatUlang((n) => n + 1);
+  }
+  const adaKunci = /data-blok="identitas"|data-isian=/.test(isiHtml);
+
   function kembalikan() {
     if (!window.confirm("Ganti isi, hal, dan tembusan dengan template? Perubahan yang belum disimpan akan hilang.")) return;
     setIsiHtml(p.dariTemplate.isiHtml);
@@ -167,6 +176,10 @@ export function FormSurat(p: PropsFormSurat) {
           <div className="grid gap-1.5">
             <Label htmlFor="tanggal">Tanggal surat</Label>
             <Input id="tanggal" type="date" value={tanggal} onChange={(e) => setTanggal(e.target.value)} />
+            <label className="flex items-center gap-2 text-xs text-slate-700">
+              <input type="checkbox" checked={hariKosong} onChange={(e) => setHariKosong(e.target.checked)} className="size-4 accent-primary" />
+              Kosongkan tanggal (hari) untuk diisi tangan saat ditandatangani
+            </label>
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="nomor">Nomor urut</Label>
@@ -190,7 +203,7 @@ export function FormSurat(p: PropsFormSurat) {
             Isi surat
           </span>
           <EditorTeks html={isiHtml} onChange={setIsiHtml} ekstensi={ekstensi} sisipan={sisipan} muatUlang={muatUlang} label="Isi surat" />
-          <p className="text-xs text-slate-600">Bagian berlatar biru (identitas, NIP, tanggal cuti) diambil dari data pengajuan dan tidak bisa diubah.</p>
+          <p className="text-xs text-slate-600">Bagian berlatar biru (identitas, NIP, tanggal cuti) diambil dari data pengajuan dan terkunci. Kepegawaian/Admin dapat memperbaiki salah tulis lewat “Edit bebas”.</p>
         </div>
 
         <div className="grid gap-1.5">
@@ -213,6 +226,11 @@ export function FormSurat(p: PropsFormSurat) {
           <Button type="button" variant="outline" onClick={() => kirim("pdf")} disabled={menunggu}>
             <DownloadIcon data-icon="inline-start" /> Unduh PDF
           </Button>
+          {p.nomor.boleh && adaKunci && (
+            <Button type="button" variant="ghost" onClick={editBebas} disabled={menunggu}>
+              <PencilIcon data-icon="inline-start" /> Edit bebas (buka kunci data)
+            </Button>
+          )}
           <Button type="button" variant="ghost" onClick={kembalikan} disabled={menunggu}>
             <RotateCcwIcon data-icon="inline-start" /> Kembalikan ke template
           </Button>

@@ -32,6 +32,7 @@ const skema = z.object({
   hal: z.string().trim().min(3, "Isi hal surat.").max(300),
   tembusan: z.array(z.string().trim().max(200)).max(15, "Tembusan paling banyak 15 baris."),
   tanggal: z.iso.date("Tanggal surat tidak valid."),
+  hariKosong: z.boolean().default(true),
   /** undefined = tidak diubah; null = dikosongkan. */
   nomorUrut: z.number().int().min(1).max(99_999).nullable().optional(),
 });
@@ -59,9 +60,10 @@ export async function simpanSurat(masukan: z.input<typeof skema>): Promise<Hasil
   if (!suratTersedia(p.status, t.dapatDicetakSejak)) return { galat: "Surat belum bisa disiapkan pada status pengajuan ini." };
 
   const isiHtml = sanitasiIsiSurat(m.isiHtml);
-  if (hitungBlokIdentitas(isiHtml) !== hitungBlokIdentitas(t.isiHtml)) return { galat: "Blok identitas pemohon tidak boleh dihapus atau digandakan." };
+  // Kepegawaian/Admin boleh membuka kunci data (memperbaiki salah tulis); pemohon tidak.
+  if (!bolehAturNomorSurat(u) && hitungBlokIdentitas(isiHtml) !== hitungBlokIdentitas(t.isiHtml)) return { galat: "Blok identitas pemohon tidak boleh dihapus atau digandakan." };
   if (!isiHtml.replace(/<[^>]*>/g, "").trim()) return { galat: "Isi surat kosong." };
-  const isian: IsianSurat = { hal: m.hal, tembusan: m.tembusan.filter(Boolean), tanggal: m.tanggal };
+  const isian: IsianSurat = { hal: m.hal, tembusan: m.tembusan.filter(Boolean), tanggal: m.tanggal, hariKosong: m.hariKosong };
   const tahun = Number(m.tanggal.slice(0, 4));
   const ubahNomor = m.nomorUrut !== undefined && bolehAturNomorSurat(u);
 

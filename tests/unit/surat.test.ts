@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { terbilang } from "@/lib/domain/terbilang";
-import { BLOK_IDENTITAS, formatNomor, hitungBlokIdentitas, isiPlaceholder, rapikanTembusan, tampilkanIsi } from "@/lib/surat/render";
+import { htmlLembar } from "@/lib/surat/lembar";
+import { BLOK_IDENTITAS, formatNomor, formatTanggalSurat, hitungBlokIdentitas, isiPlaceholder, rapikanTembusan, tampilkanIsi } from "@/lib/surat/render";
 import { sanitasiIsiSurat } from "@/server/surat/sanitasi";
 
 describe("terbilang", () => {
@@ -89,5 +90,21 @@ describe("sanitasi isi surat", () => {
 
   it("div lain menjadi paragraf, isian dengan kunci tak dikenal dibuang atributnya", () => {
     expect(sanitasiIsiSurat('<div data-blok="lain">z</div><span data-isian="alamat">q</span>')).toBe("<p>z</p>q");
+  });
+});
+
+describe("format seperti surat fisik", () => {
+  it("tanggal surat: hari bisa dikosongkan untuk diisi tangan", () => {
+    expect(formatTanggalSurat("2026-06-15", false)).toBe("15 Juni 2026");
+    expect(formatTanggalSurat("2026-06-15", true)).toBe(`${" ".repeat(8)}Juni 2026`);
+  });
+
+  it("jabatan penanda tangan dua baris; Nota Dinas Gubernur huruf kapital", () => {
+    const ttd = { awalan: "Plt.", jabatanTeks: "Kepala Dinas Energi dan Sumber Daya Mineral Provinsi Kalimantan Selatan", nama: "Nama, S.T.", pangkat: "Pembina", nip: "19780901 200501 1 007" };
+    const dasar = { kop: { pemerintah: "", nama: "", alamat: "", kodePos: "", telepon: "", fax: "", email: "", website: "" }, logoSrc: "", kota: "Banjarbaru", tanggal: "", nomor: "", sifat: null, lampiran: null, hal: "Hal", tujuanHtml: "", isiHtml: "", penandatangan: ttd, tembusan: [], disposisi: [] };
+    expect(htmlLembar({ ...dasar, tataLetak: "SURAT" })).toContain("Plt. Kepala Dinas Energi dan Sumber Daya Mineral<br>Provinsi Kalimantan Selatan");
+    const nd = htmlLembar({ ...dasar, tataLetak: "NOTA_DINAS", ttdKapital: true });
+    expect(nd).toContain("PLT. KEPALA DINAS ENERGI DAN SUMBER DAYA MINERAL<br>PROVINSI KALIMANTAN SELATAN");
+    expect(nd).toContain(">NAMA, S.T.<");
   });
 });

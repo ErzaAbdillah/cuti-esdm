@@ -102,3 +102,16 @@ export function formatNomor(format: string, v: { klasifikasi: string; urut: numb
     .replace("{tahun}", String(v.tahun))
     .replace("{kode}", v.kodeInstansi);
 }
+
+const BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+/**
+ * Tanggal surat dari YYYY-MM-DD. `hariKosong`: seperti surat fisik, tanggal
+ * (hari) dibiarkan kosong untuk diisi tangan saat ditandatangani — "      Juni 2026".
+ */
+export function formatTanggalSurat(iso: string, hariKosong: boolean): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return "";
+  const bulanTahun = `${BULAN[Number(m[2]) - 1]} ${m[1]}`;
+  return hariKosong ? `${" ".repeat(8)}${bulanTahun}` : `${m[3]} ${bulanTahun}`;
+}

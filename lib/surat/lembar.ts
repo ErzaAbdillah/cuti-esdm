@@ -116,7 +116,7 @@ function jabatanDuaBaris(teks: string): string {
 
 function tandaTangan(p: Penandatangan | null, kotaTanggal?: string, kapital = false): string {
   const atas = kotaTanggal ? `<p>${e(kotaTanggal)}</p>` : "";
-  const jabatan = p ? jabatanDuaBaris(kapital ? jabatanPenandatangan(p).toUpperCase() : jabatanPenandatangan(p)) : "(pejabat penandatangan belum diatur)";
+  const jabatan = p ? jabatanDuaBaris(kapital ? jabatanPenandatangan(p).toUpperCase() : jabatanPenandatangan(p)) : jabatanDuaBaris("Kepala Dinas Energi dan Sumber Daya Mineral Provinsi Kalimantan Selatan"); // tanpa data penandatangan: jabatan baku, nama ditulis tangan
   const bawah = p ? `<div class="nama">${e(kapital ? p.nama.toUpperCase() : p.nama)}</div>${p.pangkat ? `<div>${e(p.pangkat)}</div>` : ""}${p.nip ? `<div>NIP ${e(p.nip)}</div>` : ""}` : "";
   return `<div class="ttd"><div>${atas}<p>${jabatan}</p><div class="ruang"></div>${bawah}</div></div>`;
 }

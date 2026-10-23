@@ -63,11 +63,7 @@ Tanpa tugas ini tampilan tetap benar (Alpa dihitung saat halaman dibuka), tetapi
 
 ## Alur cuti
 
-| Level | Tahap persetujuan | Keputusan akhir |
-|---|---|---|
-| Staf (fungsional, pelaksana, PPPK) | Atasan langsung → Kepegawaian → pejabat | (Plt.) Kepala Dinas di aplikasi — akun pegawai yang terdaftar sebagai pejabat penandatangan |
-| Eselon IV & III | Atasan langsung → Kepegawaian → pejabat | Kepala BKD (eksternal): Kepegawaian mengunggah surat izin → status Surat Terbit |
-| Eselon II | Kepegawaian → pejabat | Gubernur (eksternal), dicatat Kepegawaian |
+Alur ringkas: pengajuan semua level langsung disetujui atau ditolak oleh **Kepegawaian atau Admin** (satu tahap, tanpa menunggu atasan atau instansi luar). Setelah disetujui, saldo dipotong dan surat bisa dicetak; cetak pertama menandai status **Surat Terbit**. Tahap atasan/verifikasi bisa diaktifkan lagi di tabel `alur_persetujuan` bila diperlukan.
 
 Saldo cuti tahunan "dipesan" selama pengajuan diproses, dipotong saat disetujui, dan dikembalikan bila dibatalkan. **Saldo & Rekap Cuti** (Kepegawaian) dipakai untuk koreksi saldo, impor saldo awal dari Excel, membuat saldo tahun berikutnya (sisa dibawa sesuai batas akumulasi di Pengaturan), serta mencetak/mengekspor Rekap Cuti Tahunan ASN.
 

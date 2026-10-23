@@ -16,7 +16,7 @@ async function setujui(page: Page, url: string) {
   await expect(page.getByRole("dialog")).toBeHidden();
 }
 
-test("staf: ajukan → atasan → Kepegawaian → Kepala Dinas → cetak surat izin", async ({ page }) => {
+test("staf: ajukan → disetujui Kepegawaian → cetak surat izin", async ({ page }) => {
   test.skip(!PASSWORD, "SEED_PASSWORD_DEV belum diisi di .env");
   const tanggal = tanggalUji();
 
@@ -34,8 +34,8 @@ test("staf: ajukan → atasan → Kepegawaian → Kepala Dinas → cetak surat i
   await keluar(page);
 
   try {
-    // 2–4. Persetujuan berjenjang.
-    for (const nip of [NIP.kepalaSeksi, NIP.kepegawaian, NIP.kepalaDinas]) {
+    // 2. Satu tahap: Kepegawaian langsung menyetujui.
+    for (const nip of [NIP.kepegawaian]) {
       await masuk(page, nip);
       await setujui(page, url);
       await keluar(page);

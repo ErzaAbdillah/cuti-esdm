@@ -109,12 +109,12 @@ export async function simpanSurat(masukan: z.input<typeof skema>): Promise<Hasil
       await tx.suratCuti.update({ where: { id: surat.id }, data: { status: "TERKUNCI", versiTerakhir: versi.versi, nomorLengkap: beku.nomor } });
       await catatAudit({ userId: u.userId, aksi: "KUNCI_SURAT", entitas: "surat_cuti", entitasId: surat.id, sesudah: { kode: t.kodeDokumen, versi: versi.versi, nomor: beku.nomor } }, tx);
 
-      // Surat izin staf adalah keputusan Kepala Dinas: cetak pertama = surat terbit.
-      if (t.kodeDokumen === "SURAT_IZIN" && p.status === "DISETUJUI") {
+      // Cetak pertama setelah disetujui = surat terbit.
+      if (p.status === "DISETUJUI") {
         const r = await tx.pengajuanCuti.updateMany({ where: { id: p.id, status: "DISETUJUI" }, data: { status: "SURAT_TERBIT" } });
         if (r.count > 0) {
-          await tx.riwayatStatusCuti.create({ data: { pengajuanId: p.id, dariStatus: "DISETUJUI", keStatus: "SURAT_TERBIT", olehUserId: u.userId, catatan: `Surat izin ${beku.nomor} dicetak` } });
-          await kirimNotifikasi([await userDariPegawai(p.pegawaiId, tx)], { judul: "Surat izin cuti terbit", isi: `Surat izin ${p.jenisCuti.nama} ${formatTanggal(p.tanggalMulai)} sudah dicetak (nomor ${beku.nomor}).`, tautan: `/cuti/${p.id}` }, tx);
+          await tx.riwayatStatusCuti.create({ data: { pengajuanId: p.id, dariStatus: "DISETUJUI", keStatus: "SURAT_TERBIT", olehUserId: u.userId, catatan: `Surat ${beku.nomor} dicetak` } });
+          await kirimNotifikasi([await userDariPegawai(p.pegawaiId, tx)], { judul: "Surat cuti terbit", isi: `Surat ${p.jenisCuti.nama} ${formatTanggal(p.tanggalMulai)} sudah dicetak (nomor ${beku.nomor}).`, tautan: `/cuti/${p.id}` }, tx);
         }
       }
       return { versi, baru: true, sama };

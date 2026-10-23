@@ -35,7 +35,9 @@ export async function bolehPutuskan(u: PenggunaSaatIni, p: PengajuanRingkas, tah
     case "KEPEGAWAIAN":
       return punyaPeran(u, "KEPEGAWAIAN");
     case "PEJABAT_BERWENANG":
-      if ((await modeTahap(p.levelSurat, tahap, tx)) === "EKSTERNAL") return punyaPeran(u, "KEPEGAWAIAN");
+      // Kepegawaian & Admin selalu boleh memutuskan langsung (alur ringkas kantor).
+      if (punyaPeran(u, "KEPEGAWAIAN", "ADMIN")) return true;
+      if ((await modeTahap(p.levelSurat, tahap, tx)) === "EKSTERNAL") return false;
       return (await userPejabat(p.levelSurat, tx)) === u.userId;
   }
 }
@@ -48,7 +50,6 @@ export async function penerimaTahap(p: PengajuanRingkas, tahap: TahapPersetujuan
     case "KEPEGAWAIAN":
       return userDenganPeran("KEPEGAWAIAN", tx);
     case "PEJABAT_BERWENANG":
-      if ((await modeTahap(p.levelSurat, tahap, tx)) === "EKSTERNAL") return userDenganPeran("KEPEGAWAIAN", tx);
-      return [await userPejabat(p.levelSurat, tx)].filter((x): x is string => !!x);
+      return [...new Set([...(await userDenganPeran("KEPEGAWAIAN", tx)), ...(await userDenganPeran("ADMIN", tx))])];
   }
 }

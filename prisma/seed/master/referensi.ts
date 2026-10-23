@@ -126,11 +126,12 @@ export async function seedJenisCuti(db: Db) {
  * Eselon II–IV: keputusan Gubernur/BKD (eksternal) dicatat Kepegawaian.
  * Eselon II tidak punya atasan di dinas.
  */
+/** Alur ringkas: satu tahap, langsung diputuskan Kepegawaian/Admin di aplikasi. */
 const ALUR: Record<LevelSurat, [TahapPersetujuan, ModePenyetuju][]> = {
-  STAF: [["ATASAN_LANGSUNG", "PENGGUNA"], ["KEPEGAWAIAN", "PENGGUNA"], ["PEJABAT_BERWENANG", "PENGGUNA"]],
-  ESELON_IV: [["ATASAN_LANGSUNG", "PENGGUNA"], ["KEPEGAWAIAN", "PENGGUNA"], ["PEJABAT_BERWENANG", "EKSTERNAL"]],
-  ESELON_III: [["ATASAN_LANGSUNG", "PENGGUNA"], ["KEPEGAWAIAN", "PENGGUNA"], ["PEJABAT_BERWENANG", "EKSTERNAL"]],
-  ESELON_II: [["KEPEGAWAIAN", "PENGGUNA"], ["PEJABAT_BERWENANG", "EKSTERNAL"]],
+  STAF: [["PEJABAT_BERWENANG", "PENGGUNA"]],
+  ESELON_IV: [["PEJABAT_BERWENANG", "PENGGUNA"]],
+  ESELON_III: [["PEJABAT_BERWENANG", "PENGGUNA"]],
+  ESELON_II: [["PEJABAT_BERWENANG", "PENGGUNA"]],
 };
 
 export async function seedAlurPersetujuan(db: Db) {

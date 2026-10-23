@@ -87,7 +87,7 @@ export function FormPengaturan({ kelompok: kelompokAwal }: Props) {
               );
             }
             return (
-              <div key={d.kunci} className={kosongWajib ? "rounded-xl ring-2 ring-emas ring-offset-4 ring-offset-transparent" : undefined}>
+              <div key={d.kunci} className={kosongWajib ? "rounded-xl border-2 border-emas bg-amber-50/60 p-3" : undefined}>
                 {tanda}
                 <Bidang
                   label={d.label}

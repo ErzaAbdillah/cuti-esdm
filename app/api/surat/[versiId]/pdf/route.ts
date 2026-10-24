@@ -7,7 +7,7 @@ import { htmlKePdf } from "@/server/surat/pdf";
 import { logoUntukPdf } from "@/server/surat/data";
 
 /** PDF versi surat yang sudah dikunci, dirender Gotenberg dari HTML yang sama dengan halaman cetak. */
-export async function GET(_: Request, ctx: RouteContext<"/api/surat/[versiId]/pdf">) {
+export async function GET(req: Request, ctx: RouteContext<"/api/surat/[versiId]/pdf">) {
   const u = await penggunaSaatIni();
   if (!u) return new Response("Sesi berakhir. Silakan login kembali.", { status: 401 });
   const { versiId } = await ctx.params;
@@ -18,7 +18,8 @@ export async function GET(_: Request, ctx: RouteContext<"/api/surat/[versiId]/pd
 
   const judul = `${d.surat.template.nama} v${d.versi.versi}`;
   const hasil = await htmlKePdf(dokumenHtml({ ...d.beku, logoSrc: await logoUntukPdf() }, judul));
-  if (!hasil.ok) return new Response(hasil.galat, { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  // Tanpa layanan PDF (mis. di Vercel): buka lembar cetak; pengguna memilih "Simpan sebagai PDF" di dialog cetak.
+  if (!hasil.ok) return Response.redirect(new URL(`/cetak/surat/${versiId}?otomatis=1`, req.url), 303);
 
   await db.printLog.create({ data: { jenis: "SURAT_PDF", suratVersiId: versiId, olehUserId: u.userId, info: { kode: d.surat.kodeDokumen, nomor: d.surat.nomorLengkap } } });
   const nama = `${d.surat.kodeDokumen}-${d.surat.nomorUrut ?? "tanpa-nomor"}-${d.surat.tahun}-v${d.versi.versi}.pdf`.toLowerCase();

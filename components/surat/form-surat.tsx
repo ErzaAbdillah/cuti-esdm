@@ -129,6 +129,12 @@ export function FormSurat(p: PropsFormSurat) {
 
   async function unduhPdf(url: string) {
     const r = await fetch(url);
+    if (r.ok && !r.headers.get("Content-Type")?.includes("application/pdf")) {
+      // Layanan PDF tidak tersedia: server mengalihkan ke lembar cetak.
+      toast.info("Pilih \"Simpan sebagai PDF\" pada dialog cetak.");
+      window.location.assign(r.url);
+      return;
+    }
     if (!r.ok) {
       const pesan = await r.text();
       setGalat(pesan);

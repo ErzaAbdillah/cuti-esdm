@@ -161,7 +161,10 @@ export const LOGO_WEB = "/lambang-kalsel.png";
 let logoDataUri: Promise<string> | null = null;
 /** Lambang sebagai data URI untuk dokumen PDF (Gotenberg tidak mengakses server aplikasi). */
 export function logoUntukPdf(): Promise<string> {
-  logoDataUri ??= readFile(path.join(/* turbopackIgnore: true */ process.cwd(), "public", "lambang-kalsel.png")).then((b) => `data:image/png;base64,${b.toString("base64")}`);
+  logoDataUri ??= readFile(path.join(/* turbopackIgnore: true */ process.cwd(), "public", "lambang-kalsel.png"))
+    .then((b) => `data:image/png;base64,${b.toString("base64")}`)
+    // Di serverless, folder public tidak ikut ke fungsi: pakai URL publik aplikasi.
+    .catch(() => new URL(LOGO_WEB, process.env.APP_URL || "http://localhost:3000").toString());
   return logoDataUri;
 }
 

@@ -35,6 +35,7 @@ export default async function UbahFormulir({ params }: PageProps<"/cuti/[id]/for
       <FormFormulir
         id={id}
         jenis={o.jenis}
+        level={p.levelSurat}
         hariIni={kunciTanggal(hariIniWita())}
         awal={{ isian: await isianFormulir(p), jenisCutiId: p.jenisCutiId, tanggalMulai: iso(p.tanggalMulai), tanggalSelesai: iso(p.tanggalSelesai), alasan: p.alasan, alamat: p.alamatSelamaCuti }}
       />

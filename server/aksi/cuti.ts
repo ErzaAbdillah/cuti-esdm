@@ -5,6 +5,7 @@ import { z } from "zod";
 import { bisaDibatalkan, bisaDitolak, STATUS_DISETUJUI, STATUS_SETELAH_TAHAP } from "@/lib/domain/alur-cuti";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import type { StatusCuti } from "@/lib/generated/prisma/enums";
+import { perluNotaDinas } from "@/lib/formulir/nota-dinas";
 import { LABEL_STATUS_CUTI } from "@/lib/label";
 import { formatTanggal, hariIniWita } from "@/lib/tanggal";
 import type { HasilForm } from "@/lib/validasi/auth";
@@ -33,6 +34,17 @@ export async function pratinjauCuti(input: { jenisCutiId: string; tanggalMulai: 
 const teks = (maks: number) => z.string().trim().max(maks);
 const skemaPejabat = z.object({ jabatan: teks(300), nama: teks(150), nip: teks(30) });
 const barisSisa = z.object({ tahun: teks(10), sisa: teks(10), keterangan: teks(100) });
+const skemaNotaDinas = z.object({
+  kepada: teks(300),
+  dari: teks(300),
+  nomor: teks(80),
+  tanggal: isoDate,
+  hariKosong: z.boolean(),
+  hal: teks(200),
+  isi: z.string().trim().min(20, "Isi nota dinas masih kosong.").max(3000),
+  penandatangan: skemaPejabat.extend({ pangkat: teks(100) }),
+  disposisi: z.array(teks(100)).max(4),
+});
 const skemaFormulir = z.object({
   jenisCutiId: z.uuid("Pilih jenis cuti."),
   tanggalMulai: isoDate,
@@ -58,6 +70,7 @@ const skemaFormulir = z.object({
       .pipe(z.string().regex(/^\+?\d{8,15}$/, "Nomor telepon tidak valid.")),
     atasan: skemaPejabat,
     pejabat: skemaPejabat,
+    notaDinas: skemaNotaDinas.optional(),
   }),
 });
 export type MasukanFormulir = z.input<typeof skemaFormulir>;
@@ -95,6 +108,10 @@ export async function simpanFormulir(id: string | null, masukan: MasukanFormulir
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${pegawaiId}))`;
       const cek = await validasiPengajuan({ pegawaiId, jenisCutiId: d.jenisCutiId, mulai, selesai, kecualiId: lama?.id }, tx);
       if (!cek.ok) throw new GalatValidasi(cek.galat);
+      const pegawai = lama ? null : await tx.pegawai.findUniqueOrThrow({ where: { id: pegawaiId }, include: { jabatan: true } });
+      const levelSurat = lama?.levelSurat ?? (await levelSuratPegawai(pegawai!));
+      // Nota dinas hanya untuk Eselon II & III.
+      const { notaDinas, ...isian } = formulir;
       const data = {
         jenisCutiId: d.jenisCutiId,
         tanggalMulai: mulai,
@@ -104,16 +121,15 @@ export async function simpanFormulir(id: string | null, masukan: MasukanFormulir
         alamatSelamaCuti: d.alamatSelamaCuti,
         noHpSelamaCuti: d.formulir.telp,
         tahunSaldo: cek.tahunSaldo,
-        formulir,
+        formulir: notaDinas && perluNotaDinas(levelSurat) ? { ...isian, notaDinas } : isian,
       };
       if (lama) {
         await tx.pengajuanCuti.update({ where: { id: lama.id }, data });
         await catatAudit({ userId: u.userId, aksi: "UBAH_FORMULIR_CUTI", entitas: "pengajuan_cuti", entitasId: lama.id, sesudah: { ...data, formulir: undefined } }, tx);
         return lama.id;
       }
-      const pegawai = await tx.pegawai.findUniqueOrThrow({ where: { id: pegawaiId }, include: { jabatan: true } });
       const baru = await tx.pengajuanCuti.create({
-        data: { ...data, pegawaiId, atasanLangsungId: pegawai.atasanLangsungId, levelSurat: await levelSuratPegawai(pegawai), snapshotIdentitas: await snapshotIdentitas(pegawaiId, tx) },
+        data: { ...data, pegawaiId, atasanLangsungId: pegawai!.atasanLangsungId, levelSurat, snapshotIdentitas: await snapshotIdentitas(pegawaiId, tx) },
       });
       await tx.riwayatStatusCuti.create({ data: { pengajuanId: baru.id, dariStatus: null, keStatus: "DIAJUKAN", olehUserId: u.userId, catatan: "Formulir dibuat" } });
       await catatAudit({ userId: u.userId, aksi: "AJUKAN_CUTI", entitas: "pengajuan_cuti", entitasId: baru.id, sesudah: { ...data, formulir: undefined } }, tx);

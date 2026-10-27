@@ -1,13 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { keluar, masuk, NIP, PASSWORD } from "./bantu";
-
-/** Hari kerja acak November 2026 (tanpa libur nasional; saldo 2026 ada di seed) agar run tidak saling bertabrakan. */
-function tanggalUji(): string {
-  for (;;) {
-    const d = new Date(Date.UTC(2026, 10, 2 + Math.floor(Math.random() * 28)));
-    if (d.getUTCDay() >= 1 && d.getUTCDay() <= 5) return d.toISOString().slice(0, 10);
-  }
-}
+import { keluar, masuk, NIP, PASSWORD, tanggalUji } from "./bantu";
 
 test("staf: isi & cetak formulir → Kepegawaian terima formulir → buat & cetak surat izin", async ({ page }) => {
   test.skip(!PASSWORD, "SEED_PASSWORD_DEV belum diisi di .env");

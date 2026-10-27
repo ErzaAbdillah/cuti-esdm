@@ -66,7 +66,8 @@ Tanpa tugas ini tampilan tetap benar (Alpa dihitung saat halaman dibuka), tetapi
 Alur pengajuan (formulir fisik + surat dari Kepegawaian):
 
 1. **Pegawai** membuka **Cuti Saya → Ajukan cuti** dan mengisi *Formulir Permintaan dan Pemberian Cuti* (format BKN, sama dengan "FORMULIR CUTI untuk Staf/Eselon 2–4"). Semua bagian bisa diubah: tujuan surat, data pegawai, jenis & lamanya cuti, catatan sisa cuti, alamat, serta atasan (VII) dan pejabat (VIII) — nilai awalnya disiapkan otomatis per eselon. Formulir langsung bisa **dicetak tanpa verifikasi** dan masih bisa diubah selama belum diproses.
-2. Pegawai mengantar formulir bertanda tangan ke **Kepegawaian (Sekretariat)** untuk cap & tanda tangan.
+   Pegawai **Eselon II & III** juga mengisi **Nota Dinas** pengantar (seperti "PENGANTAR CUTI KE SEKDA ESELON 2/3"): Eselon II ke Gubernur (ditandatangani pemohon, Tahoma), Eselon III ke Sekretaris Daerah (ditandatangani (Plt.) Kepala Dinas, Arial). Hal & isinya disusun otomatis dari isian cuti dan bisa diubah; dicetak terpisah di kertas Legal, juga tanpa verifikasi.
+2. Pegawai mengantar formulir (dan nota dinas) bertanda tangan ke **Kepegawaian (Sekretariat)** untuk cap & tanda tangan.
 3. **Kepegawaian/Admin** membuka pengajuan (Proses Cuti), menekan **Formulir diterima — buat surat cuti**: cuti dicatat disetujui, saldo dipotong, lalu langsung masuk editor surat cuti untuk diedit dan dicetak. Cetak pertama menandai status **Surat Terbit**.
 
 Pegawai tetap bisa melihat dan mengunduh surat yang sudah dicetak, tetapi surat hanya dibuat dan diedit oleh Kepegawaian/Admin.

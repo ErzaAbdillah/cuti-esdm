@@ -9,6 +9,7 @@ import { LencanaStatusCuti } from "@/components/umum/lencana";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { bisaDibatalkan, bisaDitolak } from "@/lib/domain/alur-cuti";
+import { perluNotaDinas } from "@/lib/formulir/nota-dinas";
 import { namaLengkap } from "@/lib/domain/pegawai";
 import { LABEL_LEVEL_SURAT, LABEL_STATUS_CUTI, LABEL_TAHAP } from "@/lib/label";
 import { formatTanggal, formatTanggalJam, hariIniWita } from "@/lib/tanggal";
@@ -46,6 +47,7 @@ export default async function DetailCuti({ params, searchParams }: PageProps<"/c
   const pemohon = u.pegawai?.id === p.pegawaiId;
   const bolehTolak = bisaDitolak(p.status) && !pemohon && (pemutus || punyaPeran(u, "KEPEGAWAIAN"));
   const tujuanEksternal = p.levelSurat === "ESELON_II" ? "Gubernur" : "Kepala BKD";
+  const nota = perluNotaDinas(p.levelSurat);
   const daftarSurat = await daftarSuratPengajuan(p);
 
   return (
@@ -67,7 +69,9 @@ export default async function DetailCuti({ params, searchParams }: PageProps<"/c
         <Alert className="border-emerald-300 bg-emerald-50" role="status">
           <CircleCheckIcon className="text-emerald-700" />
           <AlertDescription className="text-emerald-900">
-            Formulir tersimpan. Cetak formulir, mintakan tanda tangan atasan, lalu antar ke Kepegawaian (Sekretariat) untuk cap & tanda tangan.
+            {nota
+              ? "Formulir dan nota dinas tersimpan. Cetak keduanya, mintakan tanda tangan, lalu antar ke Kepegawaian (Sekretariat) untuk cap & tanda tangan."
+              : "Formulir tersimpan. Cetak formulir, mintakan tanda tangan atasan, lalu antar ke Kepegawaian (Sekretariat) untuk cap & tanda tangan."}
           </AlertDescription>
         </Alert>
       )}
@@ -97,13 +101,20 @@ export default async function DetailCuti({ params, searchParams }: PageProps<"/c
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-sky-200 bg-white/80 p-4">
         <ClipboardListIcon className="size-5 text-primary" aria-hidden />
         <p className="flex-1 text-sm text-slate-800">
-          <b>Formulir permintaan cuti</b> — dicetak pegawai dan diantar ke Kepegawaian untuk cap & tanda tangan.
+          <b>Formulir permintaan cuti{nota && " & nota dinas"}</b> — dicetak pegawai dan diantar ke Kepegawaian untuk cap & tanda tangan.
         </p>
         <Button asChild variant="outline" className="bg-white">
           <a href={`/cetak/formulir/${p.id}`} target="_blank" rel="noopener">
             <PrinterIcon data-icon="inline-start" /> Cetak formulir
           </a>
         </Button>
+        {nota && (
+          <Button asChild variant="outline" className="bg-white">
+            <a href={`/cetak/nota-dinas/${p.id}`} target="_blank" rel="noopener">
+              <PrinterIcon data-icon="inline-start" /> Cetak nota dinas
+            </a>
+          </Button>
+        )}
         {p.status === "DIAJUKAN" && (pemohon || punyaPeran(u, "KEPEGAWAIAN", "ADMIN")) && (
           <Button asChild variant="outline" className="bg-white">
             <Link href={`/cuti/${p.id}/formulir`}>

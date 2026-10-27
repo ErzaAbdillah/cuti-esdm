@@ -3,6 +3,8 @@
  * "FORMULIR CUTI untuk Staf/Eselon 2–4 2026.docx"). Semua teks bisa diubah
  * pegawai sebelum dicetak; nilai awal disiapkan dari data pegawai & level surat.
  */
+import type { IsianNotaDinas } from "./nota-dinas";
+
 export interface Pejabat {
   /** Boleh beberapa baris, mis. "Plt. Kepala Dinas …\nProvinsi Kalimantan Selatan". */
   jabatan: string;
@@ -35,6 +37,8 @@ export interface IsianFormulir {
   telp: string;
   atasan: Pejabat;
   pejabat: Pejabat;
+  /** Hanya Eselon II & III: nota dinas pengantar yang dicetak bersama formulir. */
+  notaDinas?: IsianNotaDinas;
 }
 
 /** Urutan kotak "Jenis cuti yang diambil" pada formulir BKN. */

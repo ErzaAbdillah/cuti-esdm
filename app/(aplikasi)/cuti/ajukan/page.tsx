@@ -17,7 +17,8 @@ export default async function AjukanCuti() {
   const u = await wajibPeran("PEGAWAI");
   const pegawaiId = u.pegawai!.id;
   const [o, pegawai] = await Promise.all([opsiPengajuan(pegawaiId), db.pegawai.findUniqueOrThrow({ where: { id: pegawaiId }, include: { jabatan: true } })]);
-  const isian = await bawaanFormulir(pegawaiId, await levelSuratPegawai(pegawai));
+  const level = await levelSuratPegawai(pegawai);
+  const isian = await bawaanFormulir(pegawaiId, level);
 
   return (
     <div className="grid gap-5">
@@ -26,7 +27,9 @@ export default async function AjukanCuti() {
           <ArrowLeftIcon className="size-4" /> Cuti Saya
         </Link>
         <h1 className="text-2xl font-bold tracking-tight text-judul">Formulir permintaan cuti</h1>
-        <p className="text-sm text-slate-700">Isi dan periksa semua bagian formulir, lalu cetak. Formulir bertanda tangan diantar ke Kepegawaian (Sekretariat).</p>
+        <p className="text-sm text-slate-700">
+          Isi dan periksa semua bagian formulir{isian.notaDinas ? " dan nota dinas" : ""}, lalu cetak. Berkas bertanda tangan diantar ke Kepegawaian (Sekretariat).
+        </p>
       </div>
       {o.jenis.length === 0 ? (
         <Card>
@@ -36,6 +39,7 @@ export default async function AjukanCuti() {
         <FormFormulir
           id={null}
           jenis={o.jenis}
+          level={level}
           hariIni={kunciTanggal(hariIniWita())}
           awal={{ isian, jenisCutiId: o.jenis[0].id, tanggalMulai: "", tanggalSelesai: "", alasan: "", alamat: o.alamat }}
         />

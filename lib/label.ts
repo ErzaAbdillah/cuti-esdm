@@ -55,5 +55,5 @@ export const LABEL_LEVEL_SURAT: Record<LevelSurat, string> = {
 export const LABEL_TAHAP: Record<TahapPersetujuan, string> = {
   ATASAN_LANGSUNG: "Persetujuan atasan langsung",
   KEPEGAWAIAN: "Verifikasi Kepegawaian",
-  PEJABAT_BERWENANG: "Persetujuan Kepegawaian/Admin",
+  PEJABAT_BERWENANG: "formulir bertanda tangan diantar ke Kepegawaian",
 };

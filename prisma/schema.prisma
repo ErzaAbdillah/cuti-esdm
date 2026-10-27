@@ -115,6 +115,7 @@ enum StatusSurat {
 }
 
 enum JenisCetak {
+  FORMULIR_CUTI
   SURAT_CETAK
   SURAT_PDF
   DAFTAR_HADIR
@@ -478,6 +479,8 @@ model PengajuanCuti {
   tahunSaldo        Int?       @map("tahun_saldo")
   /// Nama, NIP, pangkat, jabatan, unit saat diajukan.
   snapshotIdentitas Json       @map("snapshot_identitas")
+  /// Isian Formulir Permintaan dan Pemberian Cuti (dicetak pegawai, diantar ke Kepegawaian).
+  formulir          Json?
   dibuatPada        DateTime   @default(now()) @map("dibuat_pada") @db.Timestamptz
   diubahPada        DateTime   @updatedAt @map("diubah_pada") @db.Timestamptz
 

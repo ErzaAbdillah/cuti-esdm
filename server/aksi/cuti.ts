@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 import { bisaDibatalkan, bisaDitolak, STATUS_DISETUJUI, STATUS_SETELAH_TAHAP } from "@/lib/domain/alur-cuti";
 import type { Prisma } from "@/lib/generated/prisma/client";
@@ -31,104 +30,102 @@ export async function pratinjauCuti(input: { jenisCutiId: string; tanggalMulai: 
   return { galat: Object.values(h.galat)[0] ?? null, jumlahHari: h.jumlahHari };
 }
 
-const skemaAjukan = z.object({
+const teks = (maks: number) => z.string().trim().max(maks);
+const skemaPejabat = z.object({ jabatan: teks(300), nama: teks(150), nip: teks(30) });
+const barisSisa = z.object({ tahun: teks(10), sisa: teks(10), keterangan: teks(100) });
+const skemaFormulir = z.object({
   jenisCutiId: z.uuid("Pilih jenis cuti."),
   tanggalMulai: isoDate,
   tanggalSelesai: isoDate,
   alasan: z.string().trim().min(5, "Isi alasan cuti (min. 5 karakter).").max(500),
   alamatSelamaCuti: z.string().trim().min(5, "Isi alamat selama cuti.").max(300),
-  noHpSelamaCuti: z
-    .string()
-    .trim()
-    .transform((v) => v.replace(/[\s-]/g, ""))
-    .pipe(z.string().regex(/^\+?\d{8,15}$/, "Nomor HP tidak valid.")),
-  penanggungJawabId: z
-    .string()
-    .transform((v) => (v === "" ? null : v))
-    .pipe(z.uuid().nullable()),
+  formulir: z.object({
+    tanggalSurat: isoDate,
+    hariKosong: z.boolean(),
+    kepada: teks(600),
+    nama: z.string().trim().min(3, "Isi nama.").max(150),
+    nip: teks(30),
+    jabatan: teks(200),
+    masaKerja: teks(40),
+    unitKerja: teks(200),
+    lamanya: z.string().trim().min(1, "Isi lamanya cuti.").max(80),
+    catatanTahunan: z.tuple([barisSisa, barisSisa, barisSisa]),
+    catatanLain: z.tuple([teks(100), teks(100), teks(100), teks(100), teks(100)]),
+    telp: z
+      .string()
+      .trim()
+      .transform((v) => v.replace(/[\s-]/g, ""))
+      .pipe(z.string().regex(/^\+?\d{8,15}$/, "Nomor telepon tidak valid.")),
+    atasan: skemaPejabat,
+    pejabat: skemaPejabat,
+  }),
 });
+export type MasukanFormulir = z.input<typeof skemaFormulir>;
 
 async function beritahuTahap(p: { id: string; pegawaiId: string; atasanLangsungId: string | null; levelSurat: Parameters<typeof tahapPengajuan>[0]["levelSurat"]; status: StatusCuti }, nama: string, tx: Prisma.TransactionClient) {
   const tahap = await tahapPengajuan(p, tx);
   if (!tahap) return;
-  await kirimNotifikasi(await penerimaTahap(p, tahap, tx), { judul: "Pengajuan cuti menunggu tindakan Anda", isi: `Pengajuan cuti ${nama} menunggu ${tahap === "ATASAN_LANGSUNG" ? "persetujuan atasan" : tahap === "KEPEGAWAIAN" ? "verifikasi" : "keputusan pejabat"}.`, tautan: `/cuti/${p.id}` }, tx);
+  await kirimNotifikasi(await penerimaTahap(p, tahap, tx), { judul: tahap === "PEJABAT_BERWENANG" ? "Formulir cuti baru" : "Pengajuan cuti menunggu tindakan Anda", isi: `Pengajuan cuti ${nama} menunggu ${tahap === "ATASAN_LANGSUNG" ? "persetujuan atasan" : tahap === "KEPEGAWAIAN" ? "verifikasi" : "formulir bertanda tangan diantar ke Kepegawaian; setelah diterima, buat surat cutinya"}.`, tautan: `/cuti/${p.id}` }, tx);
 }
 
-export async function ajukanCuti(_: HasilForm, fd: FormData): Promise<HasilForm> {
+/**
+ * Formulir Permintaan dan Pemberian Cuti: pegawai mengisi lalu mencetaknya
+ * tanpa verifikasi, kemudian mengantar formulir bertanda tangan ke Kepegawaian.
+ * `id` null = pengajuan baru; selain itu ubah formulir selama belum diproses.
+ */
+export async function simpanFormulir(id: string | null, masukan: MasukanFormulir): Promise<{ galat?: string; id?: string }> {
   const u = await wajibLogin();
-  if (!u.pegawai) return { galat: "Akun ini tidak terhubung dengan data pegawai." };
-  const pegawaiId = u.pegawai.id;
-  const s = (k: string) => String(fd.get(k) ?? "");
-  const nilai = { jenisCutiId: s("jenisCutiId"), tanggalMulai: s("tanggalMulai"), tanggalSelesai: s("tanggalSelesai"), alasan: s("alasan"), alamatSelamaCuti: s("alamatSelamaCuti"), noHpSelamaCuti: s("noHpSelamaCuti"), penanggungJawabId: s("penanggungJawabId") };
-  const gagal = (galatField: Partial<Record<string, string>>, galat = "Periksa kembali isian yang ditandai."): HasilForm => ({ galat, galatField, nilai, stempel: Date.now() });
-
-  const p = skemaAjukan.safeParse(nilai);
-  if (!p.success) {
-    const g: Record<string, string> = {};
-    for (const i of p.error.issues) g[String(i.path[0])] ??= i.message;
-    return gagal(g);
-  }
-  const d = p.data;
-  if (d.penanggungJawabId === pegawaiId) return gagal({ penanggungJawabId: "Penanggung jawab tugas tidak boleh diri sendiri." });
-
-  const jenis = await db.jenisCuti.findUnique({ where: { id: d.jenisCutiId } });
-  const berkas = fd.get("lampiran");
-  const adaBerkas = berkas instanceof File && berkas.size > 0;
-  if (jenis?.wajibLampiran && !adaBerkas) return gagal({ lampiran: `${jenis.nama} wajib melampirkan dokumen pendukung (mis. surat keterangan dokter).` });
-  let isiBerkas: Buffer | null = null;
-  let infoBerkas: ReturnType<typeof periksaBerkas> | null = null;
-  if (adaBerkas) {
-    isiBerkas = Buffer.from(await berkas.arrayBuffer());
-    infoBerkas = periksaBerkas(berkas.name, isiBerkas, berkas.type, undefined, ["pdf", "jpg", "jpeg", "png"]);
-    if (!infoBerkas.ok) return gagal({ lampiran: infoBerkas.galat });
-  }
-
+  const v = skemaFormulir.safeParse(masukan);
+  if (!v.success) return { galat: v.error.issues[0]?.message ?? "Isian formulir tidak valid." };
+  const d = v.data;
   const mulai = tanggal(d.tanggalMulai);
   const selesai = tanggal(d.tanggalSelesai);
-  let id: string;
+  const formulir = { ...d.formulir, telp: masukan.formulir.telp.trim() };
+
+  const lama = id ? await db.pengajuanCuti.findUnique({ where: { id } }) : null;
+  if (id && !lama) return { galat: "Pengajuan tidak ditemukan." };
+  if (lama && !(u.pegawai?.id === lama.pegawaiId || punyaPeran(u, "KEPEGAWAIAN", "ADMIN"))) return { galat: "Anda tidak berhak mengubah formulir ini." };
+  if (lama && lama.status !== "DIAJUKAN") return { galat: "Formulir sudah diproses Kepegawaian dan tidak bisa diubah lagi." };
+  const pegawaiId = lama?.pegawaiId ?? u.pegawai?.id;
+  if (!pegawaiId) return { galat: "Akun ini tidak terhubung dengan data pegawai." };
+
   try {
-    id = await db.$transaction(async (tx) => {
+    const hasilId = await db.$transaction(async (tx) => {
       // Kunci per pegawai: dua pengajuan bersamaan tidak boleh sama-sama lolos cek saldo/bentrok.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${pegawaiId}))`;
-      const v = await validasiPengajuan({ pegawaiId, jenisCutiId: d.jenisCutiId, mulai, selesai }, tx);
-      if (!v.ok) throw new GalatValidasi(v.galat);
-
-      const pegawai = await tx.pegawai.findUniqueOrThrow({ where: { id: pegawaiId }, include: { jabatan: true } });
-      const level = await levelSuratPegawai(pegawai);
-      const baru = await tx.pengajuanCuti.create({
-        data: {
-          pegawaiId,
-          jenisCutiId: d.jenisCutiId,
-          tanggalMulai: mulai,
-          tanggalSelesai: selesai,
-          jumlahHari: v.jumlahHari,
-          alasan: d.alasan,
-          alamatSelamaCuti: d.alamatSelamaCuti,
-          noHpSelamaCuti: d.noHpSelamaCuti,
-          penanggungJawabId: d.penanggungJawabId,
-          atasanLangsungId: pegawai.atasanLangsungId,
-          levelSurat: level,
-          tahunSaldo: v.tahunSaldo,
-          snapshotIdentitas: await snapshotIdentitas(pegawaiId, tx),
-        },
-      });
-      await tx.riwayatStatusCuti.create({ data: { pengajuanId: baru.id, dariStatus: null, keStatus: "DIAJUKAN", olehUserId: u.userId } });
-      if (isiBerkas && infoBerkas?.ok) {
-        const simpan = await simpanBerkas(isiBerkas, infoBerkas.ext, true);
-        await tx.dokumen.create({
-          data: { ruang: "LAMPIRAN_CUTI", pemilikPegawaiId: pegawaiId, pengajuanCutiId: baru.id, namaTampilan: (berkas as File).name.slice(0, 200), namaFileAsli: (berkas as File).name.slice(0, 200), diunggahOlehId: u.userId, ...simpan },
-        });
+      const cek = await validasiPengajuan({ pegawaiId, jenisCutiId: d.jenisCutiId, mulai, selesai, kecualiId: lama?.id }, tx);
+      if (!cek.ok) throw new GalatValidasi(cek.galat);
+      const data = {
+        jenisCutiId: d.jenisCutiId,
+        tanggalMulai: mulai,
+        tanggalSelesai: selesai,
+        jumlahHari: cek.jumlahHari,
+        alasan: d.alasan,
+        alamatSelamaCuti: d.alamatSelamaCuti,
+        noHpSelamaCuti: d.formulir.telp,
+        tahunSaldo: cek.tahunSaldo,
+        formulir,
+      };
+      if (lama) {
+        await tx.pengajuanCuti.update({ where: { id: lama.id }, data });
+        await catatAudit({ userId: u.userId, aksi: "UBAH_FORMULIR_CUTI", entitas: "pengajuan_cuti", entitasId: lama.id, sesudah: { ...data, formulir: undefined } }, tx);
+        return lama.id;
       }
-      await catatAudit({ userId: u.userId, aksi: "AJUKAN_CUTI", entitas: "pengajuan_cuti", entitasId: baru.id, sesudah: { ...d, jumlahHari: v.jumlahHari } }, tx);
-      await beritahuTahap(baru, u.pegawai!.namaLengkap, tx);
+      const pegawai = await tx.pegawai.findUniqueOrThrow({ where: { id: pegawaiId }, include: { jabatan: true } });
+      const baru = await tx.pengajuanCuti.create({
+        data: { ...data, pegawaiId, atasanLangsungId: pegawai.atasanLangsungId, levelSurat: await levelSuratPegawai(pegawai), snapshotIdentitas: await snapshotIdentitas(pegawaiId, tx) },
+      });
+      await tx.riwayatStatusCuti.create({ data: { pengajuanId: baru.id, dariStatus: null, keStatus: "DIAJUKAN", olehUserId: u.userId, catatan: "Formulir dibuat" } });
+      await catatAudit({ userId: u.userId, aksi: "AJUKAN_CUTI", entitas: "pengajuan_cuti", entitasId: baru.id, sesudah: { ...data, formulir: undefined } }, tx);
+      await beritahuTahap(baru, u.pegawai?.namaLengkap ?? d.formulir.nama, tx);
       return baru.id;
     });
+    revalidatePath("/cuti", "layout");
+    return { id: hasilId };
   } catch (e) {
-    if (e instanceof GalatValidasi) return gagal(e.galat, e.galat._ ?? "Periksa kembali isian yang ditandai.");
+    if (e instanceof GalatValidasi) return { galat: Object.values(e.galat)[0] ?? "Periksa kembali isian formulir." };
     throw e;
   }
-  revalidatePath("/cuti", "layout");
-  redirect(`/cuti/${id}?baru=1`);
 }
 
 class GalatValidasi extends Error {

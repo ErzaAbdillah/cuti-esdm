@@ -41,6 +41,8 @@ export interface MasukanPengajuan {
   jenisCutiId: string;
   mulai: Date;
   selesai: Date;
+  /** Pengajuan yang sedang diubah (dikecualikan dari cek bentrok & saldo dipesan). */
+  kecualiId?: string;
 }
 
 export type HasilValidasi =
@@ -82,6 +84,7 @@ export async function validasiPengajuan(m: MasukanPengajuan, tx: Prisma.Transact
   const bentrok = await tx.pengajuanCuti.findFirst({
     where: {
       pegawaiId: m.pegawaiId,
+      ...(m.kecualiId ? { id: { not: m.kecualiId } } : {}),
       status: { in: [...STATUS_DIPROSES, ...STATUS_DISETUJUI] },
       tanggalMulai: { lte: m.selesai },
       tanggalSelesai: { gte: m.mulai },
@@ -106,7 +109,7 @@ export async function validasiPengajuan(m: MasukanPengajuan, tx: Prisma.Transact
     }
     const saldo = await tx.saldoCuti.findUnique({ where: { pegawaiId_tahun: { pegawaiId: m.pegawaiId, tahun: tahunSaldo } } });
     if (!saldo) return { ok: false, galat: { _: `Saldo cuti tahunan ${tahunSaldo} belum diatur Kepegawaian.` }, jumlahHari };
-    const tersedia = saldoTersedia(saldo, await hariDipesan(m.pegawaiId, tahunSaldo, undefined, tx));
+    const tersedia = saldoTersedia(saldo, await hariDipesan(m.pegawaiId, tahunSaldo, m.kecualiId, tx));
     if (jumlahHari > tersedia) {
       return { ok: false, galat: { tanggalSelesai: `Melebihi saldo: tersedia ${tersedia} hari kerja, diminta ${jumlahHari}.` }, jumlahHari };
     }

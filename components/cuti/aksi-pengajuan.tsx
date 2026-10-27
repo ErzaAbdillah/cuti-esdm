@@ -1,6 +1,7 @@
 "use client";
 
-import { BanIcon, CheckIcon, FileUpIcon, XIcon } from "lucide-react";
+import { BanIcon, CheckIcon, FileCheckIcon, FileUpIcon, XIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useActionState, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Bidang } from "@/components/form/bidang";
@@ -59,6 +60,46 @@ function DialogAksi({ id, jenis }: { id: string; jenis: Jenis }) {
           </DialogClose>
           <Button onClick={kirim} disabled={proses || (t.wajib && catatan.trim().length < 5)} variant={jenis === "setujui" ? "default" : "destructive"}>
             {proses ? "Memproses…" : t.tombol}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Kepegawaian: formulir bertanda tangan sudah diterima → setujui lalu langsung buat surat cuti. */
+export function TerimaFormulir({ id, tujuan }: { id: string; tujuan: string }) {
+  const router = useRouter();
+  const [buka, setBuka] = useState(false);
+  const [proses, mulai] = useTransition();
+  const kirim = () =>
+    mulai(async () => {
+      const h = await setujuiCuti(id, "Formulir bertanda tangan diterima Kepegawaian");
+      if (h.galat) toast.error(h.galat);
+      else {
+        toast.success("Formulir diterima. Silakan buat surat cuti.");
+        setBuka(false);
+        router.push(tujuan);
+      }
+    });
+  return (
+    <Dialog open={buka} onOpenChange={setBuka}>
+      <DialogTrigger asChild>
+        <Button size="lg">
+          <FileCheckIcon data-icon="inline-start" /> Formulir diterima — buat surat cuti
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="text-judul">Formulir sudah diterima?</DialogTitle>
+          <DialogDescription>Pastikan formulir cetak sudah ditandatangani dan dicap. Cuti dicatat disetujui, saldo dipotong, lalu Anda diarahkan ke editor surat cuti.</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="ghost">Batal</Button>
+          </DialogClose>
+          <Button onClick={kirim} disabled={proses}>
+            {proses ? "Memproses…" : "Ya, buat surat cuti"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -21,11 +21,11 @@ export async function bolehLihatPengajuan(
 }
 
 /**
- * Menyiapkan, mengedit, dan mencetak surat: Kepegawaian, Admin, dan pemohon
- * sendiri (identitas & data cuti tetap terkunci). Nomor surat hanya Kepegawaian/Admin.
+ * Menyiapkan, mengedit, dan mencetak surat: Kepegawaian & Admin (pegawai cukup
+ * mencetak formulir; suratnya dibuatkan Kepegawaian). Pemohon tetap bisa melihat surat terkunci.
  */
-export function bolehUbahSurat(u: PenggunaSaatIni, p: { pegawaiId: string }): boolean {
-  return punyaPeran(u, "KEPEGAWAIAN", "ADMIN") || u.pegawai?.id === p.pegawaiId;
+export function bolehUbahSurat(u: PenggunaSaatIni, _p: { pegawaiId: string }): boolean {
+  return punyaPeran(u, "KEPEGAWAIAN", "ADMIN");
 }
 
 export function bolehAturNomorSurat(u: PenggunaSaatIni): boolean {

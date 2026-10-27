@@ -63,7 +63,13 @@ Tanpa tugas ini tampilan tetap benar (Alpa dihitung saat halaman dibuka), tetapi
 
 ## Alur cuti
 
-Alur ringkas: pengajuan semua level langsung disetujui atau ditolak oleh **Kepegawaian atau Admin** (satu tahap, tanpa menunggu atasan atau instansi luar). Setelah disetujui, saldo dipotong dan surat bisa dicetak; cetak pertama menandai status **Surat Terbit**. Tahap atasan/verifikasi bisa diaktifkan lagi di tabel `alur_persetujuan` bila diperlukan.
+Alur pengajuan (formulir fisik + surat dari Kepegawaian):
+
+1. **Pegawai** membuka **Cuti Saya → Ajukan cuti** dan mengisi *Formulir Permintaan dan Pemberian Cuti* (format BKN, sama dengan "FORMULIR CUTI untuk Staf/Eselon 2–4"). Semua bagian bisa diubah: tujuan surat, data pegawai, jenis & lamanya cuti, catatan sisa cuti, alamat, serta atasan (VII) dan pejabat (VIII) — nilai awalnya disiapkan otomatis per eselon. Formulir langsung bisa **dicetak tanpa verifikasi** dan masih bisa diubah selama belum diproses.
+2. Pegawai mengantar formulir bertanda tangan ke **Kepegawaian (Sekretariat)** untuk cap & tanda tangan.
+3. **Kepegawaian/Admin** membuka pengajuan (Proses Cuti), menekan **Formulir diterima — buat surat cuti**: cuti dicatat disetujui, saldo dipotong, lalu langsung masuk editor surat cuti untuk diedit dan dicetak. Cetak pertama menandai status **Surat Terbit**.
+
+Pegawai tetap bisa melihat dan mengunduh surat yang sudah dicetak, tetapi surat hanya dibuat dan diedit oleh Kepegawaian/Admin.
 
 Saldo cuti tahunan "dipesan" selama pengajuan diproses, dipotong saat disetujui, dan dikembalikan bila dibatalkan. **Saldo & Rekap Cuti** (Kepegawaian) dipakai untuk koreksi saldo, impor saldo awal dari Excel, membuat saldo tahun berikutnya (sisa dibawa sesuai batas akumulasi di Pengaturan), serta mencetak/mengekspor Rekap Cuti Tahunan ASN.
 

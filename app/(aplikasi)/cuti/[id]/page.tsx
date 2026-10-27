@@ -1,9 +1,10 @@
-import { ArrowLeftIcon, ChevronRightIcon, CircleCheckIcon, FileTextIcon, HourglassIcon, LockIcon, PaperclipIcon } from "lucide-react";
+import { ArrowLeftIcon, ChevronRightIcon, ClipboardListIcon, PencilIcon, PrinterIcon, CircleCheckIcon, FileTextIcon, HourglassIcon, LockIcon, PaperclipIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
-import { AksiPengajuan, FormKeputusanEksternal } from "@/components/cuti/aksi-pengajuan";
+import { AksiPengajuan, FormKeputusanEksternal, TerimaFormulir } from "@/components/cuti/aksi-pengajuan";
+import { Button } from "@/components/ui/button";
 import { LencanaStatusCuti } from "@/components/umum/lencana";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,7 +66,9 @@ export default async function DetailCuti({ params, searchParams }: PageProps<"/c
       {baru === "1" && (
         <Alert className="border-emerald-300 bg-emerald-50" role="status">
           <CircleCheckIcon className="text-emerald-700" />
-          <AlertDescription className="text-emerald-900">Pengajuan terkirim dan menunggu {tahap ? LABEL_TAHAP[tahap].toLowerCase() : "proses"}.</AlertDescription>
+          <AlertDescription className="text-emerald-900">
+            Formulir tersimpan. Cetak formulir, mintakan tanda tangan atasan, lalu antar ke Kepegawaian (Sekretariat) untuk cap & tanda tangan.
+          </AlertDescription>
         </Alert>
       )}
 
@@ -77,9 +80,10 @@ export default async function DetailCuti({ params, searchParams }: PageProps<"/c
             {tahap === "ATASAN_LANGSUNG" && p.atasanLangsung && ` — ${namaLengkap(p.atasanLangsung)}`}
             {eksternal && ` — keputusan ${tujuanEksternal}, dicatat Kepegawaian`}
           </p>
+          {pemutus && !eksternal && tahap === "PEJABAT_BERWENANG" && daftarSurat[0] && <TerimaFormulir id={p.id} tujuan={`/cuti/${p.id}/surat/${daftarSurat[0].kode}`} />}
           <AksiPengajuan
             id={p.id}
-            bolehSetujui={pemutus && !eksternal}
+            bolehSetujui={pemutus && !eksternal && tahap !== "PEJABAT_BERWENANG"}
             bolehTolak={bolehTolak}
             bolehBatal={pemohon && bisaDibatalkan(p.status, p.tanggalMulai, hariIniWita())}
           />
@@ -89,6 +93,25 @@ export default async function DetailCuti({ params, searchParams }: PageProps<"/c
         <AksiPengajuan id={p.id} bolehSetujui={false} bolehTolak={false} bolehBatal />
       )}
       {eksternal && pemutus && <FormKeputusanEksternal id={p.id} tujuan={tujuanEksternal} />}
+
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-sky-200 bg-white/80 p-4">
+        <ClipboardListIcon className="size-5 text-primary" aria-hidden />
+        <p className="flex-1 text-sm text-slate-800">
+          <b>Formulir permintaan cuti</b> — dicetak pegawai dan diantar ke Kepegawaian untuk cap & tanda tangan.
+        </p>
+        <Button asChild variant="outline" className="bg-white">
+          <a href={`/cetak/formulir/${p.id}`} target="_blank" rel="noopener">
+            <PrinterIcon data-icon="inline-start" /> Cetak formulir
+          </a>
+        </Button>
+        {p.status === "DIAJUKAN" && (pemohon || punyaPeran(u, "KEPEGAWAIAN", "ADMIN")) && (
+          <Button asChild variant="outline" className="bg-white">
+            <Link href={`/cuti/${p.id}/formulir`}>
+              <PencilIcon data-icon="inline-start" /> Ubah formulir
+            </Link>
+          </Button>
+        )}
+      </div>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_22rem]">
         <Card>

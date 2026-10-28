@@ -16,7 +16,7 @@ test("NIP tidak terdaftar ditolak saat login dan aktivasi", async ({ page }) => 
   await page.getByLabel("Password baru", { exact: true }).fill("PasswordUji123!");
   await page.getByLabel("Ulangi password", { exact: true }).fill("PasswordUji123!");
   await page.getByRole("button", { name: /Aktifkan|Buat akun|Daftar/ }).click();
-  await expect(page.getByText("NIP belum terdaftar, hubungi Kepegawaian.")).toBeVisible();
+  await expect(page.getByText(/Aktivasi gagal: NIP, NIK|Terlalu banyak percobaan aktivasi/)).toBeVisible();
 });
 
 test("NIP terdaftar: aktivasi ganda ditolak, login berhasil", async ({ page }) => {
@@ -27,7 +27,7 @@ test("NIP terdaftar: aktivasi ganda ditolak, login berhasil", async ({ page }) =
   await page.getByLabel("Password baru", { exact: true }).fill("PasswordUji123!");
   await page.getByLabel("Ulangi password", { exact: true }).fill("PasswordUji123!");
   await page.getByRole("button", { name: /Aktifkan|Buat akun|Daftar/ }).click();
-  await expect(page.getByText(/Akun untuk NIP ini sudah ada/)).toBeVisible();
+  await expect(page.getByText(/Aktivasi gagal: NIP, NIK|Terlalu banyak percobaan aktivasi/)).toBeVisible();
 
   await masuk(page, NIP.staf);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

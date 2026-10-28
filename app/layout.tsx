@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { connection } from "next/server";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -23,7 +24,9 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Semua halaman dirender dinamis agar skrip Next.js mendapat nonce CSP dari proxy.ts.
+  await connection();
   return (
     <html lang="id" className={`${jakarta.variable} h-full antialiased`}>
       <body className="min-h-full">

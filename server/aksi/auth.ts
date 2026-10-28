@@ -19,6 +19,10 @@ import { db } from "../db";
 
 const GALAT_KREDENSIAL = "NIP/ID atau password salah.";
 const GALAT_IP = "Terlalu banyak percobaan gagal dari jaringan ini. Coba lagi dalam 15 menit.";
+const GALAT_AKTIVASI =
+  "Aktivasi gagal: NIP, NIK, atau kode aktivasi tidak cocok, atau akun sudah pernah diaktifkan. Bila akun sudah aktif, silakan masuk; bila belum, minta kode aktivasi ke Kepegawaian.";
+const MAKS_GAGAL_AKTIVASI = 3;
+const JENDELA_AKTIVASI_MS = 24 * 60 * 60 * 1000;
 
 /** NIP diketik dengan/ tanpa spasi → 18 digit; ID lain (PJLP-001, admin) apa adanya. */
 function normalisasiLoginId(input: string): string {
@@ -105,8 +109,9 @@ async function prosesAktivasi(data: { loginId: string; verifikasi: string; passw
   const kunciBatas = `aktivasi:${loginId}`;
 
   if (await ipTerlaluBanyakGagal()) return { galat: GALAT_IP };
-  if ((await gagalTerakhir(kunciBatas)) >= MAKS_GAGAL_AKUN) {
-    return { galat: "Terlalu banyak percobaan aktivasi untuk NIP ini. Coba lagi dalam 15 menit." };
+  // NIK sebagian bisa ditebak dari NIP (tanggal lahir, jenis kelamin): batas ketat 3 gagal per 24 jam per NIP.
+  if ((await gagalTerakhir(kunciBatas, JENDELA_AKTIVASI_MS)) >= MAKS_GAGAL_AKTIVASI) {
+    return { galat: "Terlalu banyak percobaan aktivasi untuk NIP ini. Coba lagi besok atau minta kode aktivasi ke Kepegawaian." };
   }
 
   const nipDiketik = /^\d+$/.test(loginId);
@@ -119,12 +124,14 @@ async function prosesAktivasi(data: { loginId: string; verifikasi: string; passw
     where: nipDiketik ? { nip: loginId, aktif: true } : { idNonAsn: { equals: loginId, mode: "insensitive" }, aktif: true },
     include: { user: true, kodeAktivasi: { where: { dipakaiPada: null, kedaluwarsaPada: { gt: new Date() } } } },
   });
+  // Satu pesan untuk NIP tak terdaftar, akun sudah aktif, dan verifikasi salah: tidak membocorkan NIP mana yang terdaftar.
   if (!pegawai) {
     await catatPercobaan(kunciBatas, false, "AKTIVASI_TIDAK_TERDAFTAR");
-    return { galatField: { loginId: "NIP belum terdaftar, hubungi Kepegawaian." } };
+    return { galat: GALAT_AKTIVASI };
   }
   if (pegawai.user) {
-    return { galat: "Akun untuk NIP ini sudah ada. Silakan masuk, atau minta reset password ke Admin." };
+    await catatPercobaan(kunciBatas, false, "AKTIVASI_AKUN_SUDAH_ADA", pegawai.user.id);
+    return { galat: GALAT_AKTIVASI };
   }
 
   // Faktor kedua: NIK yang tercatat, atau kode aktivasi dari Kepegawaian.
@@ -143,14 +150,7 @@ async function prosesAktivasi(data: { loginId: string; verifikasi: string; passw
   }
   if (!cocok) {
     await catatPercobaan(kunciBatas, false, "AKTIVASI_VERIFIKASI_SALAH");
-    const tanpaNik = !pegawai.nik && pegawai.kodeAktivasi.length === 0;
-    return {
-      galatField: {
-        verifikasi: tanpaNik
-          ? "NIK Anda belum tercatat. Minta kode aktivasi ke Kepegawaian."
-          : "NIK atau kode aktivasi tidak cocok dengan data kepegawaian.",
-      },
-    };
+    return { galat: GALAT_AKTIVASI };
   }
 
   const user = await db.$transaction(async (tx) => {

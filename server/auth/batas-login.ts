@@ -25,9 +25,9 @@ export async function ipTerlaluBanyakGagal(): Promise<boolean> {
   return n >= MAKS_GAGAL_PER_IP;
 }
 
-/** Jumlah gagal untuk satu kunci (mis. "aktivasi:<nip>") dalam 15 menit terakhir. */
-export async function gagalTerakhir(loginIdDicoba: string): Promise<number> {
+/** Jumlah gagal untuk satu kunci (mis. "aktivasi:<nip>") dalam jendela waktu (bawaan 15 menit). */
+export async function gagalTerakhir(loginIdDicoba: string, jendelaMs = JENDELA_MS): Promise<number> {
   return db.logLogin.count({
-    where: { loginIdDicoba, berhasil: false, waktu: { gt: new Date(Date.now() - JENDELA_MS) } },
+    where: { loginIdDicoba, berhasil: false, waktu: { gt: new Date(Date.now() - jendelaMs) } },
   });
 }

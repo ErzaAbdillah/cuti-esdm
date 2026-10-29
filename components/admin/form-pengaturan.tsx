@@ -92,7 +92,7 @@ export function FormPengaturan({ kelompok: kelompokAwal }: Props) {
                 <Bidang
                   label={d.label}
                   name={d.kunci}
-                  type={d.tipe === "angka" ? "number" : d.tipe === "jam" ? "time" : "text"}
+                  type={d.tipe === "angka" ? "number" : "text"}
                   min={d.tipe === "angka" ? 0 : undefined}
                   defaultValue={d.nilai == null ? "" : String(d.nilai)}
                   galat={g[d.kunci]}

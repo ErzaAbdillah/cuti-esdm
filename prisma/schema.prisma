@@ -181,6 +181,9 @@ model User {
   loginId            String    @unique @map("login_id")
   pegawaiId          String?   @unique @map("pegawai_id") @db.Uuid
   passwordHash       String    @map("password_hash")
+  /// Akun Google yang terhubung (klaim "sub" OpenID Connect) untuk masuk & atur ulang password.
+  googleSub          String?   @unique @map("google_sub")
+  googleEmail        String?   @map("google_email")
   aktif              Boolean   @default(true)
   gagalBerturut      Int       @default(0) @map("gagal_berturut")
   terkunciSampai     DateTime? @map("terkunci_sampai") @db.Timestamptz

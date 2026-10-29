@@ -30,7 +30,7 @@ export default async function HariLibur({ searchParams }: PageProps<"/admin/hari
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-judul">Hari libur &amp; cuti bersama {tahun}</h1>
-          <p className="text-sm text-slate-700">Tidak dihitung sebagai hari kerja untuk cuti dan absen. Isi sesuai SKB 3 Menteri tahun berjalan.</p>
+          <p className="text-sm text-slate-700">Tidak dihitung sebagai hari kerja untuk cuti. Isi sesuai SKB 3 Menteri tahun berjalan.</p>
         </div>
         <div className="flex gap-2">
           {[tahun - 1, tahun + 1].map((t) => (

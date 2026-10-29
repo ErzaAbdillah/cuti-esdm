@@ -6,10 +6,11 @@ import { Bidang } from "@/components/form/bidang";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { HasilForm } from "@/lib/validasi/auth";
-import { gantiPassword } from "@/server/aksi/auth";
+import { aturPasswordBaru, gantiPassword } from "@/server/aksi/auth";
 
-export function FormGantiPassword() {
-  const [hasil, aksi, proses] = useActionState<HasilForm, FormData>(gantiPassword, {});
+/** `tanpaPasswordLama`: lupa password, sudah dibuktikan lewat Google. */
+export function FormGantiPassword({ tanpaPasswordLama = false }: { tanpaPasswordLama?: boolean }) {
+  const [hasil, aksi, proses] = useActionState<HasilForm, FormData>(tanpaPasswordLama ? aturPasswordBaru : gantiPassword, {});
   const g = hasil.galatField ?? {};
 
   return (
@@ -26,7 +27,7 @@ export function FormGantiPassword() {
           <AlertDescription className="text-emerald-900">{hasil.sukses}</AlertDescription>
         </Alert>
       )}
-      <Bidang label="Password lama" name="passwordLama" type="password" autoComplete="current-password" galat={g.passwordLama} required />
+      {!tanpaPasswordLama && <Bidang label="Password lama" name="passwordLama" type="password" autoComplete="current-password" galat={g.passwordLama} required />}
       <Bidang
         label="Password baru"
         name="password"

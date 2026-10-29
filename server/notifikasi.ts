@@ -27,7 +27,7 @@ export async function kirimNotifikasi(
   if (!smtpAktif()) return;
   const penerima = await tx.user.findMany({ where: { id: { in: unik }, aktif: true }, select: { pegawai: { select: { email: true } } } });
   const url = isi.tautan && process.env.APP_URL ? `${process.env.APP_URL.replace(/\/$/, "")}${isi.tautan}` : null;
-  const html = `<p>${escapeHtml(isi.isi)}</p>${url ? `<p><a href="${escapeHtml(url)}">Buka di aplikasi</a></p>` : ""}<p style="color:#64748b;font-size:12px">Absensi &amp; Cuti ESDM Kalsel</p>`;
+  const html = `<p>${escapeHtml(isi.isi)}</p>${url ? `<p><a href="${escapeHtml(url)}">Buka di aplikasi</a></p>` : ""}<p style="color:#64748b;font-size:12px">Layanan Cuti ESDM Kalsel</p>`;
   const email = penerima.map((p) => p.pegawai?.email).filter((e): e is string => !!e);
   if (email.length) {
     await tx.emailKeluar.createMany({ data: email.map((kepada) => ({ kepada, subjek: isi.judul, isiHtml: html })) });

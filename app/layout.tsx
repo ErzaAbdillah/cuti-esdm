@@ -12,8 +12,8 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Absensi & Cuti ESDM Kalsel", template: "%s · Absensi & Cuti ESDM Kalsel" },
-  description: "Aplikasi internal daftar hadir dan cuti pegawai Dinas ESDM Provinsi Kalimantan Selatan.",
+  title: { default: "Layanan Cuti ESDM Kalsel", template: "%s · Layanan Cuti ESDM Kalsel" },
+  description: "Aplikasi internal cuti dan dokumen pegawai Dinas ESDM Provinsi Kalimantan Selatan.",
   icons: { icon: "/lambang-kalsel.png" },
   robots: { index: false, follow: false },
 };

@@ -2,8 +2,6 @@ import type { PeranEfektif } from "@/lib/peran";
 
 export type NamaIkon =
   | "beranda"
-  | "absen"
-  | "daftarHadir"
   | "rekap"
   | "cuti"
   | "proses"
@@ -27,14 +25,6 @@ export interface GrupMenu {
 
 export const MENU: GrupMenu[] = [
   { item: [{ href: "/beranda", label: "Beranda", ikon: "beranda" }] },
-  {
-    judul: "Kehadiran",
-    item: [
-      { href: "/absen", label: "Absen Masuk", ikon: "absen", peran: ["PEGAWAI"] },
-      { href: "/absen/daftar-hadir", label: "Daftar Hadir", ikon: "daftarHadir", peran: ["ATASAN", "KEPEGAWAIAN"] },
-      { href: "/absen/rekap", label: "Rekap Absen", ikon: "rekap", peran: ["ATASAN", "KEPEGAWAIAN"] },
-    ],
-  },
   {
     judul: "Cuti",
     item: [

@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LABEL_STATUS_KEPEGAWAIAN } from "@/lib/domain/pegawai";
 import { saldoTersedia, totalHak } from "@/lib/domain/saldo-cuti";
-import { LABEL_LEVEL_SURAT, LABEL_STATUS_ABSEN, LABEL_STATUS_CUTI, WARNA_STATUS_CUTI } from "@/lib/label";
+import { LABEL_LEVEL_SURAT, LABEL_STATUS_CUTI, WARNA_STATUS_CUTI } from "@/lib/label";
 import { formatTanggal } from "@/lib/tanggal";
 import { cn } from "@/lib/utils";
 import { punyaPeran, wajibLogin } from "@/server/auth/pengguna";
@@ -43,7 +43,6 @@ export default async function HalamanDetailPegawai({ params, searchParams }: Pag
 
   const kepegawaian = punyaPeran(u, "KEPEGAWAIAN");
   const staf = punyaPeran(u, "KEPEGAWAIAN", "ADMIN");
-  const bulan = new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric", timeZone: "UTC" }).format(p.awalBulan);
 
   return (
     <div className="grid gap-5">
@@ -81,7 +80,6 @@ export default async function HalamanDetailPegawai({ params, searchParams }: Pag
           <TabsTrigger value="identitas">Identitas</TabsTrigger>
           <TabsTrigger value="kepegawaian">Kepegawaian</TabsTrigger>
           <TabsTrigger value="cuti">Cuti</TabsTrigger>
-          <TabsTrigger value="absen">Absen</TabsTrigger>
           <TabsTrigger value="dokumen">Dokumen</TabsTrigger>
           {staf && <TabsTrigger value="akun">Akun</TabsTrigger>}
         </TabsList>
@@ -165,22 +163,6 @@ export default async function HalamanDetailPegawai({ params, searchParams }: Pag
                     ))}
                   </ul>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="absen">
-          <Card>
-            <CardContent>
-              <h2 className="mb-3 font-semibold text-judul">Rekap kehadiran {bulan}</h2>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {(["HADIR", "TERLAMBAT", "CUTI", "DINAS_LUAR", "SAKIT", "IZIN", "TUGAS", "ALPA"] as const).map((s) => (
-                  <div key={s} className="rounded-xl bg-sky-50 p-3">
-                    <p className="text-xs text-slate-600">{LABEL_STATUS_ABSEN[s]}</p>
-                    <p className="text-2xl font-bold text-judul">{p.rekapAbsen[s] ?? 0}</p>
-                  </div>
-                ))}
               </div>
             </CardContent>
           </Card>

@@ -1,5 +1,4 @@
 import "server-only";
-import { DEF_PENGATURAN } from "@/lib/pengaturan";
 import { hariIniWita } from "@/lib/tanggal";
 import { type PenggunaSaatIni, punyaPeran } from "../auth/pengguna";
 import { db } from "../db";
@@ -11,7 +10,7 @@ export async function dataBeranda(u: PenggunaSaatIni) {
   const tahun = hariIni.getUTCFullYear();
   const pegawaiId = u.pegawai?.id;
 
-  const [saldo, dipesan, pengajuan, absen, dokumen, libur] = await Promise.all([
+  const [saldo, dipesan, pengajuan, dokumen] = await Promise.all([
     pegawaiId ? db.saldoCuti.findUnique({ where: { pegawaiId_tahun: { pegawaiId, tahun } } }) : null,
     pegawaiId ? hariDipesan(pegawaiId, tahun) : 0,
     pegawaiId
@@ -22,7 +21,6 @@ export async function dataBeranda(u: PenggunaSaatIni) {
           take: 3,
         })
       : [],
-    pegawaiId ? db.absensi.findUnique({ where: { pegawaiId_tanggal: { pegawaiId, tanggal: hariIni } } }) : null,
     pegawaiId
       ? db.dokumen.findMany({
           where: { pemilikPegawaiId: pegawaiId, ruang: "PRIBADI", dihapusPada: null },
@@ -30,29 +28,16 @@ export async function dataBeranda(u: PenggunaSaatIni) {
           take: 4,
         })
       : [],
-    db.hariLibur.findUnique({ where: { tanggal: hariIni } }),
   ]);
 
   // Antrean persetujuan: atasan, Kepegawaian, dan pejabat penyetuju (mis. Kepala Dinas).
   const antrean = (await antreanSaya(u)).length;
   const menunggu = antrean > 0 || punyaPeran(u, "ATASAN", "KEPEGAWAIAN") ? antrean : null;
 
-  let kepegawaian: { hadir: number; jumlahPegawai: number } | null = null;
-  if (punyaPeran(u, "KEPEGAWAIAN")) {
-    const [hadir, jumlahPegawai] = await Promise.all([
-      db.absensi.count({ where: { tanggal: hariIni, status: { in: ["HADIR", "TERLAMBAT"] } } }),
-      db.pegawai.count({ where: { aktif: true } }),
-    ]);
-    kepegawaian = { hadir, jumlahPegawai };
-  }
-
-  let pengaturanKosong: string[] = [];
-  if (punyaPeran(u, "ADMIN")) {
-    const wajib = DEF_PENGATURAN.filter((d) => d.wajib);
-    const isi = await db.pengaturan.findMany({ where: { kunci: { in: wajib.map((d) => d.kunci) } } });
-    const terisi = new Set(isi.filter((p) => p.nilai !== null && p.nilai !== "").map((p) => p.kunci));
-    pengaturanKosong = wajib.filter((d) => !terisi.has(d.kunci)).map((d) => d.label);
-  }
+  // Kepegawaian: jumlah pegawai yang sedang menjalani cuti hari ini.
+  const sedangCuti = punyaPeran(u, "KEPEGAWAIAN")
+    ? await db.pengajuanCuti.count({ where: { status: { in: ["DISETUJUI", "SURAT_TERBIT"] }, tanggalMulai: { lte: hariIni }, tanggalSelesai: { gte: hariIni } } })
+    : null;
 
   return {
     hariIni,
@@ -60,11 +45,8 @@ export async function dataBeranda(u: PenggunaSaatIni) {
     saldo,
     dipesan,
     pengajuan,
-    absen,
     dokumen,
-    libur,
     menunggu,
-    kepegawaian,
-    pengaturanKosong,
+    sedangCuti,
   };
 }

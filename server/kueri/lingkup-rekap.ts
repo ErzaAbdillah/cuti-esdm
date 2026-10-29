@@ -1,7 +1,7 @@
 import "server-only";
 import { type PenggunaSaatIni, punyaPeran } from "../auth/pengguna";
 import { db } from "../db";
-import { anggotaGrup, grupUntuk } from "./daftar-hadir";
+import { anggotaGrup, grupUntuk } from "./grup-pegawai";
 
 export const SEMUA_UNIT = "SEMUA";
 

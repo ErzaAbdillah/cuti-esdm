@@ -1,7 +1,6 @@
 import "server-only";
 import { cache } from "react";
 import { HARI_KERJA_BAWAAN, kunciTanggal } from "@/lib/domain/hari-kerja";
-import type { AturanAbsen } from "@/lib/domain/status-absen";
 import { PETA_PENGATURAN } from "@/lib/pengaturan";
 import { db } from "./db";
 
@@ -18,30 +17,10 @@ export async function teksPengaturan(kunci: string): Promise<string> {
   return typeof v === "string" ? v : "";
 }
 
-export interface AturanAbsenLengkap extends AturanAbsen {
-  hariKerja: number[];
-  jaringanKantor: string[];
-}
-
-export async function aturanAbsen(): Promise<AturanAbsenLengkap> {
-  const p = await semuaPengaturan();
-  const teks = (k: string) => {
-    const v = p.get(k);
-    return typeof v === "string" && v.trim() ? v.trim() : null;
-  };
-  const angka = (k: string) => {
-    const v = p.get(k);
-    return typeof v === "number" && Number.isFinite(v) ? v : null;
-  };
-  const hari = p.get("absen.hari_kerja");
-  const jaringan = p.get("absen.jaringan_kantor");
-  return {
-    jamMasuk: teks("absen.jam_masuk"),
-    toleransiMenit: angka("absen.toleransi_terlambat_menit"),
-    batasAlpa: teks("absen.batas_alpa"),
-    hariKerja: Array.isArray(hari) && hari.length ? (hari as number[]) : HARI_KERJA_BAWAAN,
-    jaringanKantor: Array.isArray(jaringan) ? (jaringan as string[]) : [],
-  };
+/** Hari kerja (1 = Senin … 7 = Minggu) untuk menghitung lamanya cuti. */
+export async function hariKerja(): Promise<number[]> {
+  const hari = (await semuaPengaturan()).get("absen.hari_kerja");
+  return Array.isArray(hari) && hari.length ? (hari as number[]) : HARI_KERJA_BAWAAN;
 }
 
 /** Kunci tanggal (YYYY-MM-DD) hari libur dalam rentang. */

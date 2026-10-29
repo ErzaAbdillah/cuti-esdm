@@ -3,7 +3,7 @@ import { formatNip } from "@/lib/domain/nip";
 import { namaLengkap } from "@/lib/domain/pegawai";
 import { saldoTersedia, totalHak } from "@/lib/domain/saldo-cuti";
 import { db } from "../db";
-import { anggotaGrup, GRUP_PJLP, semuaGrup } from "./daftar-hadir";
+import { anggotaGrup, GRUP_PJLP, semuaGrup } from "./grup-pegawai";
 
 export interface BarisSaldo {
   pegawaiId: string;

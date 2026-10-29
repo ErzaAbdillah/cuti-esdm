@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  CalendarCheckIcon,
-  ClipboardListIcon,
   FileTextIcon,
   FolderOpenIcon,
   HomeIcon,
@@ -25,8 +23,6 @@ import { cn } from "@/lib/utils";
 
 const IKON: Record<NamaIkon, LucideIcon> = {
   beranda: HomeIcon,
-  absen: CalendarCheckIcon,
-  daftarHadir: ClipboardListIcon,
   rekap: TableIcon,
   cuti: PlaneIcon,
   proses: StampIcon,
@@ -49,7 +45,7 @@ function Merek() {
     <Link href="/beranda" className="flex items-center gap-3 rounded-lg px-2 py-1 focus-visible:outline-2 focus-visible:outline-ring">
       <Image src="/lambang-kalsel.png" alt="" width={36} height={50} className="h-11 w-auto" />
       <span className="leading-tight">
-        <span className="block text-sm font-bold text-judul">Absensi &amp; Cuti</span>
+        <span className="block text-sm font-bold text-judul">Cuti ESDM</span>
         <span className="block text-xs font-medium text-slate-600">Dinas ESDM Kalsel</span>
       </span>
     </Link>

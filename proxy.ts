@@ -7,7 +7,7 @@ import { type NextRequest, NextResponse } from "next/server";
  * Proxy juga memasang CSP dengan nonce per permintaan: hanya skrip inline
  * milik Next.js (yang diberi nonce) yang boleh berjalan.
  */
-const PUBLIK = ["/login", "/daftar", "/api/sehat", "/api/tugas"];
+const PUBLIK = ["/login", "/daftar", "/api/sehat", "/api/tugas", "/api/auth/google"];
 
 function kebijakanKeamanan(nonce: string): string {
   const dev = process.env.NODE_ENV !== "production";

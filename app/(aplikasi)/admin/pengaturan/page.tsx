@@ -6,7 +6,7 @@ import { semuaPengaturan } from "@/server/pengaturan";
 
 export const metadata: Metadata = { title: "Pengaturan" };
 
-const URUTAN = ["Absen", "Cuti", "Surat", "Instansi", "Dokumen"] as const;
+const URUTAN = ["Cuti", "Surat", "Instansi", "Dokumen"] as const;
 
 export default async function HalamanPengaturan() {
   await wajibPeran("ADMIN");

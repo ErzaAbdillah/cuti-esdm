@@ -13,9 +13,9 @@ export default function LayoutPublik({ children }: LayoutProps<"/">) {
             priority
             className="h-28 w-auto drop-shadow-md md:h-40"
           />
-          <h1 className="mt-5 text-2xl font-bold tracking-tight text-judul md:text-4xl">Absensi &amp; Cuti ESDM Kalsel</h1>
+          <h1 className="mt-5 text-2xl font-bold tracking-tight text-judul md:text-4xl">Layanan Cuti ESDM Kalsel</h1>
           <p className="mt-2 max-w-sm text-sm text-slate-700 md:text-base">
-            Daftar hadir masuk kerja dan layanan cuti pegawai Dinas Energi dan Sumber Daya Mineral Provinsi Kalimantan Selatan.
+            Layanan cuti dan dokumen pegawai Dinas Energi dan Sumber Daya Mineral Provinsi Kalimantan Selatan.
           </p>
         </section>
         <section className="kaca rounded-2xl p-5 sm:p-7">{children}</section>

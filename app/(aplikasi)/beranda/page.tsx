@@ -1,22 +1,19 @@
 import {
   ArrowRightIcon,
-  CalendarCheckIcon,
   FileTextIcon,
   PlaneIcon,
   StampIcon,
-  TriangleAlertIcon,
   UsersIcon,
   WalletIcon,
 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { saldoTersedia, totalHak } from "@/lib/domain/saldo-cuti";
-import { LABEL_STATUS_ABSEN, LABEL_STATUS_CUTI, WARNA_STATUS_ABSEN, WARNA_STATUS_CUTI } from "@/lib/label";
-import { formatJam, formatTanggal, formatTanggalJam, ZONA_WAKTU } from "@/lib/tanggal";
+import { LABEL_STATUS_CUTI, WARNA_STATUS_CUTI } from "@/lib/label";
+import { formatTanggal, formatTanggalJam, ZONA_WAKTU } from "@/lib/tanggal";
 import { cn } from "@/lib/utils";
 import { wajibLogin } from "@/server/auth/pengguna";
 import { dataBeranda } from "@/server/kueri/beranda";
@@ -54,7 +51,6 @@ export default async function Beranda() {
   const u = await wajibLogin();
   const d = await dataBeranda(u);
   const nama = u.pegawai?.namaLengkap ?? u.loginId;
-  const akhirPekan = [0, 6].includes(d.hariIni.getUTCDay());
 
   return (
     <div className="grid gap-6">
@@ -70,42 +66,8 @@ export default async function Beranda() {
         )}
       </section>
 
-      {d.pengaturanKosong.length > 0 && (
-        <Alert className="border-emas bg-amber-50">
-          <TriangleAlertIcon className="text-amber-700" />
-          <AlertTitle className="text-amber-950">Pengaturan absen belum lengkap [ISI]</AlertTitle>
-          <AlertDescription className="text-amber-950">
-            {d.pengaturanKosong.join(", ")} belum diisi. Selama kosong, status Terlambat dan Alpa tidak dihitung.{" "}
-            <Link href="/admin/pengaturan" className="font-semibold underline underline-offset-4">
-              Buka pengaturan
-            </Link>
-          </AlertDescription>
-        </Alert>
-      )}
-
       {u.pegawai && (
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Ringkasan saya">
-          <Kartu judul="Absen hari ini" ikon={<CalendarCheckIcon />}
-            aksi={!d.absen && !d.libur && !akhirPekan ? (
-              <Button asChild variant="penting" size="lg" className="w-full">
-                <Link href="/absen">Absen Masuk</Link>
-              </Button>
-            ) : undefined}
-          >
-            {d.libur ? (
-              <p className="text-sm text-slate-700">Hari libur: {d.libur.nama}</p>
-            ) : akhirPekan ? (
-              <p className="text-sm text-slate-700">Akhir pekan — tidak ada absen.</p>
-            ) : d.absen ? (
-              <div className="grid gap-1">
-                <Lencana className={WARNA_STATUS_ABSEN[d.absen.status]}>{LABEL_STATUS_ABSEN[d.absen.status]}</Lencana>
-                {d.absen.jamMasuk && <p className="text-2xl font-bold text-judul">{formatJam(d.absen.jamMasuk)} <span className="text-sm font-medium text-slate-600">WITA</span></p>}
-              </div>
-            ) : (
-              <p className="text-sm text-slate-700">Anda belum absen masuk hari ini.</p>
-            )}
-          </Kartu>
-
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Ringkasan saya">
           <Kartu judul={`Saldo cuti tahunan ${d.tahun}`} ikon={<WalletIcon />}
             aksi={<Button asChild variant="outline" className="w-full bg-white/70"><Link href="/cuti">Lihat cuti saya <ArrowRightIcon data-icon="inline-end" /></Link></Button>}
           >
@@ -163,7 +125,7 @@ export default async function Beranda() {
         </section>
       )}
 
-      {(d.menunggu !== null || d.kepegawaian) && (
+      {(d.menunggu !== null || d.sedangCuti !== null) && (
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Tugas saya">
           {d.menunggu !== null && (
             <Kartu judul="Menunggu tindakan Anda" ikon={<StampIcon />}
@@ -172,16 +134,12 @@ export default async function Beranda() {
               <p className="text-3xl font-bold text-judul">{d.menunggu} <span className="text-base font-medium text-slate-600">pengajuan cuti</span></p>
             </Kartu>
           )}
-          {d.kepegawaian && (
-            <>
-              <Kartu judul="Kehadiran hari ini" ikon={<UsersIcon />}
-                aksi={<Button asChild variant="outline" className="w-full bg-white/70"><Link href="/absen/daftar-hadir">Daftar hadir <ArrowRightIcon data-icon="inline-end" /></Link></Button>}
-              >
-                <p className="text-3xl font-bold text-judul">
-                  {d.kepegawaian.hadir} <span className="text-base font-medium text-slate-600">dari {d.kepegawaian.jumlahPegawai} pegawai</span>
-                </p>
-              </Kartu>
-            </>
+          {d.sedangCuti !== null && (
+            <Kartu judul="Sedang cuti hari ini" ikon={<UsersIcon />}
+              aksi={<Button asChild variant="outline" className="w-full bg-white/70"><Link href="/cuti/saldo">Saldo & rekap cuti <ArrowRightIcon data-icon="inline-end" /></Link></Button>}
+            >
+              <p className="text-3xl font-bold text-judul">{d.sedangCuti} <span className="text-base font-medium text-slate-600">pegawai</span></p>
+            </Kartu>
           )}
         </section>
       )}

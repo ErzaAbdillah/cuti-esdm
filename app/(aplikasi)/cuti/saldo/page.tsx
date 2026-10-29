@@ -9,7 +9,7 @@ import { hariIniWita } from "@/lib/tanggal";
 import { cn } from "@/lib/utils";
 import { wajibPeran } from "@/server/auth/pengguna";
 import { rekapCutiTahunan } from "@/server/kueri/saldo";
-import { GRUP_PJLP, semuaGrup } from "@/server/kueri/daftar-hadir";
+import { GRUP_PJLP, semuaGrup } from "@/server/kueri/grup-pegawai";
 
 export const metadata: Metadata = { title: "Saldo Cuti" };
 

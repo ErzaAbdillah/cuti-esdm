@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import type { HasilForm } from "@/lib/validasi/auth";
 import { masuk } from "@/server/aksi/auth";
 
-export function FormMasuk({ lanjut }: { lanjut?: string }) {
+/** `google`: tampilkan jalur lupa password lewat Google (bila Google dikonfigurasi). */
+export function FormMasuk({ lanjut, google = false }: { lanjut?: string; google?: boolean }) {
   const [hasil, aksi, proses] = useActionState<HasilForm, FormData>(masuk, {});
 
   return (
@@ -50,7 +51,14 @@ export function FormMasuk({ lanjut }: { lanjut?: string }) {
           Aktivasi dengan NIP
         </Link>
         <br />
-        Lupa password? Hubungi Admin untuk reset.
+        Lupa password?{" "}
+        {google ? (
+          <a href="/api/auth/google?mode=reset" className="font-semibold text-primary underline-offset-4 hover:underline">
+            Atur ulang dengan Google
+          </a>
+        ) : (
+          "Hubungi Admin untuk reset."
+        )}
       </p>
     </form>
   );

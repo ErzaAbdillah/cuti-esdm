@@ -27,7 +27,7 @@ export default async function LayoutAplikasi({ children }: LayoutProps<"/">) {
         <div className="kaca flex h-14 items-center gap-2 rounded-2xl px-2 sm:px-3">
           <MenuSeluler menu={menu} />
           <div className="min-w-0 flex-1 lg:hidden">
-            <p className="truncate text-sm font-bold text-judul">Absensi &amp; Cuti ESDM</p>
+            <p className="truncate text-sm font-bold text-judul">Layanan Cuti ESDM</p>
           </div>
           <div className="hidden flex-1 lg:block" />
           <Link

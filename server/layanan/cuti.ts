@@ -1,16 +1,15 @@
 import "server-only";
 import { STATUS_DIPROSES, STATUS_DISETUJUI, tahapMenunggu } from "@/lib/domain/alur-cuti";
-import { adalahHariKerja, daftarTanggal, hitungHariKalender, hitungHariKerja } from "@/lib/domain/hari-kerja";
+import { hitungHariKalender, hitungHariKerja } from "@/lib/domain/hari-kerja";
 import { tentukanLevelSurat } from "@/lib/domain/level-surat";
 import { formatNip } from "@/lib/domain/nip";
 import { namaLengkap, pangkatTampil, sebutanStatus } from "@/lib/domain/pegawai";
 import { saldoTersedia } from "@/lib/domain/saldo-cuti";
-import { statusAbsenMandiri } from "@/lib/domain/status-absen";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import type { LevelSurat, TahapPersetujuan } from "@/lib/generated/prisma/enums";
 import { formatTanggal, hariIniWita } from "@/lib/tanggal";
 import { db } from "../db";
-import { aturanAbsen, setLibur, teksPengaturan } from "../pengaturan";
+import { hariKerja, setLibur, teksPengaturan } from "../pengaturan";
 
 export async function levelSuratPegawai(p: { jabatan: { jenis: Parameters<typeof tentukanLevelSurat>[0]["jenisJabatan"]; kelasJabatan: number | null } | null; levelSuratOverride: LevelSurat | null }) {
   const mapping = await db.mappingEselon.findMany({ where: { jenisJabatan: "STRUKTURAL" } });
@@ -72,8 +71,7 @@ export async function validasiPengajuan(m: MasukanPengajuan, tx: Prisma.Transact
   }
 
   const harian = jenis.satuanHitung === "HARI_KERJA";
-  const atAbsen = await aturanAbsen();
-  const jumlahHari = harian ? hitungHariKerja(m.mulai, m.selesai, await setLibur(m.mulai, m.selesai), atAbsen.hariKerja) : hitungHariKalender(m.mulai, m.selesai);
+  const jumlahHari = harian ? hitungHariKerja(m.mulai, m.selesai, await setLibur(m.mulai, m.selesai), await hariKerja()) : hitungHariKalender(m.mulai, m.selesai);
   if (jumlahHari === 0) return { ok: false, galat: { tanggalSelesai: "Rentang ini tidak berisi hari kerja." }, jumlahHari };
 
   const maks = aturan.maksHari ?? jenis.maksHari;
@@ -151,7 +149,7 @@ export async function tahapPengajuan(p: { status: Parameters<typeof tahapMenungg
   return tahapMenunggu(p.status, await tahapanUntuk(p.levelSurat, tx), !!p.atasanLangsungId);
 }
 
-/** Saat disetujui pejabat: potong saldo & tandai hari kerja sebagai CUTI di absensi. */
+/** Saat disetujui pejabat: potong saldo cuti tahunan. */
 export async function terapkanPersetujuan(pengajuanId: string, olehUserId: string, tx: Prisma.TransactionClient) {
   const p = await tx.pengajuanCuti.findUniqueOrThrow({ where: { id: pengajuanId }, include: { jenisCuti: true } });
   if (p.jenisCuti.potongSaldoTahunan) {
@@ -159,15 +157,6 @@ export async function terapkanPersetujuan(pengajuanId: string, olehUserId: strin
     if (!saldo) throw new Error("SALDO_TIDAK_ADA");
     await tx.saldoCuti.update({ where: { id: saldo.id }, data: { terpakai: { increment: p.jumlahHari } } });
     await tx.mutasiSaldoCuti.create({ data: { saldoId: saldo.id, pengajuanId, jenis: "PEMOTONGAN", jumlah: -p.jumlahHari, olehUserId, catatan: `${p.jenisCuti.nama} disetujui` } });
-  }
-  const aturan = await aturanAbsen();
-  const libur = await setLibur(p.tanggalMulai, p.tanggalSelesai);
-  for (const t of daftarTanggal(p.tanggalMulai, p.tanggalSelesai).filter((d) => adalahHariKerja(d, libur, aturan.hariKerja))) {
-    await tx.absensi.upsert({
-      where: { pegawaiId_tanggal: { pegawaiId: p.pegawaiId, tanggal: t } },
-      update: { status: "CUTI", sumber: "SISTEM", pengajuanCutiId: p.id, keteranganKehadiranId: null, keterangan: p.jenisCuti.nama },
-      create: { pegawaiId: p.pegawaiId, tanggal: t, status: "CUTI", sumber: "SISTEM", pengajuanCutiId: p.id, keterangan: p.jenisCuti.nama },
-    });
   }
 }
 
@@ -183,20 +172,12 @@ export async function selesaikanCutiLewat(hariIni = hariIniWita()): Promise<numb
   return daftar.length;
 }
 
-/** Saat cuti yang sudah disetujui dibatalkan: kembalikan saldo & status absen. */
+/** Saat cuti yang sudah disetujui dibatalkan: kembalikan saldo. */
 export async function batalkanPersetujuan(pengajuanId: string, olehUserId: string, tx: Prisma.TransactionClient) {
   const p = await tx.pengajuanCuti.findUniqueOrThrow({ where: { id: pengajuanId }, include: { jenisCuti: true } });
   const potong = await tx.mutasiSaldoCuti.findFirst({ where: { pengajuanId, jenis: "PEMOTONGAN" } });
   if (potong) {
     await tx.saldoCuti.update({ where: { id: potong.saldoId }, data: { terpakai: { decrement: -potong.jumlah } } });
     await tx.mutasiSaldoCuti.create({ data: { saldoId: potong.saldoId, pengajuanId, jenis: "PENGEMBALIAN", jumlah: -potong.jumlah, olehUserId, catatan: `${p.jenisCuti.nama} dibatalkan` } });
-  }
-  const aturan = await aturanAbsen();
-  for (const a of await tx.absensi.findMany({ where: { pengajuanCutiId: pengajuanId } })) {
-    if (a.jamMasuk) {
-      await tx.absensi.update({ where: { id: a.id }, data: { status: statusAbsenMandiri(a.jamMasuk, aturan), sumber: "MANDIRI", pengajuanCutiId: null, keterangan: null } });
-    } else {
-      await tx.absensi.delete({ where: { id: a.id } });
-    }
   }
 }

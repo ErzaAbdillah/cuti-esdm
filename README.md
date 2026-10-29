@@ -1,10 +1,10 @@
-# Absensi & Cuti ESDM Kalsel
+# Layanan Cuti ESDM Kalsel
 
-Aplikasi web internal Dinas Energi dan Sumber Daya Mineral Provinsi Kalimantan Selatan untuk daftar hadir masuk kerja, pengajuan cuti, surat cuti per eselon, dan ruang dokumen pegawai.
+Aplikasi web internal Dinas Energi dan Sumber Daya Mineral Provinsi Kalimantan Selatan untuk pengajuan cuti, surat cuti per eselon, dan ruang dokumen pegawai.
 
 Rancangan lengkap (struktur, skema, halaman, alur): [docs/RANCANGAN.md](docs/RANCANGAN.md).
 
-> Status: **tahap 1–8 selesai** — login NIP & aktivasi, RBAC, dashboard, database pegawai (impor/ekspor Excel), absen & daftar hadir, cuti dengan persetujuan berjenjang & saldo, surat cuti per eselon (editor, versi, cetak & PDF), ruang dokumen dengan cetak gabungan, audit log & log login, master data, serta deployment Docker dengan backup harian.
+> Status: **tahap 1–8 selesai** — login NIP & aktivasi (juga dengan akun Google), RBAC, dashboard, database pegawai (impor/ekspor Excel), cuti dengan persetujuan berjenjang & saldo, surat cuti per eselon (editor, versi, cetak & PDF), ruang dokumen dengan cetak gabungan, audit log & log login, master data, serta deployment Docker dengan backup harian.
 
 ## Prasyarat
 
@@ -45,21 +45,34 @@ Akun demo memakai password `SEED_PASSWORD_DEV` dari `.env`. Daftar NIP-nya ada d
 | `npm run lint` | ESLint |
 | `npm run db:generate` | Generate ulang Prisma Client setelah skema berubah |
 
-## Pengaturan absen yang wajib diisi Admin
+## Fitur absensi dinonaktifkan
 
-Jam masuk, toleransi terlambat, dan batas alpa belum tercantum di dokumen acuan, jadi nilainya **kosong ([ISI])** setelah seed. Isi di **Admin → Pengaturan**. Selama kosong: semua absen dihitung Hadir dan Alpa tidak ditandai. Hari libur & cuti bersama dikelola di **Admin → Hari libur** (2026 sudah terisi dari SKB 3 Menteri).
+Sejak Oktober 2026 aplikasi hanya melayani cuti dan dokumen. Menu, halaman, ekspor, dan proses absensi sudah dihapus; tabel absensi lama (`absensi`, `keterangan_kehadiran`) tetap ada di database dan tidak dipakai lagi. Hari kerja untuk menghitung lamanya cuti diatur di **Admin → Pengaturan → Cuti**, hari libur di **Admin → Hari libur**.
 
-Aturan Alpa: hanya pegawai yang **punya akun aktif** (absen online) yang otomatis ditandai Alpa setelah batas waktu, dan baru sejak hari akunnya dibuat. Pegawai yang masih tanda tangan di kertas (belum aktivasi, termasuk PJLP) dicatat kehadirannya oleh atasan/Kepegawaian dari halaman Daftar Hadir.
+## Masuk dengan Google
+
+Pegawai bisa daftar, masuk, dan mengatur ulang password dengan akun Google:
+
+1. **Daftar:** klik *Daftar/Masuk dengan Google*, pilih akun, lalu cocokkan sekali dengan **NIP + NIK/kode aktivasi** (belum punya akun) atau **NIP + password** (sudah punya akun).
+2. **Masuk:** berikutnya cukup klik *Masuk dengan Google*.
+3. **Lupa password:** di halaman masuk klik *Atur ulang dengan Google*; setelah memilih akun Google yang terhubung, pegawai langsung membuat password baru tanpa password lama.
+4. Akun lama bisa menghubungkan/memutus Google di **Profil**. Kepegawaian melihat email Google yang terhubung di tab Akun data pegawai.
+
+Pengaturan di Google Cloud Console (APIs & Services → Credentials → *OAuth client ID*, jenis *Web application*):
+
+- *Authorized JavaScript origins*: `https://cuti-esdm.vercel.app`
+- *Authorized redirect URIs*: `https://cuti-esdm.vercel.app/api/auth/google/callback`
+- Layar persetujuan (OAuth consent screen): jenis *External*, scope `openid`, `email`, `profile`, lalu *Publish app*.
+
+Isi `GOOGLE_CLIENT_ID` dan `GOOGLE_CLIENT_SECRET` di environment (Vercel / `.env`). Selama kosong, tombol Google disembunyikan dan login NIP + password tetap berjalan.
 
 ## Tugas terjadwal
 
-`POST /api/tugas/harian` dengan header `Authorization: Bearer <TUGAS_TOKEN>` menandai Alpa untuk 7 hari kerja terakhir (idempoten). Jalankan tiap ±10 menit lewat cron, mis.:
+`POST /api/tugas/harian` dengan header `Authorization: Bearer <TUGAS_TOKEN>` menandai cuti yang sudah lewat sebagai Selesai dan mengirim antrean email (idempoten). Jalankan tiap ±10 menit lewat cron, mis.:
 
 ```bash
 curl -fsS -X POST -H "Authorization: Bearer $TUGAS_TOKEN" http://localhost:3000/api/tugas/harian
 ```
-
-Tanpa tugas ini tampilan tetap benar (Alpa dihitung saat halaman dibuka), tetapi barisnya belum tersimpan di database.
 
 ## Alur cuti
 
@@ -131,7 +144,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.production run --rm mi
 docker compose -f docker-compose.prod.yml --env-file .env.production run --rm migrate npm run admin:buat -- admin
 ```
 
-5. Masuk sebagai Admin, isi pengaturan **[ISI]** (jam masuk, toleransi, batas alpa), periksa kop & penandatangan, lalu impor data pegawai dari Excel.
+5. Masuk sebagai Admin, periksa pengaturan, kop & penandatangan, lalu impor data pegawai dari Excel.
 
 Development dan production terpisah: `APP_ENV=production` membuat seeder dummy menolak berjalan, cookie sesi memakai prefix `__Host-` bila `APP_URL` https, dan database/berkas berada di volume Docker sendiri.
 

@@ -16,6 +16,7 @@ interface Props {
     aktif: boolean;
     terkunci: string | null;
     terakhirLogin: string | null;
+    googleEmail: string | null;
     wajibGantiPassword: boolean;
     peran: Peran[];
   } | null;
@@ -80,6 +81,7 @@ export function AkunPegawai({ pegawaiId, akun, kodeAktivasiAktifSampai, bolehKel
             {[
               ["Login", akun.loginId],
               ["Status", akun.aktif ? (akun.terkunci ? `Terkunci sampai ${new Date(akun.terkunci).toLocaleTimeString("id-ID", { timeZone: "Asia/Makassar", hour: "2-digit", minute: "2-digit" })} WITA` : "Aktif") : "Nonaktif"],
+              ["Akun Google", akun.googleEmail ?? "Belum terhubung"],
               ["Login terakhir", akun.terakhirLogin ? new Date(akun.terakhirLogin).toLocaleString("id-ID", { timeZone: "Asia/Makassar" }) : "Belum pernah"],
               ["Wajib ganti password", akun.wajibGantiPassword ? "Ya" : "Tidak"],
             ].map(([k, v]) => (

@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
 import { normalisasiNip, parseNip } from "@/lib/domain/nip";
 import { cocokPassword, hashPassword } from "@/lib/password";
@@ -8,11 +9,15 @@ import {
   type HasilForm,
   skemaAktivasi,
   skemaGantiPassword,
+  skemaGoogleBaru,
+  skemaGoogleLama,
   skemaMasuk,
+  skemaPasswordBaru,
   tujuanAman,
 } from "@/lib/validasi/auth";
 import { catatAudit } from "../audit";
 import { catatPercobaan, gagalTerakhir, ipTerlaluBanyakGagal, LAMA_KUNCI_MS, MAKS_GAGAL_AKUN } from "../auth/batas-login";
+import { bacaIdentitasTertunda, bolehAturPassword, hapusIdentitasTertunda, hapusIzinAturPassword } from "../auth/google";
 import { wajibLogin } from "../auth/pengguna";
 import { buatSesi, hapusSesi, hapusSesiLain } from "../auth/sesi";
 import { db } from "../db";
@@ -46,8 +51,17 @@ export async function masuk(_: HasilForm, formData: FormData): Promise<HasilForm
 }
 
 async function prosesMasuk(data: { loginId: string; password: string; lanjut?: string }): Promise<HasilForm> {
-  const { password, lanjut } = data;
-  const loginId = normalisasiLoginId(data.loginId);
+  const cek = await periksaKredensial(data.loginId, data.password);
+  if (!("user" in cek)) return cek;
+  const { user } = cek;
+  await catatAudit({ userId: user.id, aksi: "LOGIN", entitas: "users", entitasId: user.id });
+  await buatSesi(user.id);
+  redirect(user.wajibGantiPassword ? "/profil?wajib=1" : tujuanAman(data.lanjut));
+}
+
+/** NIP/ID + password dengan pembatasan percobaan & kunci akun; dipakai login dan menghubungkan Google. */
+async function periksaKredensial(loginIdMentah: string, password: string): Promise<HasilForm | { user: { id: string; wajibGantiPassword: boolean } }> {
+  const loginId = normalisasiLoginId(loginIdMentah);
 
   if (await ipTerlaluBanyakGagal()) {
     await catatPercobaan(loginId, false, "IP_DIBATASI");
@@ -90,10 +104,67 @@ async function prosesMasuk(data: { loginId: string; password: string; lanjut?: s
     data: { gagalBerturut: 0, terkunciSampai: null, terakhirLogin: new Date() },
   });
   await catatPercobaan(loginId, true, null, user.id);
-  await catatAudit({ userId: user.id, aksi: "LOGIN", entitas: "users", entitasId: user.id });
-  await buatSesi(user.id);
+  return { user };
+}
 
-  redirect(user.wajibGantiPassword ? "/profil?wajib=1" : tujuanAman(lanjut));
+const GALAT_GOOGLE_KEDALUWARSA = "Waktu verifikasi Google habis. Klik “Masuk dengan Google” lagi.";
+
+/** Akun baru dari Google: NIP + NIK/kode aktivasi, tanpa password (bisa dibuat nanti lewat Lupa password). */
+export async function aktivasiDenganGoogle(_: HasilForm, formData: FormData): Promise<HasilForm> {
+  const nilai = { loginId: String(formData.get("loginId") ?? ""), verifikasi: String(formData.get("verifikasi") ?? "") };
+  const g = await bacaIdentitasTertunda();
+  if (!g) return { galat: GALAT_GOOGLE_KEDALUWARSA, nilai };
+  const parsed = skemaGoogleBaru.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { galatField: galatPerField(parsed.error), nilai };
+  if (await db.user.findUnique({ where: { googleSub: g.sub } })) return { galat: "Akun Google ini sudah terhubung. Silakan masuk dengan Google.", nilai };
+
+  const cek = await verifikasiAktivasi(parsed.data.loginId, parsed.data.verifikasi);
+  if (!cek.ok) return { ...cek.hasil, nilai };
+  // Password acak yang tidak diketahui siapa pun; pegawai bisa membuat password lewat "Lupa password".
+  await buatAkun(cek, { passwordHash: await hashPassword(randomBytes(32).toString("base64url")), googleSub: g.sub, googleEmail: g.email });
+  await hapusIdentitasTertunda();
+  redirect("/beranda");
+}
+
+/** Akun yang sudah ada: hubungkan Google setelah NIP + password terbukti benar. */
+export async function hubungkanGoogleAkunLama(_: HasilForm, formData: FormData): Promise<HasilForm> {
+  const nilai = { loginId: String(formData.get("loginId") ?? "") };
+  const g = await bacaIdentitasTertunda();
+  if (!g) return { galat: GALAT_GOOGLE_KEDALUWARSA, nilai };
+  const parsed = skemaGoogleLama.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { galatField: galatPerField(parsed.error), nilai };
+  if (await db.user.findUnique({ where: { googleSub: g.sub } })) return { galat: "Akun Google ini sudah terhubung. Silakan masuk dengan Google.", nilai };
+
+  const cek = await periksaKredensial(parsed.data.loginId, parsed.data.password);
+  if (!("user" in cek)) return { ...cek, nilai };
+  const { user } = cek;
+  await db.user.update({ where: { id: user.id }, data: { googleSub: g.sub, googleEmail: g.email } });
+  await catatAudit({ userId: user.id, aksi: "HUBUNGKAN_GOOGLE", entitas: "users", entitasId: user.id, sesudah: { googleEmail: g.email } });
+  await catatAudit({ userId: user.id, aksi: "LOGIN", entitas: "users", entitasId: user.id, sesudah: { via: "google" } });
+  await hapusIdentitasTertunda();
+  await buatSesi(user.id);
+  redirect(user.wajibGantiPassword ? "/profil?wajib=1" : "/beranda");
+}
+
+/** Putuskan Google dari akun sendiri (masuk tetap bisa dengan NIP + password). */
+export async function putuskanGoogle(): Promise<void> {
+  const u = await wajibLogin({ lewatiWajibGanti: true });
+  await db.user.update({ where: { id: u.userId }, data: { googleSub: null, googleEmail: null } });
+  await catatAudit({ userId: u.userId, aksi: "PUTUSKAN_GOOGLE", entitas: "users", entitasId: u.userId });
+  redirect("/profil?google=diputus");
+}
+
+/** Lupa password: setelah masuk lewat Google (mode reset), buat password baru tanpa password lama. */
+export async function aturPasswordBaru(_: HasilForm, formData: FormData): Promise<HasilForm> {
+  const u = await wajibLogin({ lewatiWajibGanti: true });
+  if (!(await bolehAturPassword(u.userId))) return { galat: "Waktu atur ulang habis. Klik “Lupa password” dan masuk dengan Google lagi." };
+  const parsed = skemaPasswordBaru.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { galatField: galatPerField(parsed.error) };
+  await db.user.update({ where: { id: u.userId }, data: { passwordHash: await hashPassword(parsed.data.password), wajibGantiPassword: false, gagalBerturut: 0, terkunciSampai: null } });
+  await hapusIzinAturPassword();
+  await hapusSesiLain(u.userId, u.sesiId);
+  await catatAudit({ userId: u.userId, aksi: "ATUR_ULANG_PASSWORD_GOOGLE", entitas: "users", entitasId: u.userId });
+  return { sukses: "Password baru tersimpan. Sesi di perangkat lain sudah dikeluarkan." };
 }
 
 export async function aktivasiAkun(_: HasilForm, formData: FormData): Promise<HasilForm> {
@@ -104,20 +175,35 @@ export async function aktivasiAkun(_: HasilForm, formData: FormData): Promise<Ha
 }
 
 async function prosesAktivasi(data: { loginId: string; verifikasi: string; password: string }): Promise<HasilForm> {
-  const { password, verifikasi } = data;
-  const loginId = normalisasiLoginId(data.loginId);
+  const cek = await verifikasiAktivasi(data.loginId, data.verifikasi);
+  if (!cek.ok) return cek.hasil;
+  await buatAkun(cek, { passwordHash: await hashPassword(data.password) });
+  redirect("/beranda");
+}
+
+type HasilVerifikasi =
+  | { ok: true; pegawai: { id: string; nip: string | null; idNonAsn: string | null }; kodeDipakaiId: string | null; kunciBatas: string }
+  | { ok: false; hasil: HasilForm };
+
+/**
+ * Pemeriksaan aktivasi bersama (password maupun Google): NIP/ID pegawai aktif
+ * tanpa akun + faktor kedua (NIK tercatat atau kode aktivasi dari Kepegawaian).
+ */
+async function verifikasiAktivasi(loginIdMentah: string, verifikasi: string): Promise<HasilVerifikasi> {
+  const gagal = (hasil: HasilForm): HasilVerifikasi => ({ ok: false, hasil });
+  const loginId = normalisasiLoginId(loginIdMentah);
   const kunciBatas = `aktivasi:${loginId}`;
 
-  if (await ipTerlaluBanyakGagal()) return { galat: GALAT_IP };
+  if (await ipTerlaluBanyakGagal()) return gagal({ galat: GALAT_IP });
   // NIK sebagian bisa ditebak dari NIP (tanggal lahir, jenis kelamin): batas ketat 3 gagal per 24 jam per NIP.
   if ((await gagalTerakhir(kunciBatas, JENDELA_AKTIVASI_MS)) >= MAKS_GAGAL_AKTIVASI) {
-    return { galat: "Terlalu banyak percobaan aktivasi untuk NIP ini. Coba lagi besok atau minta kode aktivasi ke Kepegawaian." };
+    return gagal({ galat: "Terlalu banyak percobaan aktivasi untuk NIP ini. Coba lagi besok atau minta kode aktivasi ke Kepegawaian." });
   }
 
   const nipDiketik = /^\d+$/.test(loginId);
   if (nipDiketik) {
     const cek = parseNip(loginId);
-    if (!cek.ok) return { galatField: { loginId: cek.galat } };
+    if (!cek.ok) return gagal({ galatField: { loginId: cek.galat } });
   }
 
   const pegawai = await db.pegawai.findFirst({
@@ -127,11 +213,11 @@ async function prosesAktivasi(data: { loginId: string; verifikasi: string; passw
   // Satu pesan untuk NIP tak terdaftar, akun sudah aktif, dan verifikasi salah: tidak membocorkan NIP mana yang terdaftar.
   if (!pegawai) {
     await catatPercobaan(kunciBatas, false, "AKTIVASI_TIDAK_TERDAFTAR");
-    return { galat: GALAT_AKTIVASI };
+    return gagal({ galat: GALAT_AKTIVASI });
   }
   if (pegawai.user) {
     await catatPercobaan(kunciBatas, false, "AKTIVASI_AKUN_SUDAH_ADA", pegawai.user.id);
-    return { galat: GALAT_AKTIVASI };
+    return gagal({ galat: GALAT_AKTIVASI });
   }
 
   // Faktor kedua: NIK yang tercatat, atau kode aktivasi dari Kepegawaian.
@@ -150,20 +236,23 @@ async function prosesAktivasi(data: { loginId: string; verifikasi: string; passw
   }
   if (!cocok) {
     await catatPercobaan(kunciBatas, false, "AKTIVASI_VERIFIKASI_SALAH");
-    return { galat: GALAT_AKTIVASI };
+    return gagal({ galat: GALAT_AKTIVASI });
   }
+  return { ok: true, pegawai, kodeDipakaiId, kunciBatas };
+}
 
+/** Membuat akun untuk pegawai yang lolos verifikasi aktivasi, lalu langsung masuk. */
+async function buatAkun(cek: Extract<HasilVerifikasi, { ok: true }>, akun: { passwordHash: string; googleSub?: string; googleEmail?: string }) {
+  const { pegawai, kodeDipakaiId } = cek;
   const user = await db.$transaction(async (tx) => {
-    const u = await tx.user.create({
-      data: { loginId: pegawai.nip ?? pegawai.idNonAsn!, pegawaiId: pegawai.id, passwordHash: await hashPassword(password) },
-    });
+    const u = await tx.user.create({ data: { loginId: pegawai.nip ?? pegawai.idNonAsn!, pegawaiId: pegawai.id, ...akun } });
     if (kodeDipakaiId) await tx.kodeAktivasi.update({ where: { id: kodeDipakaiId }, data: { dipakaiPada: new Date() } });
-    await catatAudit({ userId: u.id, aksi: "AKTIVASI_AKUN", entitas: "users", entitasId: u.id, sesudah: { loginId: u.loginId, via: kodeDipakaiId ? "kode" : "nik" } }, tx);
+    const via = `${kodeDipakaiId ? "kode" : "nik"}${akun.googleSub ? "+google" : ""}`;
+    await catatAudit({ userId: u.id, aksi: "AKTIVASI_AKUN", entitas: "users", entitasId: u.id, sesudah: { loginId: u.loginId, via } }, tx);
     return u;
   });
-  await catatPercobaan(kunciBatas, true, "AKTIVASI_BERHASIL", user.id);
+  await catatPercobaan(cek.kunciBatas, true, "AKTIVASI_BERHASIL", user.id);
   await buatSesi(user.id);
-  redirect("/beranda");
 }
 
 export async function keluar(): Promise<void> {

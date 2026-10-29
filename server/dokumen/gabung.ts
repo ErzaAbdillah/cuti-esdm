@@ -38,7 +38,7 @@ export class GalatGabung extends Error {}
 export async function gabungkanPdf(daftar: BerkasGabung[]): Promise<Uint8Array> {
   const hasil = await PDFDocument.create();
   hasil.setTitle("Dokumen gabungan");
-  hasil.setProducer("Absensi & Cuti ESDM Kalsel");
+  hasil.setProducer("Layanan Cuti ESDM Kalsel");
 
   for (const d of daftar) {
     const isi = await bacaBerkas(d);

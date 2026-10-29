@@ -2,8 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { cidrValid } from "@/lib/domain/jaringan";
-import { parseJam } from "@/lib/domain/status-absen";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { DEF_PENGATURAN, type DefPengaturan } from "@/lib/pengaturan";
 import type { HasilForm } from "@/lib/validasi/auth";
@@ -30,10 +28,6 @@ function bacaNilai(d: DefPengaturan, fd: FormData): { nilai: Prisma.InputJsonVal
       if (!Number.isInteger(n) || n < 0 || n > 10_000) return { galat: "Isi bilangan bulat ≥ 0." };
       return { nilai: n };
     }
-    case "jam":
-      if (teks === "") return { nilai: null };
-      if (parseJam(teks) == null) return { galat: "Format jam JJ:MM, mis. 07:30." };
-      return { nilai: teks.replace(".", ":").padStart(5, "0") };
     case "daftar-hari": {
       const hari = [...new Set(mentah.map(Number))].filter((h) => h >= 1 && h <= 7).sort();
       if (hari.length === 0) return { galat: "Pilih minimal satu hari kerja." };
@@ -41,10 +35,6 @@ function bacaNilai(d: DefPengaturan, fd: FormData): { nilai: Prisma.InputJsonVal
     }
     case "daftar-teks": {
       const daftar = teks.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
-      if (d.kunci === "absen.jaringan_kantor") {
-        const salah = daftar.find((c) => !cidrValid(c));
-        if (salah) return { galat: `"${salah}" bukan IP/CIDR IPv4 yang valid.` };
-      }
       return { nilai: daftar };
     }
   }

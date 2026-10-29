@@ -2,7 +2,6 @@ import "server-only";
 import { tentukanLevelSurat } from "@/lib/domain/level-surat";
 import { formatNip } from "@/lib/domain/nip";
 import { namaLengkap, pangkatTampil } from "@/lib/domain/pegawai";
-import type { StatusAbsen } from "@/lib/generated/prisma/enums";
 import { samarkanAlamat, samarkanHp, samarkanNik } from "@/lib/samaran";
 import { hariIniWita } from "@/lib/tanggal";
 import { type PenggunaSaatIni, punyaPeran } from "../auth/pengguna";
@@ -15,7 +14,6 @@ export function bolehLihatPegawai(u: PenggunaSaatIni, pegawaiId: string): boolea
 export async function detailPegawai(id: string) {
   const hariIni = hariIniWita();
   const tahun = hariIni.getUTCFullYear();
-  const awalBulan = new Date(Date.UTC(tahun, hariIni.getUTCMonth(), 1));
 
   const p = await db.pegawai.findUnique({
     where: { id },
@@ -32,9 +30,8 @@ export async function detailPegawai(id: string) {
   });
   if (!p) return null;
 
-  const [mapping, rekapAbsen, jumlahDokumen] = await Promise.all([
+  const [mapping, jumlahDokumen] = await Promise.all([
     db.mappingEselon.findMany({ where: { jenisJabatan: "STRUKTURAL" } }),
-    db.absensi.groupBy({ by: ["status"], where: { pegawaiId: id, tanggal: { gte: awalBulan, lte: hariIni } }, _count: true }),
     db.dokumen.count({ where: { pemilikPegawaiId: id, ruang: "PRIBADI", dihapusPada: null } }),
   ]);
 
@@ -72,8 +69,6 @@ export async function detailPegawai(id: string) {
     tahun,
     saldo: p.saldoCuti[0] ?? null,
     pengajuan: p.pengajuanCuti,
-    rekapAbsen: Object.fromEntries(rekapAbsen.map((r) => [r.status, r._count])) as Partial<Record<StatusAbsen, number>>,
-    awalBulan,
     jumlahDokumen,
     akun: p.user
       ? {
@@ -83,6 +78,7 @@ export async function detailPegawai(id: string) {
           terkunciSampai: p.user.terkunciSampai && p.user.terkunciSampai > new Date() ? p.user.terkunciSampai : null,
           terakhirLogin: p.user.terakhirLogin,
           wajibGantiPassword: p.user.wajibGantiPassword,
+          googleEmail: p.user.googleEmail,
           peran: p.user.peran.map((r) => r.peran),
         }
       : null,

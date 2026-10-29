@@ -40,6 +40,21 @@ export const skemaGantiPassword = z
   .refine((d) => d.password === d.konfirmasi, { path: ["konfirmasi"], message: "Konfirmasi password tidak sama." })
   .refine((d) => d.password !== d.passwordLama, { path: ["password"], message: "Password baru harus berbeda dari yang lama." });
 
+/** Lupa password lewat Google: password baru tanpa password lama. */
+export const skemaPasswordBaru = z
+  .object({ password: passwordBaru, konfirmasi: z.string() })
+  .refine((d) => d.password === d.konfirmasi, { path: ["konfirmasi"], message: "Konfirmasi password tidak sama." });
+
+/** Menghubungkan akun Google: akun baru (NIP + NIK/kode) atau akun lama (NIP + password). */
+export const skemaGoogleBaru = z.object({
+  loginId: z.string().trim().min(1, "Isi NIP atau ID pegawai.").max(64),
+  verifikasi: z.string().trim().min(1, "Isi NIK atau kode aktivasi.").max(32),
+});
+export const skemaGoogleLama = z.object({
+  loginId: z.string().trim().min(1, "Isi NIP atau ID pegawai.").max(64),
+  password: z.string().min(1, "Isi password.").max(128),
+});
+
 /** Kumpulkan galat zod per field untuk ditampilkan di form. */
 export function galatPerField(e: z.ZodError): Partial<Record<string, string>> {
   const hasil: Record<string, string> = {};

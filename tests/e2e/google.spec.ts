@@ -56,6 +56,44 @@ test("akun lama: hubungkan Google dengan NIP + password, lalu putuskan dari prof
   await expect(page.getByRole("link", { name: "Hubungkan akun Google" })).toBeVisible();
 });
 
+test("lupa password akun lama: NIK salah ditolak dengan pesan umum", async ({ page, context, baseURL }) => {
+  await context.addCookies([{ name: "g-tertunda", value: cookieTertunda({ sub: `uji-${Date.now()}`, email: "lupa@gmail.com" }), url: baseURL! }]);
+  await page.goto("/daftar/google?lupa=1");
+  await expect(page.getByRole("tab", { name: "Lupa password" })).toHaveAttribute("aria-selected", "true");
+  // NIP tak terdaftar: tidak menyentuh batas percobaan akun demo.
+  await page.getByLabel("NIP / ID Pegawai").fill("PJLP-TIDAK-ADA");
+  await page.getByLabel("NIK").fill("9999000000000000");
+  await page.getByRole("button", { name: "Verifikasi & buat password baru" }).click();
+  await expect(page.getByText(/Verifikasi gagal: NIP atau NIK tidak cocok/)).toBeVisible();
+});
+
+/** Butuh E2E_DATABASE_URL (DB yang sama dengan server uji) untuk membaca NIK akun demo. */
+test("lupa password akun lama: NIP + NIK → Google terhubung → password baru tanpa password lama", async ({ page, context, baseURL }) => {
+  test.skip(!PASSWORD || !process.env.E2E_DATABASE_URL, "SEED_PASSWORD_DEV / E2E_DATABASE_URL belum diisi");
+  const { Client } = await import("pg");
+  const pg = new Client({ connectionString: process.env.E2E_DATABASE_URL });
+  await pg.connect();
+  const { rows } = await pg.query<{ nik: string }>("select nik from pegawai where nip = $1", [NIP.staf]);
+  await pg.end();
+
+  const email = `lupa-${Date.now()}@gmail.com`;
+  await context.addCookies([{ name: "g-tertunda", value: cookieTertunda({ sub: `uji-${Date.now()}`, email }), url: baseURL! }]);
+  await page.goto("/daftar/google?lupa=1");
+  await page.getByLabel("NIP / ID Pegawai").fill(NIP.staf);
+  await page.getByLabel("NIK").fill(rows[0].nik);
+  await page.getByRole("button", { name: "Verifikasi & buat password baru" }).click();
+  await expect(page).toHaveURL(/\/profil\?atur=1/);
+  await expect(page.getByLabel("Password lama")).toHaveCount(0);
+  // Kembalikan ke password seed agar tes lain tetap jalan.
+  await page.getByLabel("Password baru", { exact: true }).fill(PASSWORD);
+  await page.getByLabel("Ulangi password baru").fill(PASSWORD);
+  await page.getByRole("button", { name: "Simpan password" }).click();
+  await expect(page.getByText(/Password baru tersimpan/)).toBeVisible();
+  await expect(page.getByText(`Terhubung dengan ${email}`)).toBeVisible();
+  await page.getByRole("button", { name: "Putuskan Google" }).click();
+  await expect(page.getByText("Akun Google sudah diputus dari akun ini.")).toBeVisible();
+});
+
 test("tanpa Google terhubung: login biasa tetap jalan", async ({ page }) => {
   test.skip(!PASSWORD, "SEED_PASSWORD_DEV belum diisi di .env");
   await masuk(page, NIP.staf);

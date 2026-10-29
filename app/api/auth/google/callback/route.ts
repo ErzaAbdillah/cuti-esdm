@@ -25,7 +25,7 @@ export async function GET(req: Request) {
   // Belum terhubung: verifikasi NIP + NIK/kode (akun baru) atau NIP + password (akun lama) dulu.
   if (!pemilik) {
     await simpanIdentitasTertunda({ sub: g.sub, email: g.email });
-    redirect("/daftar/google");
+    redirect(g.mode === "reset" ? "/daftar/google?lupa=1" : "/daftar/google");
   }
   if (!pemilik.aktif) {
     await catatPercobaan(pemilik.loginId, false, "GOOGLE_AKUN_NONAKTIF", pemilik.id);

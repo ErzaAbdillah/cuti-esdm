@@ -17,7 +17,7 @@ import {
 } from "@/lib/validasi/auth";
 import { catatAudit } from "../audit";
 import { catatPercobaan, gagalTerakhir, ipTerlaluBanyakGagal, LAMA_KUNCI_MS, MAKS_GAGAL_AKUN } from "../auth/batas-login";
-import { bacaIdentitasTertunda, bolehAturPassword, hapusIdentitasTertunda, hapusIzinAturPassword } from "../auth/google";
+import { bacaIdentitasTertunda, bolehAturPassword, hapusIdentitasTertunda, hapusIzinAturPassword, izinkanAturPassword } from "../auth/google";
 import { wajibLogin } from "../auth/pengguna";
 import { buatSesi, hapusSesi, hapusSesiLain } from "../auth/sesi";
 import { db } from "../db";
@@ -26,6 +26,8 @@ const GALAT_KREDENSIAL = "NIP/ID atau password salah.";
 const GALAT_IP = "Terlalu banyak percobaan gagal dari jaringan ini. Coba lagi dalam 15 menit.";
 const GALAT_AKTIVASI =
   "Aktivasi gagal: NIP, NIK, atau kode aktivasi tidak cocok, atau akun sudah pernah diaktifkan. Bila akun sudah aktif, silakan masuk; bila belum, minta kode aktivasi ke Kepegawaian.";
+const GALAT_PEMULIHAN =
+  "Verifikasi gagal: NIP atau NIK tidak cocok, atau akun ini sudah terhubung ke akun Google lain. Jika NIK Anda belum tercatat, hubungi Kepegawaian.";
 const MAKS_GAGAL_AKTIVASI = 3;
 const JENDELA_AKTIVASI_MS = 24 * 60 * 60 * 1000;
 
@@ -146,6 +148,40 @@ export async function hubungkanGoogleAkunLama(_: HasilForm, formData: FormData):
   redirect(user.wajibGantiPassword ? "/profil?wajib=1" : "/beranda");
 }
 
+/**
+ * Akun lama yang lupa password: buktikan dengan NIP + NIK (atau kode dari
+ * Kepegawaian), hubungkan Google, lalu langsung ke form password baru.
+ * Tanpa campur tangan admin.
+ */
+export async function pulihkanDenganGoogle(_: HasilForm, formData: FormData): Promise<HasilForm> {
+  const nilai = { loginId: String(formData.get("loginId") ?? ""), verifikasi: String(formData.get("verifikasi") ?? "") };
+  const g = await bacaIdentitasTertunda();
+  if (!g) return { galat: GALAT_GOOGLE_KEDALUWARSA, nilai };
+  const parsed = skemaGoogleBaru.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { galatField: galatPerField(parsed.error), nilai };
+  if (await db.user.findUnique({ where: { googleSub: g.sub } })) return { galat: "Akun Google ini sudah terhubung. Silakan masuk dengan Google.", nilai };
+
+  const cek = await verifikasiAktivasi(parsed.data.loginId, parsed.data.verifikasi, "pemulihan");
+  if (!cek.ok) return { ...cek.hasil, nilai };
+  const userId = cek.pegawai.user!.id;
+  await db.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: userId },
+      data: { googleSub: g.sub, googleEmail: g.email, gagalBerturut: 0, terkunciSampai: null, terakhirLogin: new Date() },
+    });
+    if (cek.kodeDipakaiId) await tx.kodeAktivasi.update({ where: { id: cek.kodeDipakaiId }, data: { dipakaiPada: new Date() } });
+    await catatAudit(
+      { userId, aksi: "PULIHKAN_AKUN_GOOGLE", entitas: "users", entitasId: userId, sesudah: { googleEmail: g.email, via: cek.kodeDipakaiId ? "kode" : "nik" } },
+      tx,
+    );
+  });
+  await catatPercobaan(cek.kunciBatas, true, "PEMULIHAN_BERHASIL", userId);
+  await hapusIdentitasTertunda();
+  await buatSesi(userId);
+  await izinkanAturPassword(userId);
+  redirect("/profil?atur=1");
+}
+
 /** Putuskan Google dari akun sendiri (masuk tetap bisa dengan NIP + password). */
 export async function putuskanGoogle(): Promise<void> {
   const u = await wajibLogin({ lewatiWajibGanti: true });
@@ -182,14 +218,23 @@ async function prosesAktivasi(data: { loginId: string; verifikasi: string; passw
 }
 
 type HasilVerifikasi =
-  | { ok: true; pegawai: { id: string; nip: string | null; idNonAsn: string | null }; kodeDipakaiId: string | null; kunciBatas: string }
+  | {
+      ok: true;
+      pegawai: { id: string; nip: string | null; idNonAsn: string | null; user: { id: string } | null };
+      kodeDipakaiId: string | null;
+      kunciBatas: string;
+    }
   | { ok: false; hasil: HasilForm };
 
 /**
- * Pemeriksaan aktivasi bersama (password maupun Google): NIP/ID pegawai aktif
- * tanpa akun + faktor kedua (NIK tercatat atau kode aktivasi dari Kepegawaian).
+ * Pemeriksaan NIP/ID + faktor kedua (NIK tercatat atau kode aktivasi dari
+ * Kepegawaian), bersama untuk aktivasi (pegawai belum punya akun) dan
+ * pemulihan lupa password (akun aktif yang belum terhubung Google). Keduanya
+ * berbagi batas 3 gagal per NIP per 24 jam agar NIK tidak bisa ditebak dua kali lipat.
  */
-async function verifikasiAktivasi(loginIdMentah: string, verifikasi: string): Promise<HasilVerifikasi> {
+async function verifikasiAktivasi(loginIdMentah: string, verifikasi: string, untuk: "aktivasi" | "pemulihan" = "aktivasi"): Promise<HasilVerifikasi> {
+  const pemulihan = untuk === "pemulihan";
+  const GALAT = pemulihan ? GALAT_PEMULIHAN : GALAT_AKTIVASI;
   const gagal = (hasil: HasilForm): HasilVerifikasi => ({ ok: false, hasil });
   const loginId = normalisasiLoginId(loginIdMentah);
   const kunciBatas = `aktivasi:${loginId}`;
@@ -210,14 +255,19 @@ async function verifikasiAktivasi(loginIdMentah: string, verifikasi: string): Pr
     where: nipDiketik ? { nip: loginId, aktif: true } : { idNonAsn: { equals: loginId, mode: "insensitive" }, aktif: true },
     include: { user: true, kodeAktivasi: { where: { dipakaiPada: null, kedaluwarsaPada: { gt: new Date() } } } },
   });
-  // Satu pesan untuk NIP tak terdaftar, akun sudah aktif, dan verifikasi salah: tidak membocorkan NIP mana yang terdaftar.
+  // Satu pesan untuk NIP tak terdaftar, status akun yang tidak sesuai, dan verifikasi salah: tidak membocorkan NIP mana yang terdaftar.
   if (!pegawai) {
     await catatPercobaan(kunciBatas, false, "AKTIVASI_TIDAK_TERDAFTAR");
-    return gagal({ galat: GALAT_AKTIVASI });
+    return gagal({ galat: GALAT });
   }
-  if (pegawai.user) {
+  if (!pemulihan && pegawai.user) {
     await catatPercobaan(kunciBatas, false, "AKTIVASI_AKUN_SUDAH_ADA", pegawai.user.id);
-    return gagal({ galat: GALAT_AKTIVASI });
+    return gagal({ galat: GALAT });
+  }
+  // Pemulihan hanya untuk akun aktif yang belum terhubung Google; yang sudah terhubung memakai Google-nya sendiri.
+  if (pemulihan && (!pegawai.user || !pegawai.user.aktif || pegawai.user.googleSub)) {
+    await catatPercobaan(kunciBatas, false, "PEMULIHAN_AKUN_TIDAK_SESUAI", pegawai.user?.id);
+    return gagal({ galat: GALAT });
   }
 
   // Faktor kedua: NIK yang tercatat, atau kode aktivasi dari Kepegawaian.
@@ -236,7 +286,7 @@ async function verifikasiAktivasi(loginIdMentah: string, verifikasi: string): Pr
   }
   if (!cocok) {
     await catatPercobaan(kunciBatas, false, "AKTIVASI_VERIFIKASI_SALAH");
-    return gagal({ galat: GALAT_AKTIVASI });
+    return gagal({ galat: GALAT });
   }
   return { ok: true, pegawai, kodeDipakaiId, kunciBatas };
 }

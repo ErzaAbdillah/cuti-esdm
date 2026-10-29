@@ -8,18 +8,22 @@ import { cookies } from "next/headers";
  * izin atur ulang password disimpan di cookie httpOnly bertanda tangan HMAC
  * yang berumur 10 menit.
  *
- * Env: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, APP_URL. Redirect URI yang
+ * Env: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET (atau CLIENT_ID_/CLIENT_SECRET_
+ * yang terlanjur dibuat di Vercel), APP_URL. Redirect URI yang
  * didaftarkan di Google Cloud: `${APP_URL}/api/auth/google/callback`.
  */
 export type ModeGoogle = "masuk" | "hubungkan" | "reset";
 export const MODE_GOOGLE: readonly ModeGoogle[] = ["masuk", "hubungkan", "reset"];
+
+const idKlien = () => process.env.GOOGLE_CLIENT_ID || process.env.CLIENT_ID_ || "";
+const rahasiaKlien = () => process.env.GOOGLE_CLIENT_SECRET || process.env.CLIENT_SECRET_ || "";
 
 const URL_OTORISASI = "https://accounts.google.com/o/oauth2/v2/auth";
 const URL_TOKEN = "https://oauth2.googleapis.com/token";
 const UMUR_MS = 10 * 60 * 1000;
 
 export function googleAktif(): boolean {
-  return !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.APP_URL);
+  return !!(idKlien() && rahasiaKlien() && process.env.APP_URL);
 }
 
 const appUrl = () => (process.env.APP_URL ?? "").replace(/\/$/, "");
@@ -29,7 +33,7 @@ const b64 = (b: Buffer) => b.toString("base64url");
 
 /** Kunci HMAC diturunkan dari client secret, terpisah per keperluan. */
 function kunci(): Buffer {
-  return Buffer.from(hkdfSync("sha256", process.env.GOOGLE_CLIENT_SECRET ?? "", "cuti-esdm", "cookie-google", 32));
+  return Buffer.from(hkdfSync("sha256", rahasiaKlien(), "cuti-esdm", "cookie-google", 32));
 }
 
 function tanda(data: object): string {
@@ -69,7 +73,7 @@ export async function mulaiGoogle(mode: ModeGoogle): Promise<string> {
   const nonce = b64(randomBytes(24));
   await pasang("g-alur", { state, verifier, nonce, mode });
   const q = new URLSearchParams({
-    client_id: process.env.GOOGLE_CLIENT_ID!,
+    client_id: idKlien(),
     redirect_uri: `${appUrl()}/api/auth/google/callback`,
     response_type: "code",
     scope: "openid email profile",
@@ -103,8 +107,8 @@ export async function selesaikanGoogle(q: URLSearchParams): Promise<({ ok: true;
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       code,
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+      client_id: idKlien(),
+      client_secret: rahasiaKlien(),
       redirect_uri: `${appUrl()}/api/auth/google/callback`,
       grant_type: "authorization_code",
       code_verifier: alur.verifier,
@@ -123,7 +127,7 @@ export async function selesaikanGoogle(q: URLSearchParams): Promise<({ ok: true;
   }
   const sah =
     (k.iss === "https://accounts.google.com" || k.iss === "accounts.google.com") &&
-    k.aud === process.env.GOOGLE_CLIENT_ID &&
+    k.aud === idKlien() &&
     typeof k.exp === "number" &&
     k.exp * 1000 > Date.now() &&
     k.nonce === alur.nonce &&

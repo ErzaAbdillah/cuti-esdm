@@ -32,6 +32,8 @@ export const penggunaSaatIni = cache(async (): Promise<PenggunaSaatIni | null> =
   if (!sesi) return null;
 
   const peran = new Set<PeranEfektif>(sesi.user.peran.map((p) => p.peran as Peran));
+  // Admin mendapat semua akses peran yang bisa diberikan (termasuk Kepegawaian).
+  if (peran.has("ADMIN")) peran.add("KEPEGAWAIAN");
   let pegawai: PenggunaSaatIni["pegawai"] = null;
 
   if (sesi.user.pegawaiId) {

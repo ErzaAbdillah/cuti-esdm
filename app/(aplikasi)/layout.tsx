@@ -2,6 +2,7 @@ import { BellIcon } from "lucide-react";
 import Link from "next/link";
 import { MenuPengguna } from "@/components/tata-letak/menu-pengguna";
 import { MenuSeluler, SidebarDesktop } from "@/components/tata-letak/navigasi";
+import { TombolTema } from "@/components/tata-letak/tombol-tema";
 import { menuUntuk } from "@/lib/menu";
 import { LABEL_PERAN } from "@/lib/peran";
 import { wajibLogin } from "@/server/auth/pengguna";
@@ -30,6 +31,7 @@ export default async function LayoutAplikasi({ children }: LayoutProps<"/">) {
             <p className="truncate text-sm font-bold text-judul">Layanan Cuti ESDM</p>
           </div>
           <div className="hidden flex-1 lg:block" />
+          <TombolTema />
           <Link
             href="/notifikasi"
             className="relative flex size-10 items-center justify-center rounded-xl text-judul hover:bg-white/60 focus-visible:outline-2 focus-visible:outline-ring"

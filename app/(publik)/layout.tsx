@@ -1,12 +1,8 @@
 import Image from "next/image";
-import { TombolTema } from "@/components/tata-letak/tombol-tema";
 
 export default function LayoutPublik({ children }: LayoutProps<"/">) {
   return (
-    <main className="relative flex min-h-dvh items-center justify-center px-4 py-14 sm:py-12">
-      <div className="fixed right-4 top-4 z-20 sm:right-6 sm:top-5">
-        <TombolTema />
-      </div>
+    <main className="flex min-h-dvh items-center justify-center px-4 py-8 sm:py-12">
       <div className="grid w-full max-w-4xl items-center gap-8 md:grid-cols-[1fr_minmax(0,26rem)] md:gap-12">
         <section className="flex flex-col items-center text-center md:items-start md:text-left">
           <Image

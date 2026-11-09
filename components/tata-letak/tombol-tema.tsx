@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDownIcon, PaletteIcon } from "lucide-react";
+import { PaletteIcon } from "lucide-react";
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 import {
   DropdownMenu,
@@ -50,6 +50,9 @@ export function PenyediaTema({ awal = TEMA_BAWAAN, children }: { awal?: IdTema; 
 
   useEffect(() => {
     terapkanKeDom(tema);
+    return () => {
+      terapkanKeDom(TEMA_BAWAAN);
+    };
   }, [tema]);
 
   function aturTema(baru: IdTema) {
@@ -69,22 +72,14 @@ export function TombolTema({ className }: { className?: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        aria-label={`Tema tampilan: ${aktif.nama}`}
+        aria-label={`Tema tampilan (${aktif.nama})`}
+        title={`Tema tampilan: ${aktif.nama}`}
         className={cn(
-          "inline-flex h-9 items-center gap-2 rounded-xl border border-border bg-white/70 px-3 text-xs font-semibold text-judul shadow-xs transition-colors hover:bg-white/60 focus-visible:outline-2 focus-visible:outline-ring",
+          "relative flex size-10 items-center justify-center rounded-xl text-judul hover:bg-white/60 focus-visible:outline-2 focus-visible:outline-ring",
           className,
         )}
       >
-        <PaletteIcon className="size-4 text-primary" aria-hidden />
-        <span>
-          Tema<span className="hidden sm:inline">: {aktif.nama}</span>
-        </span>
-        <span
-          className="size-2.5 rounded-full ring-1 ring-foreground/25"
-          style={{ backgroundColor: aktif.warna.accent }}
-          aria-hidden
-        />
-        <ChevronDownIcon className="size-3.5 text-slate-500" aria-hidden />
+        <PaletteIcon className="size-5" aria-hidden />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64 min-w-64">
         <DropdownMenuLabel>Pilih Tema Tampilan</DropdownMenuLabel>

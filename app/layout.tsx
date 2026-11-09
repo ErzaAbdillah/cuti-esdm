@@ -1,11 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import { cookies } from "next/headers";
 import { connection } from "next/server";
-import { PenyediaTema } from "@/components/tata-letak/tombol-tema";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { KUKI_TEMA, normalisasiTema } from "@/lib/tema";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -30,15 +27,11 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   // Semua halaman dirender dinamis agar skrip Next.js mendapat nonce CSP dari proxy.ts.
   await connection();
-  const kuki = await cookies();
-  const tema = normalisasiTema(kuki.get(KUKI_TEMA)?.value);
   return (
-    <html lang="id" data-tema={tema} className={`${jakarta.variable} h-full antialiased`}>
+    <html lang="id" className={`${jakarta.variable} h-full antialiased`}>
       <body className="min-h-full">
         <div className="latar-langit" aria-hidden />
-        <PenyediaTema awal={tema}>
-          <TooltipProvider>{children}</TooltipProvider>
-        </PenyediaTema>
+        <TooltipProvider>{children}</TooltipProvider>
         <Toaster richColors position="top-center" />
       </body>
     </html>

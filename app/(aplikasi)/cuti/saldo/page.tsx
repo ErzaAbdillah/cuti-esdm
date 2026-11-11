@@ -7,14 +7,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { hariIniWita } from "@/lib/tanggal";
 import { cn } from "@/lib/utils";
-import { wajibPeran } from "@/server/auth/pengguna";
+import { wajibHakAkses } from "@/server/auth/pengguna";
 import { rekapCutiTahunan } from "@/server/kueri/saldo";
 import { GRUP_PJLP, semuaGrup } from "@/server/kueri/grup-pegawai";
 
 export const metadata: Metadata = { title: "Saldo Cuti" };
 
 export default async function SaldoCuti({ searchParams }: PageProps<"/cuti/saldo">) {
-  await wajibPeran("KEPEGAWAIAN");
+  await wajibHakAkses("KELOLA_SALDO_CUTI");
   const sp = await searchParams;
   const tahunIni = hariIniWita().getUTCFullYear();
   const t = Number(sp.tahun);

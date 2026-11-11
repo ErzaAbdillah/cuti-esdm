@@ -51,6 +51,14 @@ enum Peran {
   KEPEGAWAIAN
 }
 
+enum HakAkses {
+  KELOLA_SALDO_CUTI
+  PROSES_CUTI
+  KELOLA_PEGAWAI
+  KELOLA_DOKUMEN_ORGANISASI
+  PENGATURAN_ADMIN
+}
+
 enum PeranAkses {
   PEGAWAI
   ATASAN
@@ -194,6 +202,7 @@ model User {
 
   pegawai           Pegawai?              @relation(fields: [pegawaiId], references: [id])
   peran             UserPeran[]
+  hakAkses          UserHakAkses[]
   sesi              Sesi[]
   notifikasi        Notifikasi[]
   riwayatCuti       RiwayatStatusCuti[]
@@ -217,6 +226,16 @@ model UserPeran {
 
   @@id([userId, peran])
   @@map("user_peran")
+}
+
+model UserHakAkses {
+  userId   String   @map("user_id") @db.Uuid
+  hakAkses HakAkses @map("hak_akses")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, hakAkses])
+  @@map("user_hak_akses")
 }
 
 /// id = SHA-256 dari token cookie; token mentah tidak pernah disimpan.

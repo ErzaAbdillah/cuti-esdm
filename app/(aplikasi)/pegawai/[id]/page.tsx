@@ -14,7 +14,7 @@ import { saldoTersedia, totalHak } from "@/lib/domain/saldo-cuti";
 import { LABEL_LEVEL_SURAT, LABEL_STATUS_CUTI, WARNA_STATUS_CUTI } from "@/lib/label";
 import { formatTanggal } from "@/lib/tanggal";
 import { cn } from "@/lib/utils";
-import { punyaPeran, wajibLogin } from "@/server/auth/pengguna";
+import { punyaHakAkses, wajibLogin } from "@/server/auth/pengguna";
 import { bolehLihatPegawai, detailPegawai } from "@/server/kueri/pegawai-detail";
 
 export const metadata: Metadata = { title: "Detail Pegawai" };
@@ -41,8 +41,8 @@ export default async function HalamanDetailPegawai({ params, searchParams }: Pag
   if (!p) notFound();
   const { disimpan } = await searchParams;
 
-  const kepegawaian = punyaPeran(u, "KEPEGAWAIAN");
-  const staf = punyaPeran(u, "KEPEGAWAIAN", "ADMIN");
+  const kepegawaian = punyaHakAkses(u, "KELOLA_PEGAWAI");
+  const staf = punyaHakAkses(u, "KELOLA_PEGAWAI", "PENGATURAN_ADMIN");
 
   return (
     <div className="grid gap-5">
@@ -193,7 +193,7 @@ export default async function HalamanDetailPegawai({ params, searchParams }: Pag
                     }
                   }
                   kodeAktivasiAktifSampai={p.kodeAktivasiAktifSampai?.toISOString() ?? null}
-                  bolehKelolaAkun={punyaPeran(u, "ADMIN")}
+                  bolehKelolaAkun={punyaHakAkses(u, "PENGATURAN_ADMIN")}
                   bolehBuatKode={staf}
                 />
               </CardContent>

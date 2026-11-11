@@ -6,13 +6,13 @@ import { formatUkuran, LABEL_KATEGORI } from "@/lib/dokumen";
 import { namaLengkap } from "@/lib/domain/pegawai";
 import { formatTanggalJam } from "@/lib/tanggal";
 import { pulihkanDokumen } from "@/server/aksi/dokumen";
-import { wajibPeran } from "@/server/auth/pengguna";
+import { wajibHakAkses } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
 
 export const metadata: Metadata = { title: "Dokumen Terhapus" };
 
 export default async function DokumenTerhapus() {
-  await wajibPeran("ADMIN");
+  await wajibHakAkses("PENGATURAN_ADMIN");
   const dokumen = await db.dokumen.findMany({
     where: { dihapusPada: { not: null }, ruang: { in: ["PRIBADI", "ORGANISASI"] } },
     include: { pemilik: true, folder: true, dihapusOleh: { include: { pegawai: true } } },

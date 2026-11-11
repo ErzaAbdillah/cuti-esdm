@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { FormPengaturan } from "@/components/admin/form-pengaturan";
 import { DEF_PENGATURAN } from "@/lib/pengaturan";
-import { wajibPeran } from "@/server/auth/pengguna";
+import { wajibHakAkses } from "@/server/auth/pengguna";
 import { semuaPengaturan } from "@/server/pengaturan";
 
 export const metadata: Metadata = { title: "Pengaturan" };
@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Pengaturan" };
 const URUTAN = ["Cuti", "Surat", "Instansi", "Dokumen"] as const;
 
 export default async function HalamanPengaturan() {
-  await wajibPeran("ADMIN");
+  await wajibHakAkses("PENGATURAN_ADMIN");
   const nilai = await semuaPengaturan();
   const kelompok = URUTAN.map((judul) => ({
     judul,

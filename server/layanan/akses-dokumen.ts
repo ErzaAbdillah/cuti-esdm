@@ -1,6 +1,6 @@
 import "server-only";
 import type { PeranAkses } from "@/lib/generated/prisma/enums";
-import { type PenggunaSaatIni, punyaPeran } from "../auth/pengguna";
+import { type PenggunaSaatIni, punyaHakAkses, punyaPeran } from "../auth/pengguna";
 import { db } from "../db";
 import { bolehLihatPengajuan } from "./akses-cuti";
 
@@ -11,9 +11,11 @@ export interface HakFolder {
 
 const peranAkses = (u: PenggunaSaatIni) => [...u.peran] as PeranAkses[];
 
-/** Hak pengguna atas folder: gabungan hak semua perannya. Admin selalu boleh. */
+/** Hak pengguna atas folder: gabungan hak semua perannya. Admin atau pemilik hak KELOLA_DOKUMEN_ORGANISASI selalu boleh. */
 export async function hakFolder(u: PenggunaSaatIni, folderId: string): Promise<HakFolder> {
-  if (punyaPeran(u, "ADMIN")) return { lihat: true, kelola: true };
+  if (punyaPeran(u, "ADMIN") || punyaHakAkses(u, "KELOLA_DOKUMEN_ORGANISASI")) {
+    return { lihat: true, kelola: true };
+  }
   const akses = await db.aksesFolder.findMany({ where: { folderId, peran: { in: peranAkses(u) } } });
   const kelola = akses.some((a) => a.bolehKelola);
   return { lihat: kelola || akses.some((a) => a.bolehLihat), kelola };
@@ -21,21 +23,25 @@ export async function hakFolder(u: PenggunaSaatIni, folderId: string): Promise<H
 
 /** Semua folder yang boleh dilihat, beserta hak kelolanya. */
 export async function folderTerlihat(u: PenggunaSaatIni) {
-  const admin = punyaPeran(u, "ADMIN");
+  const kelolaPenuh = punyaPeran(u, "ADMIN") || punyaHakAkses(u, "KELOLA_DOKUMEN_ORGANISASI");
   const folder = await db.folderDokumen.findMany({
-    where: admin ? {} : { akses: { some: { peran: { in: peranAkses(u) }, OR: [{ bolehLihat: true }, { bolehKelola: true }] } } },
+    where: kelolaPenuh ? {} : { akses: { some: { peran: { in: peranAkses(u) }, OR: [{ bolehLihat: true }, { bolehKelola: true }] } } },
     include: { akses: true, _count: { select: { dokumen: { where: { dihapusPada: null } } } } },
     orderBy: [{ urutan: "asc" }, { nama: "asc" }],
   });
   return folder.map((f) => ({
     ...f,
-    kelola: admin || f.akses.some((a) => a.bolehKelola && u.peran.has(a.peran)),
+    kelola: kelolaPenuh || f.akses.some((a) => a.bolehKelola && u.peran.has(a.peran)),
   }));
 }
 
-/** Dokumen pribadi: pemilik, Kepegawaian, dan Admin (spesifikasi [10], UU PDP). */
+/** Dokumen pribadi: pemilik, Kepegawaian (KELOLA_PEGAWAI), dan Admin (spesifikasi [10], UU PDP). */
 export function bolehDokumenPribadi(u: PenggunaSaatIni, pemilikPegawaiId: string | null): boolean {
-  return (!!u.pegawai && u.pegawai.id === pemilikPegawaiId) || punyaPeran(u, "KEPEGAWAIAN", "ADMIN");
+  return (
+    (!!u.pegawai && u.pegawai.id === pemilikPegawaiId) ||
+    punyaHakAkses(u, "KELOLA_PEGAWAI") ||
+    punyaPeran(u, "KEPEGAWAIAN", "ADMIN")
+  );
 }
 
 type DokumenAkses = {

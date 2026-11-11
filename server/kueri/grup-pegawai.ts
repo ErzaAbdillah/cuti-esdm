@@ -1,6 +1,6 @@
 import "server-only";
 import { unitDaftarHadir } from "@/lib/domain/daftar-hadir";
-import { type PenggunaSaatIni, punyaPeran } from "../auth/pengguna";
+import { type PenggunaSaatIni, punyaHakAkses, punyaPeran } from "../auth/pengguna";
 import { db } from "../db";
 
 export const GRUP_PJLP = "PJLP";
@@ -19,7 +19,7 @@ export async function semuaGrup(): Promise<GrupPegawai[]> {
 /** Kepegawaian & Kepala Dinas: semua grup. Atasan lain: grup unitnya sendiri. */
 export async function grupUntuk(u: PenggunaSaatIni): Promise<GrupPegawai[]> {
   const semua = await semuaGrup();
-  if (punyaPeran(u, "KEPEGAWAIAN")) return semua;
+  if (punyaHakAkses(u, "KELOLA_SALDO_CUTI") || punyaPeran(u, "KEPEGAWAIAN")) return semua;
   if (!punyaPeran(u, "ATASAN") || !u.pegawai) return [];
   const units = await db.unitKerja.findMany({ select: { id: true, parentId: true } });
   const grupSaya = unitDaftarHadir(u.pegawai.unitId, new Map(units.map((x) => [x.id, x])));

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { formatTanggalJam } from "@/lib/tanggal";
 import { cn } from "@/lib/utils";
-import { wajibPeran } from "@/server/auth/pengguna";
+import { wajibHakAkses } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
 
 export const metadata: Metadata = { title: "Log Login" };
@@ -16,7 +16,7 @@ const PER_HALAMAN = 50;
 const teks = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, 60) : "");
 
 export default async function LogLogin({ searchParams }: PageProps<"/admin/log-login">) {
-  await wajibPeran("ADMIN");
+  await wajibHakAkses("PENGATURAN_ADMIN");
   const sp = await searchParams;
   const f = { login: teks(sp.login), ip: teks(sp.ip), hasil: teks(sp.hasil), sebelum: teks(sp.sebelum) };
   const where: Prisma.LogLoginWhereInput = {

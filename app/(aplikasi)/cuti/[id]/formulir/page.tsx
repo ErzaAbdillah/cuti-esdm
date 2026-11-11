@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { FormFormulir } from "@/components/cuti/form-formulir";
 import { kunciTanggal } from "@/lib/domain/hari-kerja";
 import { hariIniWita } from "@/lib/tanggal";
-import { punyaPeran, wajibLogin } from "@/server/auth/pengguna";
+import { punyaHakAkses, punyaPeran, wajibLogin } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
 import { isianFormulir } from "@/server/formulir/data";
 import { opsiPengajuan } from "@/server/kueri/cuti";
@@ -19,7 +19,7 @@ export default async function UbahFormulir({ params }: PageProps<"/cuti/[id]/for
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const p = await db.pengajuanCuti.findUnique({ where: { id }, include: { jenisCuti: true } });
   if (!p) notFound();
-  if (!(u.pegawai?.id === p.pegawaiId || punyaPeran(u, "KEPEGAWAIAN", "ADMIN"))) redirect("/akses-ditolak");
+  if (!(u.pegawai?.id === p.pegawaiId || punyaHakAkses(u, "PROSES_CUTI") || punyaPeran(u, "KEPEGAWAIAN", "ADMIN"))) redirect("/akses-ditolak");
   if (p.status !== "DIAJUKAN") redirect(`/cuti/${id}`);
   const o = await opsiPengajuan(p.pegawaiId);
   const iso = (d: Date) => d.toISOString().slice(0, 10);

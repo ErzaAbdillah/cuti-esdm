@@ -14,7 +14,7 @@ import { namaLengkap } from "@/lib/domain/pegawai";
 import { LABEL_LEVEL_SURAT, LABEL_STATUS_CUTI, LABEL_TAHAP } from "@/lib/label";
 import { formatTanggal, formatTanggalJam, hariIniWita } from "@/lib/tanggal";
 import { cn } from "@/lib/utils";
-import { punyaPeran, wajibLogin } from "@/server/auth/pengguna";
+import { punyaHakAkses, punyaPeran, wajibLogin } from "@/server/auth/pengguna";
 import { bolehLihatPengajuan } from "@/server/layanan/akses-cuti";
 import { tahapPengajuan } from "@/server/layanan/cuti";
 import { bolehPutuskan, modeTahap } from "@/server/layanan/wewenang-cuti";
@@ -45,7 +45,7 @@ export default async function DetailCuti({ params, searchParams }: PageProps<"/c
   const eksternal = tahap === "PEJABAT_BERWENANG" && (await modeTahap(p.levelSurat, tahap)) === "EKSTERNAL";
   const pemutus = tahap ? await bolehPutuskan(u, p, tahap) : false;
   const pemohon = u.pegawai?.id === p.pegawaiId;
-  const bolehTolak = bisaDitolak(p.status) && !pemohon && (pemutus || punyaPeran(u, "KEPEGAWAIAN"));
+  const bolehTolak = bisaDitolak(p.status) && !pemohon && (pemutus || punyaHakAkses(u, "PROSES_CUTI") || punyaPeran(u, "KEPEGAWAIAN"));
   const tujuanEksternal = p.levelSurat === "ESELON_II" ? "Gubernur" : "Kepala BKD";
   const nota = perluNotaDinas(p.levelSurat);
   const daftarSurat = await daftarSuratPengajuan(p);
@@ -115,7 +115,7 @@ export default async function DetailCuti({ params, searchParams }: PageProps<"/c
             </a>
           </Button>
         )}
-        {p.status === "DIAJUKAN" && (pemohon || punyaPeran(u, "KEPEGAWAIAN", "ADMIN")) && (
+        {p.status === "DIAJUKAN" && (pemohon || punyaHakAkses(u, "PROSES_CUTI") || punyaPeran(u, "KEPEGAWAIAN", "ADMIN")) && (
           <Button asChild variant="outline" className="bg-white">
             <Link href={`/cuti/${p.id}/formulir`}>
               <PencilIcon data-icon="inline-start" /> Ubah formulir

@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { FormPegawai } from "@/components/pegawai/form-pegawai";
 import { Card, CardContent } from "@/components/ui/card";
-import { wajibPeran } from "@/server/auth/pengguna";
+import { wajibHakAkses } from "@/server/auth/pengguna";
 import { calonAtasan, NILAI_KOSONG } from "@/server/kueri/form-pegawai";
 import { opsiPegawai } from "@/server/kueri/pegawai";
 
 export const metadata: Metadata = { title: "Tambah Pegawai" };
 
 export default async function TambahPegawai() {
-  await wajibPeran("KEPEGAWAIAN");
+  await wajibHakAkses("KELOLA_PEGAWAI");
   const [opsi, atasan] = await Promise.all([opsiPegawai(), calonAtasan()]);
   return (
     <div className="grid gap-5">

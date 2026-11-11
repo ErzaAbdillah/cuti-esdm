@@ -53,7 +53,7 @@ export const bacaSesi = cache(async () => {
 
   const sesi = await db.sesi.findUnique({
     where: { id: hashToken(token) },
-    include: { user: { include: { peran: true } } },
+    include: { user: { include: { peran: true, hakAkses: true } } },
   });
   if (!sesi) return null;
 

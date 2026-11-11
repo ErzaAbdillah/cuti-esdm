@@ -7,13 +7,13 @@ import { PLACEHOLDER_SURAT } from "@/lib/surat/placeholder";
 import { escapeHtml, hitungBlokIdentitas } from "@/lib/surat/render";
 import type { HasilForm } from "@/lib/validasi/auth";
 import { catatAudit } from "../audit";
-import { punyaPeran, wajibLogin } from "../auth/pengguna";
+import { punyaHakAkses, punyaPeran, wajibLogin } from "../auth/pengguna";
 import { db } from "../db";
 import { sanitasiIsiSurat } from "../surat/sanitasi";
 
 async function wajibAdmin() {
   const u = await wajibLogin();
-  return punyaPeran(u, "ADMIN") ? u : null;
+  return punyaHakAkses(u, "PENGATURAN_ADMIN") || punyaPeran(u, "ADMIN") ? u : null;
 }
 
 const KUNCI_SAH: ReadonlySet<string> = new Set(PLACEHOLDER_SURAT.map((p) => p.kunci));

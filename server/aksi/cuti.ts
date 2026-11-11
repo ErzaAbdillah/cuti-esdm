@@ -10,7 +10,7 @@ import { LABEL_STATUS_CUTI } from "@/lib/label";
 import { formatTanggal, hariIniWita } from "@/lib/tanggal";
 import type { HasilForm } from "@/lib/validasi/auth";
 import { catatAudit } from "../audit";
-import { punyaPeran, wajibLogin } from "../auth/pengguna";
+import { punyaHakAkses, punyaPeran, wajibLogin } from "../auth/pengguna";
 import { db } from "../db";
 import { periksaBerkas, simpanBerkas } from "../dokumen/penyimpanan";
 import { kirimNotifikasi, userDariPegawai, userDenganPeran } from "../notifikasi";
@@ -97,7 +97,7 @@ export async function simpanFormulir(id: string | null, masukan: MasukanFormulir
 
   const lama = id ? await db.pengajuanCuti.findUnique({ where: { id } }) : null;
   if (id && !lama) return { galat: "Pengajuan tidak ditemukan." };
-  if (lama && !(u.pegawai?.id === lama.pegawaiId || punyaPeran(u, "KEPEGAWAIAN", "ADMIN"))) return { galat: "Anda tidak berhak mengubah formulir ini." };
+  if (lama && !(u.pegawai?.id === lama.pegawaiId || punyaHakAkses(u, "PROSES_CUTI") || punyaPeran(u, "KEPEGAWAIAN", "ADMIN"))) return { galat: "Anda tidak berhak mengubah formulir ini." };
   if (lama && lama.status !== "DIAJUKAN") return { galat: "Formulir sudah diproses Kepegawaian dan tidak bisa diubah lagi." };
   const pegawaiId = lama?.pegawaiId ?? u.pegawai?.id;
   if (!pegawaiId) return { galat: "Akun ini tidak terhubung dengan data pegawai." };
@@ -198,7 +198,7 @@ export async function tolakCuti(id: string, alasan: string): Promise<HasilForm> 
   if (alasan.trim().length < 5) return { galat: "Alasan penolakan wajib diisi (min. 5 karakter)." };
   if (!bisaDitolak(p.status)) return { galat: "Pengajuan yang sudah diputuskan pejabat tidak bisa ditolak." };
   const tahap = await tahapPengajuan(p);
-  const boleh = (tahap && (await bolehPutuskan(u, p, tahap))) || (punyaPeran(u, "KEPEGAWAIAN") && u.pegawai?.id !== p.pegawaiId);
+  const boleh = (tahap && (await bolehPutuskan(u, p, tahap))) || ((punyaHakAkses(u, "PROSES_CUTI") || punyaPeran(u, "KEPEGAWAIAN")) && u.pegawai?.id !== p.pegawaiId);
   if (!boleh) return { galat: "Anda tidak berwenang menolak pengajuan ini." };
 
   await db.$transaction(async (tx) => {

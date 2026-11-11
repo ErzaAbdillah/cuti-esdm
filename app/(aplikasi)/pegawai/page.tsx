@@ -8,7 +8,7 @@ import { LABEL_STATUS_KEPEGAWAIAN } from "@/lib/domain/pegawai";
 import { LABEL_LEVEL_SURAT } from "@/lib/label";
 import { queryString } from "@/lib/url";
 import { cn } from "@/lib/utils";
-import { punyaPeran, wajibPeran } from "@/server/auth/pengguna";
+import { punyaHakAkses, wajibHakAkses } from "@/server/auth/pengguna";
 import { bacaFilter, daftarPegawai, type FilterPegawai, opsiPegawai, PER_HALAMAN } from "@/server/kueri/pegawai";
 
 export const metadata: Metadata = { title: "Data Pegawai" };
@@ -44,12 +44,12 @@ function KepalaKolom({ f, kolom, children }: { f: FilterPegawai; kolom: FilterPe
 }
 
 export default async function DaftarPegawai({ searchParams }: PageProps<"/pegawai">) {
-  const u = await wajibPeran("KEPEGAWAIAN", "ADMIN");
+  const u = await wajibHakAkses("KELOLA_PEGAWAI", "PENGATURAN_ADMIN");
   const f = bacaFilter(await searchParams);
   const [{ total, baris }, opsi] = await Promise.all([daftarPegawai(f), opsiPegawai()]);
   const jumlahHalaman = Math.max(1, Math.ceil(total / PER_HALAMAN));
   const qsEkspor = queryString({ ...paramFilter(f), hal: undefined });
-  const kepegawaian = punyaPeran(u, "KEPEGAWAIAN");
+  const kepegawaian = punyaHakAkses(u, "KELOLA_PEGAWAI");
 
   return (
     <div className="grid gap-5">

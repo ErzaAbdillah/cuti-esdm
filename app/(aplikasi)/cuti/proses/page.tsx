@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Pilihan } from "@/components/form/pilihan";
 import { LencanaStatusCuti } from "@/components/umum/lencana";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { namaLengkap } from "@/lib/domain/pegawai";
 import type { StatusCuti } from "@/lib/generated/prisma/enums";
 import { LABEL_LEVEL_SURAT, LABEL_STATUS_CUTI, LABEL_TAHAP } from "@/lib/label";
 import { formatTanggal, formatTanggalJam } from "@/lib/tanggal";
-import { punyaPeran, wajibLogin } from "@/server/auth/pengguna";
+import { punyaHakAkses, punyaPeran, wajibLogin } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
 import { antreanSaya } from "@/server/kueri/cuti";
 
@@ -18,8 +19,9 @@ const SEMUA_STATUS = Object.keys(LABEL_STATUS_CUTI) as StatusCuti[];
 
 export default async function ProsesCuti({ searchParams }: PageProps<"/cuti/proses">) {
   const u = await wajibLogin();
+  if (!(punyaHakAkses(u, "PROSES_CUTI") || punyaPeran(u, "ATASAN"))) redirect("/akses-ditolak");
   const antrean = await antreanSaya(u);
-  const staf = punyaPeran(u, "KEPEGAWAIAN", "ADMIN");
+  const staf = punyaHakAkses(u, "PROSES_CUTI");
   const sp = await searchParams;
   const status = SEMUA_STATUS.includes(sp.status as StatusCuti) ? (sp.status as StatusCuti) : undefined;
   const semua = staf

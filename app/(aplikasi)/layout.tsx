@@ -15,7 +15,7 @@ export default async function LayoutAplikasi({ children }: LayoutProps<"/">) {
   const u = await wajibLogin({ lewatiWajibGanti: true });
   const kuki = await cookies();
   const tema = normalisasiTema(kuki.get(KUKI_TEMA)?.value);
-  const menu = menuUntuk(u.peran);
+  const menu = menuUntuk(u.peran, u.hakAkses);
   const belumDibaca = await db.notifikasi.count({ where: { userId: u.userId, dibacaPada: null } });
 
   const nama = u.pegawai?.namaLengkap ?? u.loginId;

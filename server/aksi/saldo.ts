@@ -7,13 +7,13 @@ import { normalisasiNip } from "@/lib/domain/nip";
 import { saldoTahunBerikut } from "@/lib/domain/saldo-cuti";
 import type { HasilForm } from "@/lib/validasi/auth";
 import { catatAudit } from "../audit";
-import { punyaPeran, wajibLogin } from "../auth/pengguna";
+import { punyaHakAkses, punyaPeran, wajibLogin } from "../auth/pengguna";
 import { db } from "../db";
 import { semuaPengaturan } from "../pengaturan";
 
 async function wajibKepegawaian() {
   const u = await wajibLogin();
-  return punyaPeran(u, "KEPEGAWAIAN") ? u : null;
+  return punyaHakAkses(u, "KELOLA_SALDO_CUTI") || punyaPeran(u, "KEPEGAWAIAN") ? u : null;
 }
 
 const angka = (maks: number) => z.coerce.number().int("Harus bilangan bulat.").min(0, "Tidak boleh negatif.").max(maks);

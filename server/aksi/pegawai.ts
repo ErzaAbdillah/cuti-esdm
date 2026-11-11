@@ -6,7 +6,7 @@ import { Prisma } from "@/lib/generated/prisma/client";
 import { galatPerField, type HasilForm } from "@/lib/validasi/auth";
 import { skemaPegawai } from "@/lib/validasi/pegawai";
 import { catatAudit } from "../audit";
-import { type PenggunaSaatIni, punyaPeran, wajibLogin } from "../auth/pengguna";
+import { type PenggunaSaatIni, punyaHakAkses, punyaPeran, wajibLogin } from "../auth/pengguna";
 import { db } from "../db";
 import { bolehLihatPegawai } from "../kueri/pegawai-detail";
 import { atasanOtomatis } from "../kueri/struktur";
@@ -36,7 +36,7 @@ function pesanUnik(e: unknown): Record<string, string> | null {
 }
 
 function bolehUbah(u: PenggunaSaatIni) {
-  return punyaPeran(u, "KEPEGAWAIAN");
+  return punyaHakAkses(u, "KELOLA_PEGAWAI") || punyaPeran(u, "KEPEGAWAIAN");
 }
 
 export async function simpanPegawai(pegawaiId: string | null, _: HasilForm, formData: FormData): Promise<HasilForm> {

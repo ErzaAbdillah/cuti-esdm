@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatTanggalJam, hariIniWita } from "@/lib/tanggal";
-import { wajibPeran } from "@/server/auth/pengguna";
+import { wajibHakAkses } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
 import { semuaPengaturan, teksPengaturan } from "@/server/pengaturan";
 import type { SnapshotIdentitas } from "@/server/layanan/cuti";
@@ -14,7 +14,7 @@ import type { SnapshotIdentitas } from "@/server/layanan/cuti";
 export const metadata: Metadata = { title: "Penomoran Surat" };
 
 export default async function Penomoran({ searchParams }: PageProps<"/admin/surat/penomoran">) {
-  await wajibPeran("ADMIN");
+  await wajibHakAkses("PENGATURAN_ADMIN");
   const sp = await searchParams;
   const tahunIni = hariIniWita().getUTCFullYear();
   const t = Number(sp.tahun);

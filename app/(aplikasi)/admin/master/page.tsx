@@ -9,7 +9,7 @@ import { LABEL_STATUS_KEPEGAWAIAN } from "@/lib/domain/pegawai";
 import { LABEL_LEVEL_SURAT } from "@/lib/label";
 import { cn } from "@/lib/utils";
 import { simpanAturanCuti, simpanJabatan, simpanJenisCuti, simpanMapping, simpanUnit } from "@/server/aksi/master";
-import { wajibPeran } from "@/server/auth/pengguna";
+import { wajibHakAkses } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
 
 export const metadata: Metadata = { title: "Master Data" };
@@ -46,7 +46,7 @@ function Baris({ action, children }: { action: (fd: FormData) => Promise<void>; 
 }
 
 export default async function MasterData({ searchParams }: PageProps<"/admin/master">) {
-  await wajibPeran("ADMIN");
+  await wajibHakAkses("PENGATURAN_ADMIN");
   const sp = await searchParams;
   const tab: Tab = TAB.some(([k]) => k === sp.tab) ? (sp.tab as Tab) : "cuti";
   const pesan = typeof sp.pesan === "string" ? sp.pesan : null;

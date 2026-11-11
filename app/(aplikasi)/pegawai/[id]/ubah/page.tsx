@@ -3,14 +3,14 @@ import { notFound } from "next/navigation";
 import { FormPegawai } from "@/components/pegawai/form-pegawai";
 import { Card, CardContent } from "@/components/ui/card";
 import { catatAudit } from "@/server/audit";
-import { wajibPeran } from "@/server/auth/pengguna";
+import { wajibHakAkses } from "@/server/auth/pengguna";
 import { calonAtasan, nilaiFormPegawai } from "@/server/kueri/form-pegawai";
 import { opsiPegawai } from "@/server/kueri/pegawai";
 
 export const metadata: Metadata = { title: "Ubah Pegawai" };
 
 export default async function UbahPegawai({ params }: PageProps<"/pegawai/[id]/ubah">) {
-  const u = await wajibPeran("KEPEGAWAIAN");
+  const u = await wajibHakAkses("KELOLA_PEGAWAI");
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const awal = await nilaiFormPegawai(id);

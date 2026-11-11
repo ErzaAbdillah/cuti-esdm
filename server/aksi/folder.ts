@@ -5,7 +5,7 @@ import { z } from "zod";
 import type { PeranAkses } from "@/lib/generated/prisma/enums";
 import type { HasilForm } from "@/lib/validasi/auth";
 import { catatAudit } from "../audit";
-import { punyaPeran, wajibLogin } from "../auth/pengguna";
+import { punyaHakAkses, punyaPeran, wajibLogin } from "../auth/pengguna";
 import { db } from "../db";
 
 const PERAN: PeranAkses[] = ["PEGAWAI", "ATASAN", "KEPEGAWAIAN", "ADMIN"];
@@ -13,7 +13,7 @@ const namaFolder = z.string().trim().min(2, "Isi nama folder.").max(100);
 
 async function wajibAdmin() {
   const u = await wajibLogin();
-  return punyaPeran(u, "ADMIN") ? u : null;
+  return punyaHakAkses(u, "PENGATURAN_ADMIN") || punyaPeran(u, "ADMIN") ? u : null;
 }
 
 /** Matriks hak dari form: `lihat_PEGAWAI`, `kelola_KEPEGAWAIAN`, … (kelola menyiratkan lihat). */

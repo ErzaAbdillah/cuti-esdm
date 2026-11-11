@@ -6,7 +6,7 @@ import { FormTemplate } from "@/components/admin/form-template";
 import { LABEL_LEVEL_SURAT } from "@/lib/label";
 import { TATA_LETAK_DOKUMEN } from "@/lib/surat/placeholder";
 import { formatTanggal, hariIniWita } from "@/lib/tanggal";
-import { wajibPeran } from "@/server/auth/pengguna";
+import { wajibHakAkses } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
 import { teksPengaturan } from "@/server/pengaturan";
 import { kopSurat, LOGO_WEB, penandatanganUntuk } from "@/server/surat/data";
@@ -26,7 +26,7 @@ function barisTujuan(html: string): string[] {
 }
 
 export default async function UbahTemplate({ params }: PageProps<"/admin/surat/template/[id]">) {
-  await wajibPeran("ADMIN");
+  await wajibHakAkses("PENGATURAN_ADMIN");
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const t = await db.templateSurat.findUnique({ where: { id } });

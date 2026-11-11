@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { namaLengkap } from "@/lib/domain/pegawai";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { formatTanggalJam } from "@/lib/tanggal";
-import { wajibPeran } from "@/server/auth/pengguna";
+import { wajibHakAkses } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
 
 export const metadata: Metadata = { title: "Audit Log" };
@@ -17,7 +17,7 @@ const teks = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, 100) : "
 
 /** Jejak perubahan data, akses data sensitif, cetak, dan unduh (UU PDP). Halaman berikutnya memakai kursor id. */
 export default async function AuditLog({ searchParams }: PageProps<"/admin/audit-log">) {
-  await wajibPeran("ADMIN");
+  await wajibHakAkses("PENGATURAN_ADMIN");
   const sp = await searchParams;
   const f = { aksi: teks(sp.aksi), entitas: teks(sp.entitas), pengguna: teks(sp.pengguna), dari: teks(sp.dari), sampai: teks(sp.sampai), sebelum: teks(sp.sebelum) };
 

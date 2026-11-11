@@ -1,15 +1,16 @@
-import { ArchiveRestoreIcon, CalendarXIcon, FileClockIcon, FolderLockIcon, FileSignatureIcon, type LucideIcon, ScrollTextIcon, SettingsIcon, UsersIcon } from "lucide-react";
+import { ArchiveRestoreIcon, CalendarXIcon, FileClockIcon, FolderLockIcon, FileSignatureIcon, type LucideIcon, ScrollTextIcon, SettingsIcon, ShieldCheckIcon, UsersIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { wajibPeran } from "@/server/auth/pengguna";
+import { wajibHakAkses } from "@/server/auth/pengguna";
 
 export const metadata: Metadata = { title: "Admin" };
 
 const MENU: { href: string; judul: string; isi: string; ikon: LucideIcon; tahap?: number }[] = [
+  { href: "/admin/hak-akses", judul: "Hak akses pegawai", isi: "Atur kewenangan fitur pegawai (Saldo Cuti, Proses Cuti, Data Pegawai, Dokumen Organisasi, Admin).", ikon: ShieldCheckIcon },
   { href: "/admin/pengaturan", judul: "Pengaturan", isi: "Hari kerja, aturan cuti, nomor surat, kop instansi, dokumen.", ikon: SettingsIcon },
   { href: "/admin/hari-libur", judul: "Hari libur & cuti bersama", isi: "Daftar libur nasional, cuti bersama, dan libur daerah per tahun.", ikon: CalendarXIcon },
-  { href: "/pegawai", judul: "Pengguna & akun", isi: "Reset password, buka kunci, nonaktifkan akun, dan peran — lewat tab Akun di detail pegawai.", ikon: UsersIcon },
+  { href: "/pegawai", judul: "Pengguna & akun", isi: "Reset password, buka kunci, nonaktifkan akun, dan hak akses — lewat tab Akun di detail pegawai.", ikon: UsersIcon },
   { href: "/admin/surat/template", judul: "Template surat & penandatangan", isi: "Template per eselon, pejabat penandatangan (termasuk Plt.), dan penomoran surat.", ikon: FileSignatureIcon },
   { href: "/admin/folder-dokumen", judul: "Folder dokumen", isi: "Folder dokumen organisasi dan hak lihat/kelola per peran.", ikon: FolderLockIcon },
   { href: "/admin/dokumen-terhapus", judul: "Dokumen terhapus", isi: "Pulihkan dokumen pribadi atau organisasi yang terhapus.", ikon: ArchiveRestoreIcon },
@@ -18,7 +19,7 @@ const MENU: { href: string; judul: string; isi: string; ikon: LucideIcon; tahap?
 ];
 
 export default async function Admin() {
-  await wajibPeran("ADMIN");
+  await wajibHakAkses("PENGATURAN_ADMIN");
   return (
     <div className="grid gap-5">
       <h1 className="text-2xl font-bold tracking-tight text-judul">Admin</h1>

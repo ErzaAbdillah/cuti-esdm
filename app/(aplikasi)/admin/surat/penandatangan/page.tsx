@@ -9,13 +9,13 @@ import { LABEL_LEVEL_SURAT } from "@/lib/label";
 import { formatTanggal, hariIniWita } from "@/lib/tanggal";
 import { cn } from "@/lib/utils";
 import { ubahAktifPenandatangan } from "@/server/aksi/surat-admin";
-import { wajibPeran } from "@/server/auth/pengguna";
+import { wajibHakAkses } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
 
 export const metadata: Metadata = { title: "Penandatangan Surat" };
 
 export default async function Penandatangan() {
-  await wajibPeran("ADMIN");
+  await wajibHakAkses("PENGATURAN_ADMIN");
   const hariIni = hariIniWita();
   const [daftar, pejabat] = await Promise.all([
     db.pejabatPenandatangan.findMany({ orderBy: [{ aktif: "desc" }, { berlakuMulai: "desc" }] }),

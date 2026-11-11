@@ -6,12 +6,12 @@ import { Prisma } from "@/lib/generated/prisma/client";
 import { DEF_PENGATURAN, type DefPengaturan } from "@/lib/pengaturan";
 import type { HasilForm } from "@/lib/validasi/auth";
 import { catatAudit } from "../audit";
-import { punyaPeran, wajibLogin } from "../auth/pengguna";
+import { punyaHakAkses, punyaPeran, wajibLogin } from "../auth/pengguna";
 import { db } from "../db";
 
 async function wajibAdmin() {
   const u = await wajibLogin();
-  return punyaPeran(u, "ADMIN") ? u : null;
+  return punyaHakAkses(u, "PENGATURAN_ADMIN") || punyaPeran(u, "ADMIN") ? u : null;
 }
 
 /** Ubah isian form menjadi nilai JSON sesuai tipe; string galat bila tidak valid. */

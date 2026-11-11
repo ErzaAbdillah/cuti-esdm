@@ -2,13 +2,18 @@ import "server-only";
 import { tentukanLevelSurat } from "@/lib/domain/level-surat";
 import { formatNip } from "@/lib/domain/nip";
 import { namaLengkap, pangkatTampil } from "@/lib/domain/pegawai";
+import { HAK_AKSES_BAWAAN_KEPEGAWAIAN, type HakAkses, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
 import { samarkanAlamat, samarkanHp, samarkanNik } from "@/lib/samaran";
 import { hariIniWita } from "@/lib/tanggal";
-import { type PenggunaSaatIni, punyaPeran } from "../auth/pengguna";
+import { type PenggunaSaatIni, punyaHakAkses, punyaPeran } from "../auth/pengguna";
 import { db } from "../db";
 
 export function bolehLihatPegawai(u: PenggunaSaatIni, pegawaiId: string): boolean {
-  return punyaPeran(u, "KEPEGAWAIAN", "ADMIN") || u.pegawai?.id === pegawaiId;
+  return (
+    punyaHakAkses(u, "KELOLA_PEGAWAI", "PENGATURAN_ADMIN") ||
+    punyaPeran(u, "KEPEGAWAIAN", "ADMIN") ||
+    u.pegawai?.id === pegawaiId
+  );
 }
 
 export async function detailPegawai(id: string) {
@@ -22,7 +27,7 @@ export async function detailPegawai(id: string) {
       unitKerja: true,
       pangkatGolongan: true,
       atasanLangsung: { include: { jabatan: true } },
-      user: { include: { peran: true } },
+      user: { include: { peran: true, hakAkses: true } },
       saldoCuti: { where: { tahun } },
       pengajuanCuti: { include: { jenisCuti: true }, orderBy: { dibuatPada: "desc" }, take: 20 },
       kodeAktivasi: { where: { dipakaiPada: null, kedaluwarsaPada: { gt: new Date() } }, orderBy: { dibuatPada: "desc" }, take: 1 },
@@ -80,6 +85,15 @@ export async function detailPegawai(id: string) {
           wajibGantiPassword: p.user.wajibGantiPassword,
           googleEmail: p.user.googleEmail,
           peran: p.user.peran.map((r) => r.peran),
+          hakAkses: (() => {
+            const set = new Set<HakAkses>(p.user.hakAkses.map((h) => h.hakAkses));
+            if (p.user.peran.some((r) => r.peran === "ADMIN")) {
+              for (const h of SEMUA_HAK_AKSES) set.add(h);
+            } else if (set.size === 0 && p.user.peran.some((r) => r.peran === "KEPEGAWAIAN")) {
+              for (const h of HAK_AKSES_BAWAAN_KEPEGAWAIAN) set.add(h);
+            }
+            return [...set];
+          })(),
         }
       : null,
     kodeAktivasiAktifSampai: p.kodeAktivasi[0]?.kedaluwarsaPada ?? null,

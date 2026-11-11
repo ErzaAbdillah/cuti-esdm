@@ -3,10 +3,11 @@
 import { randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import type { Peran } from "@/lib/generated/prisma/enums";
+import type { HakAkses, Peran } from "@/lib/generated/prisma/enums";
+import { SEMUA_HAK_AKSES } from "@/lib/hak-akses";
 import { hashPassword } from "@/lib/password";
 import { catatAudit } from "../audit";
-import { punyaPeran, wajibLogin } from "../auth/pengguna";
+import { punyaHakAkses, punyaPeran, wajibLogin } from "../auth/pengguna";
 import { hapusSesiLain } from "../auth/sesi";
 import { db } from "../db";
 
@@ -32,7 +33,9 @@ const idSchema = z.uuid();
 
 export async function buatKodeAktivasi(pegawaiId: string): Promise<HasilAkun> {
   const u = await wajibLogin();
-  if (!punyaPeran(u, "KEPEGAWAIAN", "ADMIN")) return { galat: "Hanya Kepegawaian atau Admin." };
+  if (!punyaPeran(u, "KEPEGAWAIAN", "ADMIN") && !punyaHakAkses(u, "KELOLA_PEGAWAI", "PENGATURAN_ADMIN")) {
+    return { galat: "Hanya Kepegawaian atau Admin." };
+  }
   if (!idSchema.safeParse(pegawaiId).success) return { galat: "Data tidak valid." };
 
   const p = await db.pegawai.findUnique({ where: { id: pegawaiId }, include: { user: true } });
@@ -129,4 +132,53 @@ export async function aturPeran(userId: string, peran: Peran[]): Promise<HasilAk
   });
   if (target.pegawaiId) revalidatePath(`/pegawai/${target.pegawaiId}`);
   return { pesan: "Peran disimpan." };
+}
+
+const skemaHakAkses = z.array(
+  z.enum([
+    "KELOLA_SALDO_CUTI",
+    "PROSES_CUTI",
+    "KELOLA_PEGAWAI",
+    "KELOLA_DOKUMEN_ORGANISASI",
+    "PENGATURAN_ADMIN",
+  ]),
+);
+
+export async function aturHakAkses(userId: string, hakAkses: HakAkses[]): Promise<HasilAkun> {
+  const u = await wajibAdmin();
+  if (!u) return { galat: "Hanya Admin yang bisa mengatur hak akses." };
+  if (!idSchema.safeParse(userId).success) return { galat: "ID akun tidak valid." };
+  const parsed = skemaHakAkses.safeParse(hakAkses);
+  if (!parsed.success) return { galat: "Hak akses tidak valid." };
+
+  const unik = SEMUA_HAK_AKSES.filter((h) => parsed.data.includes(h));
+  if (userId === u.userId && !u.peran.has("ADMIN") && !unik.includes("PENGATURAN_ADMIN")) {
+    return { galat: "Anda tidak bisa mencabut hak akses Pengaturan Admin dari akun sendiri." };
+  }
+
+  const target = await db.user.findUnique({ where: { id: userId }, include: { hakAkses: true } });
+  if (!target) return { galat: "Akun tidak ditemukan." };
+
+  await db.$transaction(async (tx) => {
+    await tx.userHakAkses.deleteMany({ where: { userId } });
+    if (unik.length > 0) {
+      await tx.userHakAkses.createMany({ data: unik.map((h) => ({ userId, hakAkses: h })) });
+    }
+    await catatAudit(
+      {
+        userId: u.userId,
+        aksi: "UBAH_HAK_AKSES",
+        entitas: "users",
+        entitasId: userId,
+        sebelum: { hakAkses: target.hakAkses.map((h) => h.hakAkses) },
+        sesudah: { hakAkses: unik },
+      },
+      tx,
+    );
+  });
+
+  if (target.pegawaiId) revalidatePath(`/pegawai/${target.pegawaiId}`);
+  revalidatePath("/admin/hak-akses");
+  revalidatePath("/", "layout");
+  return { pesan: "Hak akses disimpan." };
 }

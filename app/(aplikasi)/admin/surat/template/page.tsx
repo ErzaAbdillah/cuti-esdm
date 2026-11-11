@@ -5,7 +5,7 @@ import { NavSurat } from "@/components/admin/nav-surat";
 import { Card } from "@/components/ui/card";
 import { LABEL_LEVEL_SURAT, LABEL_STATUS_CUTI } from "@/lib/label";
 import { formatTanggalJam } from "@/lib/tanggal";
-import { wajibPeran } from "@/server/auth/pengguna";
+import { wajibHakAkses } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
 
 export const metadata: Metadata = { title: "Template Surat" };
@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Template Surat" };
 const URUT_LEVEL = ["ESELON_II", "ESELON_III", "ESELON_IV", "STAF"] as const;
 
 export default async function DaftarTemplate() {
-  await wajibPeran("ADMIN");
+  await wajibHakAkses("PENGATURAN_ADMIN");
   const template = await db.templateSurat.findMany({ include: { jenisCuti: true } });
   template.sort((a, b) => URUT_LEVEL.indexOf(a.level) - URUT_LEVEL.indexOf(b.level) || a.kodeDokumen.localeCompare(b.kodeDokumen));
 

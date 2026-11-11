@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { FormFolder, FormFolderBaru } from "@/components/admin/form-folder";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { wajibPeran } from "@/server/auth/pengguna";
+import { wajibHakAkses } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
 
 export const metadata: Metadata = { title: "Folder Dokumen" };
 
 export default async function FolderDokumen() {
-  await wajibPeran("ADMIN");
+  await wajibHakAkses("PENGATURAN_ADMIN");
   const folder = await db.folderDokumen.findMany({
     include: { akses: true, _count: { select: { dokumen: true, anak: true } } },
     orderBy: [{ urutan: "asc" }, { nama: "asc" }],

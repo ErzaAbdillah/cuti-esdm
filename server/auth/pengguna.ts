@@ -3,12 +3,13 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { namaLengkap } from "@/lib/domain/pegawai";
 import { formatNip } from "@/lib/domain/nip";
-import type { Peran } from "@/lib/generated/prisma/enums";
+import type { HakAkses, Peran } from "@/lib/generated/prisma/enums";
+import { HAK_AKSES_BAWAAN_KEPEGAWAIAN, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
 import type { PeranEfektif } from "@/lib/peran";
 import { db } from "../db";
 import { bacaSesi } from "./sesi";
 
-export type { PeranEfektif };
+export type { HakAkses, PeranEfektif };
 
 export interface PenggunaSaatIni {
   userId: string;
@@ -16,6 +17,7 @@ export interface PenggunaSaatIni {
   loginId: string;
   wajibGantiPassword: boolean;
   peran: ReadonlySet<PeranEfektif>;
+  hakAkses: ReadonlySet<HakAkses>;
   pegawai: {
     id: string;
     namaLengkap: string;
@@ -34,6 +36,14 @@ export const penggunaSaatIni = cache(async (): Promise<PenggunaSaatIni | null> =
   const peran = new Set<PeranEfektif>(sesi.user.peran.map((p) => p.peran as Peran));
   // Admin mendapat semua akses peran yang bisa diberikan (termasuk Kepegawaian).
   if (peran.has("ADMIN")) peran.add("KEPEGAWAIAN");
+
+  const hakAkses = new Set<HakAkses>(sesi.user.hakAkses.map((h) => h.hakAkses));
+  if (peran.has("ADMIN")) {
+    for (const h of SEMUA_HAK_AKSES) hakAkses.add(h);
+  } else if (peran.has("KEPEGAWAIAN")) {
+    for (const h of HAK_AKSES_BAWAAN_KEPEGAWAIAN) hakAkses.add(h);
+  }
+
   let pegawai: PenggunaSaatIni["pegawai"] = null;
 
   if (sesi.user.pegawaiId) {
@@ -61,12 +71,17 @@ export const penggunaSaatIni = cache(async (): Promise<PenggunaSaatIni | null> =
     loginId: sesi.user.loginId,
     wajibGantiPassword: sesi.user.wajibGantiPassword,
     peran,
+    hakAkses,
     pegawai,
   };
 });
 
 export function punyaPeran(u: PenggunaSaatIni, ...peran: PeranEfektif[]): boolean {
   return peran.some((p) => u.peran.has(p));
+}
+
+export function punyaHakAkses(u: PenggunaSaatIni, ...hak: HakAkses[]): boolean {
+  return hak.some((h) => u.hakAkses.has(h));
 }
 
 /**
@@ -84,5 +99,12 @@ export async function wajibLogin(opsi?: { lewatiWajibGanti?: boolean }): Promise
 export async function wajibPeran(...peran: PeranEfektif[]): Promise<PenggunaSaatIni> {
   const u = await wajibLogin();
   if (!punyaPeran(u, ...peran)) redirect("/akses-ditolak");
+  return u;
+}
+
+/** Untuk halaman: tolak bila tidak punya salah satu hak akses. */
+export async function wajibHakAkses(...hak: HakAkses[]): Promise<PenggunaSaatIni> {
+  const u = await wajibLogin();
+  if (!punyaHakAkses(u, ...hak)) redirect("/akses-ditolak");
   return u;
 }

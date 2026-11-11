@@ -1,4 +1,4 @@
-import { penggunaSaatIni, punyaPeran } from "@/server/auth/pengguna";
+import { penggunaSaatIni, punyaHakAkses, punyaPeran } from "@/server/auth/pengguna";
 import { asalSah } from "@/server/auth/csrf";
 import { pratinjauImpor } from "@/server/excel/impor-pegawai";
 
@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   if (!asalSah(req)) return Response.json({ galat: "Permintaan ditolak." }, { status: 403 });
   const u = await penggunaSaatIni();
   if (!u) return Response.json({ galat: "Sesi berakhir. Silakan masuk lagi." }, { status: 401 });
-  if (!punyaPeran(u, "KEPEGAWAIAN", "ADMIN")) return Response.json({ galat: "Akses ditolak." }, { status: 403 });
+  if (!punyaHakAkses(u, "KELOLA_PEGAWAI") && !punyaPeran(u, "KEPEGAWAIAN", "ADMIN")) return Response.json({ galat: "Akses ditolak." }, { status: 403 });
 
   const form = await req.formData().catch(() => null);
   const berkas = form?.get("berkas");

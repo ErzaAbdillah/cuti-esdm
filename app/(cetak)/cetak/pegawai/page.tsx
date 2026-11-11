@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { BilahCetak } from "@/components/cetak/tombol-cetak";
 import { LABEL_STATUS_KEPEGAWAIAN } from "@/lib/domain/pegawai";
 import { LABEL_LEVEL_SURAT } from "@/lib/label";
 import { formatTanggal, hariIniWita } from "@/lib/tanggal";
 import { catatAudit } from "@/server/audit";
-import { wajibPeran } from "@/server/auth/pengguna";
+import { punyaHakAkses, punyaPeran, wajibLogin } from "@/server/auth/pengguna";
 import { bacaFilter, semuaPegawaiUntukEkspor } from "@/server/kueri/pegawai";
 
 export const metadata: Metadata = { title: "Cetak Data Pegawai" };
 
 export default async function CetakPegawai({ searchParams }: PageProps<"/cetak/pegawai">) {
-  const u = await wajibPeran("KEPEGAWAIAN", "ADMIN");
+  const u = await wajibLogin();
+  if (!punyaHakAkses(u, "KELOLA_PEGAWAI") && !punyaPeran(u, "KEPEGAWAIAN", "ADMIN")) {
+    redirect("/akses-ditolak");
+  }
   const f = bacaFilter(await searchParams);
   const baris = await semuaPegawaiUntukEkspor({ ...f, hal: 1 });
   await catatAudit({ userId: u.userId, aksi: "EKSPOR_PEGAWAI", entitas: "pegawai", sesudah: { jumlah: baris.length, format: "cetak", filter: { ...f, hal: undefined } } });

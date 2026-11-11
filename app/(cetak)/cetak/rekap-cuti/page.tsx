@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { BilahCetak } from "@/components/cetak/tombol-cetak";
 import { hariIniWita } from "@/lib/tanggal";
-import { wajibPeran } from "@/server/auth/pengguna";
+import { punyaHakAkses, punyaPeran, wajibLogin } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
 import { rekapCutiTahunan } from "@/server/kueri/saldo";
 
@@ -11,7 +12,10 @@ export const metadata: Metadata = { title: "Cetak Rekap Cuti Tahunan" };
 const angka = (n: number | null | undefined) => (n ? String(n) : "--");
 
 export default async function CetakRekapCuti({ searchParams }: PageProps<"/cetak/rekap-cuti">) {
-  const u = await wajibPeran("KEPEGAWAIAN");
+  const u = await wajibLogin();
+  if (!punyaHakAkses(u, "KELOLA_SALDO_CUTI") && !punyaPeran(u, "KEPEGAWAIAN")) {
+    redirect("/akses-ditolak");
+  }
   const sp = await searchParams;
   const hariIni = hariIniWita();
   const t = Number(sp.tahun);

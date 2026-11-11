@@ -12,7 +12,7 @@ import { namaLengkap } from "@/lib/domain/pegawai";
 import type { KategoriDokumenPribadi } from "@/lib/generated/prisma/enums";
 import { unggahDokumenPribadi } from "@/server/aksi/dokumen";
 import { catatAudit } from "@/server/audit";
-import { punyaPeran, wajibLogin } from "@/server/auth/pengguna";
+import { punyaHakAkses, punyaPeran, wajibLogin } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
 import { semuaPengaturan } from "@/server/pengaturan";
 
@@ -25,7 +25,7 @@ export default async function DokumenSaya({ searchParams }: PageProps<"/dokumen"
   const diminta = typeof sp.pegawai === "string" ? sp.pegawai : null;
   if (diminta && !/^[0-9a-f-]{36}$/i.test(diminta)) notFound();
   const lain = !!diminta && diminta !== u.pegawai?.id;
-  if (lain && !punyaPeran(u, "KEPEGAWAIAN", "ADMIN")) redirect("/akses-ditolak");
+  if (lain && !punyaHakAkses(u, "KELOLA_PEGAWAI") && !punyaPeran(u, "KEPEGAWAIAN", "ADMIN")) redirect("/akses-ditolak");
   const pemilikId = diminta ?? u.pegawai?.id;
   if (!pemilikId) redirect("/akses-ditolak");
   const pemilik = lain ? await db.pegawai.findUnique({ where: { id: pemilikId } }) : null;

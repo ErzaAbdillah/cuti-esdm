@@ -5,7 +5,7 @@ import { z } from "zod";
 import { EKSTENSI_DOKUMEN, KATEGORI_PRIBADI } from "@/lib/dokumen";
 import type { HasilForm } from "@/lib/validasi/auth";
 import { catatAudit } from "../audit";
-import { punyaPeran, wajibLogin } from "../auth/pengguna";
+import { punyaHakAkses, punyaPeran, wajibLogin } from "../auth/pengguna";
 import { db } from "../db";
 import { periksaBerkas, simpanBerkas } from "../dokumen/penyimpanan";
 import { bolehDokumenPribadi, bolehKelolaDokumen, hakFolder } from "../layanan/akses-dokumen";
@@ -112,7 +112,7 @@ export async function hapusDokumen(id: string): Promise<HasilForm> {
 
 export async function pulihkanDokumen(id: string): Promise<void> {
   const u = await wajibLogin();
-  if (!punyaPeran(u, "ADMIN") || !uuid.safeParse(id).success) return;
+  if ((!punyaHakAkses(u, "PENGATURAN_ADMIN") && !punyaPeran(u, "ADMIN")) || !uuid.safeParse(id).success) return;
   const d = await db.dokumen.update({ where: { id }, data: { dihapusPada: null, dihapusOlehId: null } }).catch(() => null);
   if (d) await catatAudit({ userId: u.userId, aksi: "PULIHKAN_DOKUMEN", entitas: "dokumen", entitasId: id, sesudah: { nama: d.namaTampilan, ruang: d.ruang } });
   revalidatePath("/admin/dokumen-terhapus");

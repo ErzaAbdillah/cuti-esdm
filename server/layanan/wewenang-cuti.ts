@@ -2,7 +2,7 @@ import "server-only";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import type { LevelSurat, TahapPersetujuan } from "@/lib/generated/prisma/enums";
 import { hariIniWita } from "@/lib/tanggal";
-import { type PenggunaSaatIni, punyaPeran } from "../auth/pengguna";
+import { type PenggunaSaatIni, punyaHakAkses, punyaPeran } from "../auth/pengguna";
 import { db } from "../db";
 import { userDariPegawai, userDenganPeran } from "../notifikasi";
 import { alurTahap } from "./cuti";
@@ -33,10 +33,10 @@ export async function bolehPutuskan(u: PenggunaSaatIni, p: PengajuanRingkas, tah
     case "ATASAN_LANGSUNG":
       return !!u.pegawai && u.pegawai.id === p.atasanLangsungId;
     case "KEPEGAWAIAN":
-      return punyaPeran(u, "KEPEGAWAIAN");
+      return punyaHakAkses(u, "PROSES_CUTI") || punyaPeran(u, "KEPEGAWAIAN");
     case "PEJABAT_BERWENANG":
-      // Kepegawaian & Admin selalu boleh memutuskan langsung (alur ringkas kantor).
-      if (punyaPeran(u, "KEPEGAWAIAN", "ADMIN")) return true;
+      // Pemegang hak PROSES_CUTI, Kepegawaian & Admin selalu boleh memutuskan langsung (alur ringkas kantor).
+      if (punyaHakAkses(u, "PROSES_CUTI") || punyaPeran(u, "KEPEGAWAIAN", "ADMIN")) return true;
       if ((await modeTahap(p.levelSurat, tahap, tx)) === "EKSTERNAL") return false;
       return (await userPejabat(p.levelSurat, tx)) === u.userId;
   }

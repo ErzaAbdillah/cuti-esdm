@@ -2,12 +2,12 @@ import { ArrowLeftIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ImporPegawai } from "@/components/pegawai/impor-pegawai";
-import { wajibPeran } from "@/server/auth/pengguna";
+import { wajibHakAkses } from "@/server/auth/pengguna";
 
 export const metadata: Metadata = { title: "Impor Pegawai" };
 
 export default async function HalamanImpor() {
-  await wajibPeran("KEPEGAWAIAN", "ADMIN");
+  await wajibHakAkses("KELOLA_PEGAWAI");
   return (
     <div className="grid gap-5">
       <div>

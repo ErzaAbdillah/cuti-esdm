@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { formatTanggal, hariIniWita } from "@/lib/tanggal";
 import { cn } from "@/lib/utils";
 import { hapusLibur } from "@/server/aksi/admin";
-import { wajibPeran } from "@/server/auth/pengguna";
+import { wajibHakAkses } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
 
 export const metadata: Metadata = { title: "Hari Libur" };
@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Hari Libur" };
 const LABEL_JENIS = { LIBUR_NASIONAL: "Libur nasional", CUTI_BERSAMA: "Cuti bersama", LIBUR_DAERAH: "Libur daerah" } as const;
 
 export default async function HariLibur({ searchParams }: PageProps<"/admin/hari-libur">) {
-  await wajibPeran("ADMIN");
+  await wajibHakAkses("PENGATURAN_ADMIN");
   const sp = await searchParams;
   const tahunIni = hariIniWita().getUTCFullYear();
   const diminta = Number(sp.tahun);

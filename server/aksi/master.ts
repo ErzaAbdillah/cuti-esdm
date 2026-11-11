@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { catatAudit } from "../audit";
-import { punyaPeran, wajibLogin } from "../auth/pengguna";
+import { punyaHakAkses, punyaPeran, wajibLogin } from "../auth/pengguna";
 import { db } from "../db";
 
 /**
@@ -14,7 +14,7 @@ import { db } from "../db";
  */
 async function wajibAdmin() {
   const u = await wajibLogin();
-  if (!punyaPeran(u, "ADMIN")) redirect("/akses-ditolak");
+  if (!punyaHakAkses(u, "PENGATURAN_ADMIN") && !punyaPeran(u, "ADMIN")) redirect("/akses-ditolak");
   return u;
 }
 

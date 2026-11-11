@@ -87,7 +87,7 @@ export async function detailPegawai(id: string) {
           peran: p.user.peran.map((r) => r.peran),
           hakAkses: (() => {
             const set = new Set<HakAkses>(p.user.hakAkses.map((h) => h.hakAkses));
-            if (p.user.peran.some((r) => r.peran === "ADMIN")) {
+            if (p.user.peran.some((r) => r.peran === "ADMIN") || p.user.loginId.toLowerCase() === "admin") {
               for (const h of SEMUA_HAK_AKSES) set.add(h);
             } else if (set.size === 0 && p.user.peran.some((r) => r.peran === "KEPEGAWAIAN")) {
               for (const h of HAK_AKSES_BAWAAN_KEPEGAWAIAN) set.add(h);

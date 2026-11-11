@@ -25,7 +25,7 @@ import { aturHakAkses } from "@/server/aksi/akun";
 
 export interface BarisHakAksesPegawai {
   userId: string;
-  pegawaiId: string;
+  pegawaiId: string | null;
   nama: string;
   nip: string;
   jabatan: string | null;
@@ -52,7 +52,7 @@ function dapatkanInisial(nama: string): string {
   return (kata[0][0] + kata[1][0]).toUpperCase();
 }
 
-export function MatriksHakAkses({ awal }: { awal: BarisHakAksesPegawai[] }) {
+export function MatriksHakAkses({ awal, bolehKelola = true }: { awal: BarisHakAksesPegawai[]; bolehKelola?: boolean }) {
   const [baris, setBaris] = useState<BarisHakAksesPegawai[]>(awal);
   const [cari, setCari] = useState("");
   const [filterAktif, setFilterAktif] = useState<TipeFilter>("semua");
@@ -88,7 +88,7 @@ export function MatriksHakAkses({ awal }: { awal: BarisHakAksesPegawai[] }) {
   }, [baris, cari, filterAktif]);
 
   async function ubahCentang(target: BarisHakAksesPegawai, kode: HakAkses, centang: boolean) {
-    if (target.adminUtama || prosesSimpan?.userId === target.userId) return;
+    if (!bolehKelola || target.adminUtama || prosesSimpan?.userId === target.userId) return;
     const sebelumnya = target.hakAkses;
     const baru = centang
       ? [...new Set([...sebelumnya, kode])]
@@ -290,16 +290,20 @@ export function MatriksHakAkses({ awal }: { awal: BarisHakAksesPegawai[] }) {
 
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <Link
-                              href={`/pegawai/${b.pegawaiId}`}
-                              className="font-semibold text-judul hover:text-primary hover:underline"
-                            >
-                              {b.nama}
-                            </Link>
+                            {b.pegawaiId ? (
+                              <Link
+                                href={`/pegawai/${b.pegawaiId}`}
+                                className="font-semibold text-judul hover:text-primary hover:underline"
+                              >
+                                {b.nama}
+                              </Link>
+                            ) : (
+                              <span className="font-semibold text-judul">{b.nama}</span>
+                            )}
 
                             {b.adminUtama && (
                               <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[0.65rem] font-bold text-primary dark:bg-primary/20">
-                                <SparklesIcon className="size-2.5" /> Admin Utama
+                                <SparklesIcon className="size-2.5" /> Superadmin (Hak Akses Mutlak)
                               </span>
                             )}
 
@@ -345,11 +349,11 @@ export function MatriksHakAkses({ awal }: { awal: BarisHakAksesPegawai[] }) {
                               <Checkbox
                                 aria-label={`${h.label} untuk ${b.nama}`}
                                 checked={dicentang}
-                                disabled={b.adminUtama || sedangSimpanUser}
+                                disabled={!bolehKelola || b.adminUtama || sedangSimpanUser}
                                 onCheckedChange={(v) => ubahCentang(b, h.kode, Boolean(v))}
                                 className={cn(
                                   "transition-transform hover:scale-110",
-                                  (b.adminUtama || sedangSimpanUser) && "cursor-not-allowed opacity-80",
+                                  (!bolehKelola || b.adminUtama || sedangSimpanUser) && "cursor-not-allowed opacity-80",
                                 )}
                               />
                             )}

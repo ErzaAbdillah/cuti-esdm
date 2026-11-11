@@ -34,11 +34,15 @@ export const penggunaSaatIni = cache(async (): Promise<PenggunaSaatIni | null> =
   if (!sesi) return null;
 
   const peran = new Set<PeranEfektif>(sesi.user.peran.map((p) => p.peran as Peran));
-  // Admin mendapat semua akses peran yang bisa diberikan (termasuk Kepegawaian).
-  if (peran.has("ADMIN")) peran.add("KEPEGAWAIAN");
+  const superadmin = peran.has("ADMIN") || sesi.user.loginId.toLowerCase() === "admin";
+  // Superadmin / Admin mendapat semua akses peran yang bisa diberikan (termasuk Admin & Kepegawaian).
+  if (superadmin) {
+    peran.add("ADMIN");
+    peran.add("KEPEGAWAIAN");
+  }
 
   const hakAkses = new Set<HakAkses>(sesi.user.hakAkses.map((h) => h.hakAkses));
-  if (peran.has("ADMIN")) {
+  if (superadmin) {
     for (const h of SEMUA_HAK_AKSES) hakAkses.add(h);
   } else if (peran.has("KEPEGAWAIAN")) {
     for (const h of HAK_AKSES_BAWAAN_KEPEGAWAIAN) hakAkses.add(h);
@@ -76,11 +80,17 @@ export const penggunaSaatIni = cache(async (): Promise<PenggunaSaatIni | null> =
   };
 });
 
+export function adalahSuperadmin(u: Pick<PenggunaSaatIni, "peran" | "loginId">): boolean {
+  return u.peran.has("ADMIN") || u.loginId.toLowerCase() === "admin";
+}
+
 export function punyaPeran(u: PenggunaSaatIni, ...peran: PeranEfektif[]): boolean {
+  if (adalahSuperadmin(u) && peran.includes("ADMIN")) return true;
   return peran.some((p) => u.peran.has(p));
 }
 
 export function punyaHakAkses(u: PenggunaSaatIni, ...hak: HakAkses[]): boolean {
+  if (u.peran.has("ADMIN") || u.loginId.toLowerCase() === "admin") return true;
   return hak.some((h) => u.hakAkses.has(h));
 }
 

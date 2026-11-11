@@ -88,7 +88,7 @@ export function AkunPegawai({ pegawaiId, akun, kodeAktivasiAktifSampai, bolehKel
   const [rahasia, setRahasia] = useState<{ judul: string; nilai: string; pesan?: string } | null>(null);
   const [hakAkses, setHakAkses] = useState<HakAkses[]>(akun?.hakAkses ?? []);
 
-  const adalahAdminUtama = akun?.peran.includes("ADMIN") ?? false;
+  const adalahAdminUtama = Boolean(akun && (akun.peran.includes("ADMIN") || akun.loginId.toLowerCase() === "admin"));
   const awal = akun?.hakAkses ?? [];
   const adaPerubahan =
     !adalahAdminUtama &&
@@ -243,7 +243,7 @@ export function AkunPegawai({ pegawaiId, akun, kodeAktivasiAktifSampai, bolehKel
                   size="sm"
                   variant={akun.aktif ? "destructive" : "outline"}
                   className="shadow-xs"
-                  disabled={proses}
+                  disabled={proses || (adalahAdminUtama && akun.aktif)}
                   onClick={() => jalankan("", () => aturAktifAkun(akun.id, !akun.aktif))}
                 >
                   <PowerIcon data-icon="inline-start" /> {akun.aktif ? "Nonaktifkan akun" : "Aktifkan akun"}
@@ -264,7 +264,7 @@ export function AkunPegawai({ pegawaiId, akun, kodeAktivasiAktifSampai, bolehKel
                   {adalahAdminUtama ? (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary dark:bg-primary/20">
                       <SparklesIcon className="size-3.5" />
-                      Semua Hak Akses Aktif (Admin Utama)
+                      Superadmin (Hak Akses Mutlak)
                     </span>
                   ) : (
                     <span className="inline-flex items-center rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-judul dark:bg-sky-950/60 dark:text-sky-300">
@@ -278,10 +278,10 @@ export function AkunPegawai({ pegawaiId, akun, kodeAktivasiAktifSampai, bolehKel
                 <div className="rounded-xl border border-sky-200 bg-sky-50/80 p-3.5 text-xs leading-relaxed text-slate-700 dark:border-sky-900/50 dark:bg-sky-950/40 dark:text-slate-300">
                   <p className="flex items-center gap-1.5 font-semibold text-judul">
                     <ShieldAlertIcon className="size-4 text-primary" />
-                    Peran Admin Sistem Utama
+                    Superadmin (Hak Akses Mutlak)
                   </p>
                   <p className="mt-1">
-                    Akun ini memiliki peran <b>Admin Utama</b> sehingga secara inheren memiliki kewenangan penuh pada seluruh modul aplikasi. Kotak centang di bawah terkunci otomatis.
+                    Akun ini merupakan <b>Superadmin</b> (peran Admin / akun <code>admin</code>) sehingga memiliki kewenangan mutlak dan permanen pada seluruh modul aplikasi. Kotak centang di bawah terkunci otomatis dan tidak dapat dicabut.
                   </p>
                 </div>
               )}
@@ -437,7 +437,7 @@ export function AkunPegawai({ pegawaiId, akun, kodeAktivasiAktifSampai, bolehKel
                           <Loader2Icon className="size-4 animate-spin" data-icon="inline-start" /> Menyimpan...
                         </>
                       ) : (
-                        "Simpan hak akses"
+                        "Simpan Hak Akses"
                       )}
                     </Button>
                   </div>

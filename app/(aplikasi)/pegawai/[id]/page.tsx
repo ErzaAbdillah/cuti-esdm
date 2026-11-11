@@ -14,7 +14,7 @@ import { saldoTersedia, totalHak } from "@/lib/domain/saldo-cuti";
 import { LABEL_LEVEL_SURAT, LABEL_STATUS_CUTI, WARNA_STATUS_CUTI } from "@/lib/label";
 import { formatTanggal } from "@/lib/tanggal";
 import { cn } from "@/lib/utils";
-import { punyaHakAkses, wajibLogin } from "@/server/auth/pengguna";
+import { adalahSuperadmin, punyaHakAkses, wajibLogin } from "@/server/auth/pengguna";
 import { bolehLihatPegawai, detailPegawai } from "@/server/kueri/pegawai-detail";
 
 export const metadata: Metadata = { title: "Detail Pegawai" };
@@ -193,7 +193,7 @@ export default async function HalamanDetailPegawai({ params, searchParams }: Pag
                     }
                   }
                   kodeAktivasiAktifSampai={p.kodeAktivasiAktifSampai?.toISOString() ?? null}
-                  bolehKelolaAkun={punyaHakAkses(u, "PENGATURAN_ADMIN")}
+                  bolehKelolaAkun={adalahSuperadmin(u)}
                   bolehBuatKode={staf}
                 />
               </CardContent>

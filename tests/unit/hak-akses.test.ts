@@ -50,9 +50,13 @@ describe("hak akses pegawai (granular permissions)", () => {
     const menuAtasan = menuUntuk(new Set(["PEGAWAI", "ATASAN"]), new Set());
     expect(menuAtasan.flatMap((g) => g.item.map((b) => b.href))).toContain("/cuti/proses");
 
-    // Admin dengan hak akses PENGATURAN_ADMIN melihat menu Admin
-    const menuAdmin = menuUntuk(new Set(["PEGAWAI", "ADMIN"]), new Set(["PENGATURAN_ADMIN"]));
-    expect(menuAdmin.flatMap((g) => g.item.map((b) => b.href))).toContain("/admin");
+    // Admin / Superadmin otomatis melihat menu Proses Cuti, Saldo & Rekap, Data Pegawai, dan Admin
+    const menuAdmin = menuUntuk(new Set(["PEGAWAI", "ADMIN"]), new Set());
+    const hrefAdmin = menuAdmin.flatMap((g) => g.item.map((b) => b.href));
+    expect(hrefAdmin).toContain("/cuti/proses");
+    expect(hrefAdmin).toContain("/cuti/saldo");
+    expect(hrefAdmin).toContain("/pegawai");
+    expect(hrefAdmin).toContain("/admin");
   });
 
   it("memverifikasi integritas daftar hak akses untuk UI dan backend", () => {

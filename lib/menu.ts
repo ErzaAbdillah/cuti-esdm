@@ -32,13 +32,13 @@ export const MENU: GrupMenu[] = [
     judul: "Cuti",
     item: [
       { href: "/cuti", label: "Cuti Saya", ikon: "cuti", peran: ["PEGAWAI"] },
-      { href: "/cuti/proses", label: "Proses Cuti", ikon: "proses", peran: ["ATASAN"], hakAkses: ["PROSES_CUTI"] },
-      { href: "/cuti/saldo", label: "Saldo & Rekap Cuti", ikon: "rekap", hakAkses: ["KELOLA_SALDO_CUTI"] },
+      { href: "/cuti/proses", label: "Proses Cuti", ikon: "proses", peran: ["ATASAN", "ADMIN"], hakAkses: ["PROSES_CUTI"] },
+      { href: "/cuti/saldo", label: "Saldo & Rekap Cuti", ikon: "rekap", peran: ["ADMIN"], hakAkses: ["KELOLA_SALDO_CUTI"] },
     ],
   },
   {
     judul: "Kepegawaian",
-    item: [{ href: "/pegawai", label: "Data Pegawai", ikon: "pegawai", hakAkses: ["KELOLA_PEGAWAI"] }],
+    item: [{ href: "/pegawai", label: "Data Pegawai", ikon: "pegawai", peran: ["ADMIN"], hakAkses: ["KELOLA_PEGAWAI"] }],
   },
   {
     judul: "Dokumen",
@@ -47,7 +47,7 @@ export const MENU: GrupMenu[] = [
       { href: "/dokumen/organisasi", label: "Dokumen Organisasi", ikon: "folder" },
     ],
   },
-  { judul: "Sistem", item: [{ href: "/admin", label: "Admin", ikon: "admin", hakAkses: ["PENGATURAN_ADMIN"] }] },
+  { judul: "Sistem", item: [{ href: "/admin", label: "Admin", ikon: "admin", peran: ["ADMIN"], hakAkses: ["PENGATURAN_ADMIN"] }] },
 ];
 
 function bolehTampilItem(

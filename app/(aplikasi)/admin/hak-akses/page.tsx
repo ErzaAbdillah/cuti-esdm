@@ -14,7 +14,7 @@ import { formatNip } from "@/lib/domain/nip";
 import { namaLengkap } from "@/lib/domain/pegawai";
 import { DAFTAR_HAK_AKSES, HAK_AKSES_BAWAAN_KEPEGAWAIAN, type HakAkses, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
 import { cn } from "@/lib/utils";
-import { wajibHakAkses } from "@/server/auth/pengguna";
+import { adalahSuperadmin, wajibHakAkses } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
 
 export const metadata: Metadata = { title: "Hak Akses Pegawai" };
@@ -56,23 +56,23 @@ const WARNA_KARTU: Record<HakAkses, { bgIkon: string; warnaIkon: string; ring: s
 };
 
 export default async function HalamanHakAksesPegawai() {
-  await wajibHakAkses("PENGATURAN_ADMIN");
+  const pengguna = await wajibHakAkses("PENGATURAN_ADMIN");
+  const bolehKelola = adalahSuperadmin(pengguna);
 
   const daftarUser = await db.user.findMany({
-    where: { pegawaiId: { not: null } },
     include: {
       pegawai: { include: { jabatan: true, unitKerja: true } },
       peran: true,
       hakAkses: true,
     },
-    orderBy: { pegawai: { nama: "asc" } },
+    orderBy: [{ pegawai: { nama: "asc" } }, { loginId: "asc" }],
   });
 
   const baris: BarisHakAksesPegawai[] = daftarUser
-    .filter((u) => u.pegawai !== null)
+    .filter((u) => u.pegawai !== null || u.peran.some((r) => r.peran === "ADMIN") || u.loginId.toLowerCase() === "admin")
     .map((u) => {
-      const p = u.pegawai!;
-      const adminUtama = u.peran.some((r) => r.peran === "ADMIN");
+      const p = u.pegawai;
+      const adminUtama = u.peran.some((r) => r.peran === "ADMIN") || u.loginId.toLowerCase() === "admin";
       const set = new Set<HakAkses>(u.hakAkses.map((h) => h.hakAkses));
       if (adminUtama) {
         for (const h of SEMUA_HAK_AKSES) set.add(h);
@@ -82,16 +82,17 @@ export default async function HalamanHakAksesPegawai() {
 
       return {
         userId: u.id,
-        pegawaiId: p.id,
-        nama: namaLengkap(p),
-        nip: p.nip ? formatNip(p.nip) : (p.idNonAsn ?? u.loginId),
-        jabatan: p.jabatan?.nama ?? null,
-        unit: p.unitKerja.nama,
+        pegawaiId: p?.id ?? null,
+        nama: p ? namaLengkap(p) : u.loginId.toLowerCase() === "admin" ? "Administrator Sistem (admin)" : u.loginId,
+        nip: p ? (p.nip ? formatNip(p.nip) : (p.idNonAsn ?? u.loginId)) : u.loginId,
+        jabatan: p?.jabatan?.nama ?? (adminUtama ? "Superadmin" : null),
+        unit: p?.unitKerja.nama ?? "Sistem Utama",
         aktif: u.aktif,
         adminUtama,
         hakAkses: [...set],
       };
-    });
+    })
+    .sort((a, b) => (a.adminUtama === b.adminUtama ? a.nama.localeCompare(b.nama, "id") : a.adminUtama ? -1 : 1));
 
   return (
     <div className="grid gap-6">
@@ -148,7 +149,7 @@ export default async function HalamanHakAksesPegawai() {
       </div>
 
       {/* Matriks Tabel Interaktif */}
-      <MatriksHakAkses awal={baris} />
+      <MatriksHakAkses awal={baris} bolehKelola={bolehKelola} />
     </div>
   );
 }

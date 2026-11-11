@@ -7,7 +7,7 @@ import type { HakAkses, Peran } from "@/lib/generated/prisma/enums";
 import { SEMUA_HAK_AKSES } from "@/lib/hak-akses";
 import { hashPassword } from "@/lib/password";
 import { catatAudit } from "../audit";
-import { punyaHakAkses, punyaPeran, wajibLogin } from "../auth/pengguna";
+import { adalahSuperadmin, punyaHakAkses, punyaPeran, wajibLogin } from "../auth/pengguna";
 import { hapusSesiLain } from "../auth/sesi";
 import { db } from "../db";
 
@@ -62,12 +62,16 @@ export async function buatKodeAktivasi(pegawaiId: string): Promise<HasilAkun> {
 
 async function wajibAdmin() {
   const u = await wajibLogin();
-  return punyaPeran(u, "ADMIN") ? u : null;
+  return adalahSuperadmin(u) ? u : null;
+}
+
+function akunAdalahSuperadmin(target: { loginId: string; peran: { peran: Peran }[] }): boolean {
+  return target.loginId.toLowerCase() === "admin" || target.peran.some((p) => p.peran === "ADMIN");
 }
 
 async function ambilUser(userId: string) {
   if (!idSchema.safeParse(userId).success) return null;
-  return db.user.findUnique({ where: { id: userId } });
+  return db.user.findUnique({ where: { id: userId }, include: { peran: true } });
 }
 
 export async function resetPassword(userId: string): Promise<HasilAkun> {
@@ -104,6 +108,9 @@ export async function aturAktifAkun(userId: string, aktif: boolean): Promise<Has
   if (userId === u.userId) return { galat: "Anda tidak bisa menonaktifkan akun sendiri." };
   const target = await ambilUser(userId);
   if (!target) return { galat: "Akun tidak ditemukan." };
+  if (!aktif && akunAdalahSuperadmin(target)) {
+    return { galat: "Akun Superadmin (Admin) bersifat mutlak dan tidak dapat dinonaktifkan." };
+  }
   await db.user.update({ where: { id: userId }, data: { aktif } });
   if (!aktif) await hapusSesiLain(userId);
   await catatAudit({ userId: u.userId, aksi: aktif ? "AKTIFKAN_AKUN" : "NONAKTIFKAN_AKUN", entitas: "users", entitasId: userId });
@@ -121,6 +128,9 @@ export async function aturPeran(userId: string, peran: Peran[]): Promise<HasilAk
   if (userId === u.userId && !parsed.data.includes("ADMIN")) return { galat: "Anda tidak bisa mencabut peran Admin dari akun sendiri." };
   const target = await db.user.findUnique({ where: { id: userId }, include: { peran: true } });
   if (!target) return { galat: "Akun tidak ditemukan." };
+  if (akunAdalahSuperadmin(target) && !parsed.data.includes("ADMIN")) {
+    return { galat: "Peran Admin pada akun Superadmin tidak dapat dicabut." };
+  }
 
   await db.$transaction(async (tx) => {
     await tx.userPeran.deleteMany({ where: { userId } });
@@ -152,12 +162,12 @@ export async function aturHakAkses(userId: string, hakAkses: HakAkses[]): Promis
   if (!parsed.success) return { galat: "Hak akses tidak valid." };
 
   const unik = SEMUA_HAK_AKSES.filter((h) => parsed.data.includes(h));
-  if (userId === u.userId && !u.peran.has("ADMIN") && !unik.includes("PENGATURAN_ADMIN")) {
-    return { galat: "Anda tidak bisa mencabut hak akses Pengaturan Admin dari akun sendiri." };
-  }
 
-  const target = await db.user.findUnique({ where: { id: userId }, include: { hakAkses: true } });
+  const target = await db.user.findUnique({ where: { id: userId }, include: { hakAkses: true, peran: true } });
   if (!target) return { galat: "Akun tidak ditemukan." };
+  if (akunAdalahSuperadmin(target)) {
+    return { galat: "Hak akses Superadmin (Admin) bersifat permanen dan tidak dapat dikurangi atau dicabut." };
+  }
 
   await db.$transaction(async (tx) => {
     await tx.userHakAkses.deleteMany({ where: { userId } });

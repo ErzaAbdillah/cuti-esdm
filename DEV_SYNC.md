@@ -34,8 +34,8 @@
   - Background Worker: `app/api/tugas/harian/route.ts` (Cron pembaruan status cuti selesai & kirim antrean email)
 
 ## Status Saat Ini
-- **Fase Aktif:** Ready to Push & Deploy (Pushed to `origin/main` & DB Migrated)
-- **Fitur/Modul Aktif:** Manajemen Hak Akses Pegawai (Granular Permissions)
+- **Fase Aktif:** Ready to Push & Deploy (Pushed to `origin/main` & Deployed)
+- **Fitur/Modul Aktif:** Manajemen Hak Akses Pegawai (Granular Permissions) & Superadmin Bypass
 - **Penanggung Jawab Terakhir:** Coder (Post-QA Sync & Deploy)
 
 ## 1. Cetak Biru & Skema Data (Diisi oleh Conversation 3 - Architect)
@@ -48,7 +48,13 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 3. `KELOLA_PEGAWAI`: Akses menu & manajemen Data Pegawai (`/pegawai`, tambah, ubah, unmask data sensitif, impor/ekspor Excel).
 4. `KELOLA_DOKUMEN_ORGANISASI`: Akses penuh kelola folder dan dokumen organisasi dinas (`/dokumen/organisasi`, tambah/unggah, hapus).
 5. `PENGATURAN_ADMIN`: Akses menu sistem Admin (`/admin`, master data, template surat, hari libur, audit log).
-*Catatan:* Akun dengan peran `ADMIN` secara otomatis memiliki seluruh hak akses tersebut. Peran `PEGAWAI` dan `ATASAN` tetap dinamis berdasarkan status kepegawaian dan kepemilikan bawahan.
+
+#### ⚠️ Hak Akses Mutlak & Proteksi Superadmin (Akun "Admin")
+- **Hak Akses Mutlak (Absolute Clearance / Bypass)**: Akun dengan peran `ADMIN` (khususnya akun utama `loginId: "admin"`) secara otomatis memiliki SELURUH hak akses di atas secara permanen dan mutlak. Seluruh pengecekan otorisasi (`punyaHakAkses`, `wajibHakAkses`, `hakFolder`, dsb.) langsung mengembalikan `true`.
+- **Proteksi Anti-Lockout**:
+  - Akun Admin/Superadmin tidak dapat dicabut hak adminnya, tidak dapat dikurangi hak aksesnya, dan tidak dapat dinonaktifkan.
+  - Pada tampilan UI (Tab Akun Pegawai & Halaman Matriks Hak Akses), akun `ADMIN`/`admin` menampilkan semua centang dalam kondisi aktif permanen (`checked` & `disabled`) disertai badge penanda **"Superadmin (Hak Akses Mutlak)"**.
+  - Hanya pengguna dengan Hak Akses Mutlak (Admin) yang berwenang mencentang dan mencabut hak akses bagi pegawai-pegawai lainnya.
 
 ### B. Skema Database (`prisma/schema.prisma`) — *Sudah Dimigrasi ke Schema*
 - **Enum `HakAkses`**:
@@ -63,18 +69,21 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 ### C. Alur Otorisasi & Server Logic
 1. **Sesi & User DAL (`server/auth/sesi.ts`, `server/auth/pengguna.ts`)**:
    - `bacaSesi()` meng-include `hakAkses: true`.
-   - `penggunaSaatIni()` memuat `hakAkses: ReadonlySet<HakAkses>`. Jika `ADMIN`, otomatis inject semua hak akses. Jika akun memiliki peran legacy `KEPEGAWAIAN`, inject `KELOLA_SALDO_CUTI`, `PROSES_CUTI`, dan `KELOLA_PEGAWAI`.
-   - Helper baru:
-     - `punyaHakAkses(u: PenggunaSaatIni, ...hak: HakAkses[]): boolean`
-     - `wajibHakAkses(...hak: HakAkses[]): Promise<PenggunaSaatIni>`
+   - `penggunaSaatIni()` memuat `hakAkses: ReadonlySet<HakAkses>`.
+   - **Hak Akses Mutlak Superadmin**: Jika `u.peran.has("ADMIN")` atau `u.loginId.toLowerCase() === "admin"`, set `hakAkses` otomatis diinjeksi **SELURUH** enum `HakAkses`.
+   - *Backward Compatibility*: Jika akun memiliki peran legacy `KEPEGAWAIAN`, inject `KELOLA_SALDO_CUTI`, `PROSES_CUTI`, dan `KELOLA_PEGAWAI`.
+   - Helper Otorisasi Mutlak:
+     - `punyaHakAkses(u: PenggunaSaatIni, ...hak: HakAkses[]): boolean`: Jika `u.peran.has("ADMIN") || u.loginId.toLowerCase() === "admin"` -> **selalu `true`**. Selain itu, periksa apakah salah satu `hak` ada di `u.hakAkses`.
+     - `wajibHakAkses(...hak: HakAkses[]): Promise<PenggunaSaatIni>`: Panggil `wajibLogin()`, jika tidak `punyaHakAkses`, redirect ke `/akses-ditolak`.
 2. **Server Action Akun (`server/aksi/akun.ts`)**:
    - `aturHakAkses(userId: string, hakAkses: HakAkses[]): Promise<HasilAkun>`
    - Wajib otorisasi Admin (`wajibAdmin()`).
+   - **Proteksi Superadmin**: Tolak pencabutan hak dari akun "admin" / akun ber-peran `ADMIN`.
    - Eksekusi transaksi DB: `deleteMany` lalu `createMany` di `UserHakAkses`.
    - Catat `audit_log` (`aksi: "UBAH_HAK_AKSES"`).
    - Revalidasi path terkait (`/pegawai/[id]`, `/admin/hak-akses`).
 3. **Menu Dinamis (`lib/menu.ts`)**:
-   - Perbarui evaluasi `menuUntuk(peran, hakAkses)` agar menu ditampilkan sesuai hak akses aktif pengguna.
+   - Perbarui evaluasi `menuUntuk(peran, hakAkses)` agar menu ditampilkan sesuai hak akses aktif pengguna (Admin otomatis melihat semua menu).
 
 ### D. Target File & Komponen yang Harus Dikerjakan Coder
 1. **`lib/hak-akses.ts`** *(Baru)*: Definisi konstanta daftar hak akses, label Bahasa Indonesia, dan deskripsi fungsinya.
@@ -104,10 +113,11 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 
 ### File Diubah
 - `server/auth/sesi.ts`: Menambahkan `hakAkses: true` pada `include.user` di fungsi `bacaSesi()`.
-- `server/auth/pengguna.ts`: Menambahkan `hakAkses: ReadonlySet<HakAkses>` pada `PenggunaSaatIni`, mengisi `hakAkses` di `penggunaSaatIni()` (otomatis menyertakan semua 5 hak akses jika `ADMIN`, serta menyertakan `KELOLA_SALDO_CUTI`, `PROSES_CUTI`, `KELOLA_PEGAWAI` jika memiliki peran legacy `KEPEGAWAIAN`), dan mengekspor helper `punyaHakAkses(u, ...hak)` serta `wajibHakAkses(...hak)`.
-- `server/aksi/akun.ts`: Menambahkan Server Action `aturHakAkses(userId, hakAkses)` dengan validasi Zod, proteksi `wajibAdmin()`, penyimpanan transaksional (`deleteMany` + `createMany` pada `userHakAkses`), pencatatan `audit_log` (`aksi: "UBAH_HAK_AKSES"`), dan `revalidatePath`.
-- `lib/menu.ts` & `app/(aplikasi)/layout.tsx`: Memperbarui `MENU` dan `menuUntuk(peran, hakAkses)` agar item navigasi ditampilkan dinamis sesuai kombinasi peran dan `u.hakAkses`.
-- `server/kueri/pegawai-detail.ts`, `components/pegawai/akun-pegawai.tsx`, & `app/(aplikasi)/pegawai/[id]/page.tsx`: Memuat relasi `hakAkses` pada detail akun pegawai dan mengganti bagian "Peran tambahan" pada tab Akun menjadi kartu 5 Checkbox "Hak Akses Pegawai" interaktif beserta tombol "Simpan hak akses" dan toast Sonner.
+- `server/auth/pengguna.ts`: Menambahkan `hakAkses: ReadonlySet<HakAkses>` pada `PenggunaSaatIni`, mengisi `hakAkses` di `penggunaSaatIni()` (otomatis menginjeksi semua 5 hak akses + peran `ADMIN`/`KEPEGAWAIAN` jika memiliki peran `ADMIN` atau `loginId.toLowerCase() === "admin"`, serta menyertakan `KELOLA_SALDO_CUTI`, `PROSES_CUTI`, `KELOLA_PEGAWAI` jika memiliki peran legacy `KEPEGAWAIAN`), dan mengekspor helper `adalahSuperadmin(u)`, `punyaHakAkses(u, ...hak)` (bypass mutlak `true` jika `u.peran.has("ADMIN") || u.loginId.toLowerCase() === "admin"`), serta `wajibHakAkses(...hak)`.
+- `server/aksi/akun.ts`: Menambahkan Server Action `aturHakAkses(userId, hakAkses)` dengan validasi Zod, proteksi `wajibAdmin()`, **proteksi Anti-Lockout Superadmin** (menolak pengurangan/pencabutan hak akses, pencabutan peran `ADMIN`, maupun penonaktifan akun untuk akun `ADMIN` / `loginId === "admin"`), penyimpanan transaksional (`deleteMany` + `createMany` pada `userHakAkses`), pencatatan `audit_log` (`aksi: "UBAH_HAK_AKSES"`), dan `revalidatePath`.
+- `lib/menu.ts` & `app/(aplikasi)/layout.tsx`: Memperbarui `MENU` dan `menuUntuk(peran, hakAkses)` agar item navigasi ditampilkan dinamis sesuai kombinasi peran (`ADMIN`, `ATASAN`, `PEGAWAI`) dan `u.hakAkses`.
+- `server/kueri/pegawai-detail.ts`, `components/pegawai/akun-pegawai.tsx`, & `app/(aplikasi)/pegawai/[id]/page.tsx`: Memuat relasi `hakAkses` pada detail akun pegawai, mengganti bagian "Peran tambahan" pada tab Akun menjadi kartu 5 Checkbox "Hak Akses Pegawai" interaktif beserta tombol "Simpan Hak Akses" dan toast Sonner, serta menampilkan semua centang aktif permanen (`checked` & `disabled`) dengan badge `Superadmin (Hak Akses Mutlak)` untuk akun `ADMIN` / `admin`.
+- `app/(aplikasi)/admin/hak-akses/page.tsx` & `components/admin/matriks-hak-akses.tsx`: Menyertakan akun Superadmin (`ADMIN` / `admin`) maupun seluruh pegawai berakun dengan semua centang aktif & terkunci (`disabled`) serta badge `Superadmin (Hak Akses Mutlak)` untuk Superadmin, dan membatasi pengubahan centang hanya bagi Superadmin (`bolehKelola`).
 - `app/(aplikasi)/admin/page.tsx`: Menambahkan kartu navigasi "Hak akses pegawai" (`/admin/hak-akses`) dan memperbarui guard halaman menjadi `wajibHakAkses("PENGATURAN_ADMIN")`.
 - **Proteksi Halaman & Layanan/Action Terkait**:
   - `app/(aplikasi)/cuti/saldo/page.tsx` & `server/aksi/saldo.ts`: Menggunakan `wajibHakAkses("KELOLA_SALDO_CUTI")`.
@@ -151,3 +161,4 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 - [x] **[RENDAH - Lint] [components/admin/matriks-hak-akses.tsx:10]**: Menghapus impor `ShieldCheckIcon` yang tidak terpakai sehingga ESLint bersih tanpa peringatan (0 errors, 0 warnings).
 - [x] **[RENDAH - UX] [components/admin/matriks-hak-akses.tsx:83]**: Menambahkan normalisasi pencarian NIP (`kBersih`) agar pencarian 18 digit NIP tanpa spasi tetap dapat menemukan data pegawai ber-spasi.
 - [x] **[RENDAH - Test] [tests/unit/hak-akses.test.ts]**: Ditambahkan pengujian integritas daftar hak akses dan menu sistem (total 99/99 unit test lulus).
+- [x] **[VERIFIKASI QA] [Superadmin Bypass & Anti-Lockout]**: Seluruh helper otorisasi (`punyaHakAkses`, `punyaPeran`, `wajibAdmin`) terverifikasi memberikan bypass mutlak bagi akun `ADMIN` / `admin`. Proteksi anti-lockout pada `aturPeran`, `aturAktifAkun`, dan `aturHakAkses` terbukti aktif menolak pencabutan atau penonaktifan Superadmin. Matriks hak akses juga aman menampilkan akun admin tanpa tautan rusak.

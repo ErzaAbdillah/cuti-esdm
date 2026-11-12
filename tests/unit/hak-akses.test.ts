@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DAFTAR_HAK_AKSES, DESKRIPSI_HAK_AKSES, HAK_AKSES_BAWAAN_KEPEGAWAIAN, LABEL_HAK_AKSES, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
+import { adalahAkunSuperadmin, DAFTAR_HAK_AKSES, DESKRIPSI_HAK_AKSES, HAK_AKSES_BAWAAN_KEPEGAWAIAN, LABEL_HAK_AKSES, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
 import { menuUntuk } from "@/lib/menu";
 
 describe("hak akses pegawai (granular permissions)", () => {
@@ -57,6 +57,17 @@ describe("hak akses pegawai (granular permissions)", () => {
     expect(hrefAdmin).toContain("/cuti/saldo");
     expect(hrefAdmin).toContain("/pegawai");
     expect(hrefAdmin).toContain("/admin");
+
+    const menuSuperadmin = menuUntuk(new Set(["SUPERADMIN"]), new Set());
+    const hrefSuperadmin = menuSuperadmin.flatMap((g) => g.item.map((b) => b.href));
+    expect(hrefSuperadmin).toContain("/cuti/proses");
+    expect(hrefSuperadmin).toContain("/cuti/saldo");
+    expect(hrefSuperadmin).toContain("/pegawai");
+    expect(hrefSuperadmin).toContain("/admin");
+
+    expect(adalahAkunSuperadmin({ loginId: "admin", googleEmail: "eerza311@gmail.com" })).toBe(true);
+    expect(adalahAkunSuperadmin({ loginId: "eerza311", googleEmail: null })).toBe(true);
+    expect(adalahAkunSuperadmin({ loginId: "198009182007011007", googleEmail: null })).toBe(false);
   });
 
   it("memverifikasi integritas daftar hak akses untuk UI dan backend", () => {

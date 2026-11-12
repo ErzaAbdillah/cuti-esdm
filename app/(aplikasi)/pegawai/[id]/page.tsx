@@ -193,7 +193,7 @@ export default async function HalamanDetailPegawai({ params, searchParams }: Pag
                     }
                   }
                   kodeAktivasiAktifSampai={p.kodeAktivasiAktifSampai?.toISOString() ?? null}
-                  bolehKelolaAkun={adalahSuperadmin(u)}
+                  bolehKelolaAkun={adalahSuperadmin(u) || punyaHakAkses(u, "PENGATURAN_ADMIN")}
                   bolehBuatKode={staf}
                 />
               </CardContent>

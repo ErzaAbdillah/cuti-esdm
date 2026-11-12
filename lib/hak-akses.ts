@@ -59,3 +59,13 @@ export const HAK_AKSES_BAWAAN_KEPEGAWAIAN: readonly HakAkses[] = [
   "PROSES_CUTI",
   "KELOLA_PEGAWAI",
 ];
+
+/**
+ * Penanda akun Superadmin utama (memiliki hak akses mutlak & anti-lockout).
+ * Hanya berlaku untuk akun utama `eerza311` (`eerza311@gmail.com` / `loginId: "admin"`).
+ */
+export function adalahAkunSuperadmin(akun: { loginId: string; googleEmail?: string | null }): boolean {
+  const login = akun.loginId.trim().toLowerCase();
+  const email = akun.googleEmail?.trim().toLowerCase();
+  return login === "admin" || login === "eerza311" || email === "eerza311@gmail.com";
+}

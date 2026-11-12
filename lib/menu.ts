@@ -56,6 +56,7 @@ function bolehTampilItem(
   hakAkses: ReadonlySet<HakAkses>,
 ): boolean {
   if (!item.peran && !item.hakAkses) return true;
+  if (peran.has("SUPERADMIN") && (item.peran?.includes("ADMIN") || item.hakAkses)) return true;
   const cocokPeran = item.peran ? item.peran.some((p) => peran.has(p)) : false;
   const cocokHak = item.hakAkses ? item.hakAkses.some((h) => hakAkses.has(h)) : false;
   return cocokPeran || cocokHak;

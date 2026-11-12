@@ -2,7 +2,7 @@ import "server-only";
 import { tentukanLevelSurat } from "@/lib/domain/level-surat";
 import { formatNip } from "@/lib/domain/nip";
 import { namaLengkap, pangkatTampil } from "@/lib/domain/pegawai";
-import { HAK_AKSES_BAWAAN_KEPEGAWAIAN, type HakAkses, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
+import { adalahAkunSuperadmin, HAK_AKSES_BAWAAN_KEPEGAWAIAN, type HakAkses, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
 import { samarkanAlamat, samarkanHp, samarkanNik } from "@/lib/samaran";
 import { hariIniWita } from "@/lib/tanggal";
 import { type PenggunaSaatIni, punyaHakAkses, punyaPeran } from "../auth/pengguna";
@@ -87,10 +87,14 @@ export async function detailPegawai(id: string) {
           peran: p.user.peran.map((r) => r.peran),
           hakAkses: (() => {
             const set = new Set<HakAkses>(p.user.hakAkses.map((h) => h.hakAkses));
-            if (p.user.peran.some((r) => r.peran === "ADMIN") || p.user.loginId.toLowerCase() === "admin") {
+            if (adalahAkunSuperadmin(p.user)) {
               for (const h of SEMUA_HAK_AKSES) set.add(h);
-            } else if (set.size === 0 && p.user.peran.some((r) => r.peran === "KEPEGAWAIAN")) {
-              for (const h of HAK_AKSES_BAWAAN_KEPEGAWAIAN) set.add(h);
+            } else if (set.size === 0) {
+              if (p.user.peran.some((r) => r.peran === "ADMIN")) {
+                for (const h of SEMUA_HAK_AKSES) set.add(h);
+              } else if (p.user.peran.some((r) => r.peran === "KEPEGAWAIAN")) {
+                for (const h of HAK_AKSES_BAWAAN_KEPEGAWAIAN) set.add(h);
+              }
             }
             return [...set];
           })(),

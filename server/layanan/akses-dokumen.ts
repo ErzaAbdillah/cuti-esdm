@@ -9,7 +9,9 @@ export interface HakFolder {
   kelola: boolean;
 }
 
-const peranAkses = (u: PenggunaSaatIni) => [...u.peran] as PeranAkses[];
+const PERAN_AKSES_VALID = new Set<PeranAkses>(["PEGAWAI", "ATASAN", "KEPEGAWAIAN", "ADMIN"]);
+const peranAkses = (u: PenggunaSaatIni) =>
+  [...u.peran].filter((p): p is PeranAkses => PERAN_AKSES_VALID.has(p as PeranAkses));
 
 /** Hak pengguna atas folder: gabungan hak semua perannya. Admin atau pemilik hak KELOLA_DOKUMEN_ORGANISASI selalu boleh. */
 export async function hakFolder(u: PenggunaSaatIni, folderId: string): Promise<HakFolder> {

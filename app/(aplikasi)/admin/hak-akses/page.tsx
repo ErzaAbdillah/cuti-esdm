@@ -12,9 +12,9 @@ import Link from "next/link";
 import { type BarisHakAksesPegawai, MatriksHakAkses } from "@/components/admin/matriks-hak-akses";
 import { formatNip } from "@/lib/domain/nip";
 import { namaLengkap } from "@/lib/domain/pegawai";
-import { DAFTAR_HAK_AKSES, HAK_AKSES_BAWAAN_KEPEGAWAIAN, type HakAkses, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
+import { adalahAkunSuperadmin, DAFTAR_HAK_AKSES, HAK_AKSES_BAWAAN_KEPEGAWAIAN, type HakAkses, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
 import { cn } from "@/lib/utils";
-import { adalahSuperadmin, wajibHakAkses } from "@/server/auth/pengguna";
+import { adalahSuperadmin, punyaHakAkses, wajibHakAkses } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
 
 export const metadata: Metadata = { title: "Hak Akses Pegawai" };
@@ -57,7 +57,7 @@ const WARNA_KARTU: Record<HakAkses, { bgIkon: string; warnaIkon: string; ring: s
 
 export default async function HalamanHakAksesPegawai() {
   const pengguna = await wajibHakAkses("PENGATURAN_ADMIN");
-  const bolehKelola = adalahSuperadmin(pengguna);
+  const bolehKelola = adalahSuperadmin(pengguna) || punyaHakAkses(pengguna, "PENGATURAN_ADMIN");
 
   const daftarUser = await db.user.findMany({
     include: {
@@ -69,26 +69,36 @@ export default async function HalamanHakAksesPegawai() {
   });
 
   const baris: BarisHakAksesPegawai[] = daftarUser
-    .filter((u) => u.pegawai !== null || u.peran.some((r) => r.peran === "ADMIN") || u.loginId.toLowerCase() === "admin")
+    .filter((u) => u.pegawai !== null || adalahAkunSuperadmin(u))
     .map((u) => {
       const p = u.pegawai;
-      const adminUtama = u.peran.some((r) => r.peran === "ADMIN") || u.loginId.toLowerCase() === "admin";
+      const adminUtama = adalahAkunSuperadmin(u);
       const set = new Set<HakAkses>(u.hakAkses.map((h) => h.hakAkses));
       if (adminUtama) {
         for (const h of SEMUA_HAK_AKSES) set.add(h);
-      } else if (set.size === 0 && u.peran.some((r) => r.peran === "KEPEGAWAIAN")) {
-        for (const h of HAK_AKSES_BAWAAN_KEPEGAWAIAN) set.add(h);
+      } else if (set.size === 0) {
+        if (u.peran.some((r) => r.peran === "ADMIN")) {
+          for (const h of SEMUA_HAK_AKSES) set.add(h);
+        } else if (u.peran.some((r) => r.peran === "KEPEGAWAIAN")) {
+          for (const h of HAK_AKSES_BAWAAN_KEPEGAWAIAN) set.add(h);
+        }
       }
+      const adalahAdmin = !adminUtama && (u.peran.some((r) => r.peran === "ADMIN") || set.has("PENGATURAN_ADMIN"));
 
       return {
         userId: u.id,
         pegawaiId: p?.id ?? null,
-        nama: p ? namaLengkap(p) : u.loginId.toLowerCase() === "admin" ? "Administrator Sistem (admin)" : u.loginId,
-        nip: p ? (p.nip ? formatNip(p.nip) : (p.idNonAsn ?? u.loginId)) : u.loginId,
+        nama: p
+          ? namaLengkap(p)
+          : u.googleEmail?.toLowerCase() === "eerza311@gmail.com"
+            ? "eerza311 (Superadmin)"
+            : u.loginId,
+        nip: p ? (p.nip ? formatNip(p.nip) : (p.idNonAsn ?? u.loginId)) : (u.googleEmail ?? u.loginId),
         jabatan: p?.jabatan?.nama ?? (adminUtama ? "Superadmin" : null),
         unit: p?.unitKerja.nama ?? "Sistem Utama",
         aktif: u.aktif,
         adminUtama,
+        adalahAdmin,
         hakAkses: [...set],
       };
     })

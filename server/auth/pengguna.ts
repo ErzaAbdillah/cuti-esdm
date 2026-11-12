@@ -4,7 +4,7 @@ import { cache } from "react";
 import { namaLengkap } from "@/lib/domain/pegawai";
 import { formatNip } from "@/lib/domain/nip";
 import type { HakAkses, Peran } from "@/lib/generated/prisma/enums";
-import { HAK_AKSES_BAWAAN_KEPEGAWAIAN, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
+import { adalahAkunSuperadmin, HAK_AKSES_BAWAAN_KEPEGAWAIAN, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
 import type { PeranEfektif } from "@/lib/peran";
 import { db } from "../db";
 import { bacaSesi } from "./sesi";
@@ -15,6 +15,7 @@ export interface PenggunaSaatIni {
   userId: string;
   sesiId: string;
   loginId: string;
+  googleEmail: string | null;
   wajibGantiPassword: boolean;
   peran: ReadonlySet<PeranEfektif>;
   hakAkses: ReadonlySet<HakAkses>;
@@ -33,19 +34,23 @@ export const penggunaSaatIni = cache(async (): Promise<PenggunaSaatIni | null> =
   const sesi = await bacaSesi();
   if (!sesi) return null;
 
-  const peran = new Set<PeranEfektif>(sesi.user.peran.map((p) => p.peran as Peran));
-  const superadmin = peran.has("ADMIN") || sesi.user.loginId.toLowerCase() === "admin";
-  // Superadmin / Admin mendapat semua akses peran yang bisa diberikan (termasuk Admin & Kepegawaian).
+  const superadmin = adalahAkunSuperadmin(sesi.user);
+  const peran = new Set<PeranEfektif>();
   if (superadmin) {
-    peran.add("ADMIN");
-    peran.add("KEPEGAWAIAN");
+    peran.add("SUPERADMIN");
+  } else {
+    for (const p of sesi.user.peran) peran.add(p.peran as Peran);
   }
 
   const hakAkses = new Set<HakAkses>(sesi.user.hakAkses.map((h) => h.hakAkses));
   if (superadmin) {
     for (const h of SEMUA_HAK_AKSES) hakAkses.add(h);
-  } else if (peran.has("KEPEGAWAIAN")) {
-    for (const h of HAK_AKSES_BAWAAN_KEPEGAWAIAN) hakAkses.add(h);
+  } else if (hakAkses.size === 0) {
+    if (peran.has("ADMIN")) {
+      for (const h of SEMUA_HAK_AKSES) hakAkses.add(h);
+    } else if (peran.has("KEPEGAWAIAN")) {
+      for (const h of HAK_AKSES_BAWAAN_KEPEGAWAIAN) hakAkses.add(h);
+    }
   }
 
   let pegawai: PenggunaSaatIni["pegawai"] = null;
@@ -73,6 +78,7 @@ export const penggunaSaatIni = cache(async (): Promise<PenggunaSaatIni | null> =
     userId: sesi.user.id,
     sesiId: sesi.id,
     loginId: sesi.user.loginId,
+    googleEmail: sesi.user.googleEmail,
     wajibGantiPassword: sesi.user.wajibGantiPassword,
     peran,
     hakAkses,
@@ -80,17 +86,19 @@ export const penggunaSaatIni = cache(async (): Promise<PenggunaSaatIni | null> =
   };
 });
 
-export function adalahSuperadmin(u: Pick<PenggunaSaatIni, "peran" | "loginId">): boolean {
-  return u.peran.has("ADMIN") || u.loginId.toLowerCase() === "admin";
+export function adalahSuperadmin(u: Pick<PenggunaSaatIni, "peran" | "loginId"> & { googleEmail?: string | null }): boolean {
+  return u.peran.has("SUPERADMIN") || adalahAkunSuperadmin(u);
 }
 
 export function punyaPeran(u: PenggunaSaatIni, ...peran: PeranEfektif[]): boolean {
-  if (adalahSuperadmin(u) && peran.includes("ADMIN")) return true;
+  if (adalahSuperadmin(u) && peran.some((p) => p === "SUPERADMIN" || p === "ADMIN" || p === "KEPEGAWAIAN")) {
+    return true;
+  }
   return peran.some((p) => u.peran.has(p));
 }
 
 export function punyaHakAkses(u: PenggunaSaatIni, ...hak: HakAkses[]): boolean {
-  if (u.peran.has("ADMIN") || u.loginId.toLowerCase() === "admin") return true;
+  if (adalahSuperadmin(u)) return true;
   return hak.some((h) => u.hakAkses.has(h));
 }
 

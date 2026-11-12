@@ -34,9 +34,9 @@
   - Background Worker: `app/api/tugas/harian/route.ts` (Cron pembaruan status cuti selesai & kirim antrean email)
 
 ## Status Saat Ini
-- **Fase Aktif:** Ready to Push & Deploy (Pushed to `origin/main` & Deployed)
-- **Fitur/Modul Aktif:** Manajemen Hak Akses Pegawai (Granular Permissions) & Superadmin Bypass
-- **Penanggung Jawab Terakhir:** Coder (Post-QA Sync & Deploy)
+- **Fase Aktif:** Ready to Push & Deploy (Role Superadmin khusus `eerza311` / `admin` & Pegawai Admin Biasa)
+- **Fitur/Modul Aktif:** Manajemen Hak Akses Pegawai (Granular Permissions) & Superadmin Role
+- **Penanggung Jawab Terakhir:** Coder
 
 ## 1. Cetak Biru & Skema Data (Diisi oleh Conversation 3 - Architect)
 *Rancangan alur sistem, struktur tabel/database, dan daftar file yang harus dibuat/dieksekusi oleh Coder:*
@@ -112,12 +112,14 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 - `tests/unit/hak-akses.test.ts`: Unit test Vitest untuk konstanta hak akses dan penyaringan menu navigasi `menuUntuk(peran, hakAkses)`.
 
 ### File Diubah
+- `lib/peran.ts`: Menambahkan peran efektif `SUPERADMIN` (`"Superadmin"`) pada `PeranEfektif` dan `LABEL_PERAN` agar tampilan profil dan header menampilkan role `Superadmin` untuk akun `eerza311` (`admin`).
+- `lib/hak-akses.ts`: Menambahkan fungsi `adalahAkunSuperadmin(akun)` yang membatasi status Superadmin (Hak Akses Mutlak & Anti-Lockout) hanya untuk akun `eerza311` (`loginId: "admin"`, `loginId: "eerza311"`, atau `googleEmail: "eerza311@gmail.com"`).
 - `server/auth/sesi.ts`: Menambahkan `hakAkses: true` pada `include.user` di fungsi `bacaSesi()`.
-- `server/auth/pengguna.ts`: Menambahkan `hakAkses: ReadonlySet<HakAkses>` pada `PenggunaSaatIni`, mengisi `hakAkses` di `penggunaSaatIni()` (otomatis menginjeksi semua 5 hak akses + peran `ADMIN`/`KEPEGAWAIAN` jika memiliki peran `ADMIN` atau `loginId.toLowerCase() === "admin"`, serta menyertakan `KELOLA_SALDO_CUTI`, `PROSES_CUTI`, `KELOLA_PEGAWAI` jika memiliki peran legacy `KEPEGAWAIAN`), dan mengekspor helper `adalahSuperadmin(u)`, `punyaHakAkses(u, ...hak)` (bypass mutlak `true` jika `u.peran.has("ADMIN") || u.loginId.toLowerCase() === "admin"`), serta `wajibHakAkses(...hak)`.
-- `server/aksi/akun.ts`: Menambahkan Server Action `aturHakAkses(userId, hakAkses)` dengan validasi Zod, proteksi `wajibAdmin()`, **proteksi Anti-Lockout Superadmin** (menolak pengurangan/pencabutan hak akses, pencabutan peran `ADMIN`, maupun penonaktifan akun untuk akun `ADMIN` / `loginId === "admin"`), penyimpanan transaksional (`deleteMany` + `createMany` pada `userHakAkses`), pencatatan `audit_log` (`aksi: "UBAH_HAK_AKSES"`), dan `revalidatePath`.
-- `lib/menu.ts` & `app/(aplikasi)/layout.tsx`: Memperbarui `MENU` dan `menuUntuk(peran, hakAkses)` agar item navigasi ditampilkan dinamis sesuai kombinasi peran (`ADMIN`, `ATASAN`, `PEGAWAI`) dan `u.hakAkses`.
-- `server/kueri/pegawai-detail.ts`, `components/pegawai/akun-pegawai.tsx`, & `app/(aplikasi)/pegawai/[id]/page.tsx`: Memuat relasi `hakAkses` pada detail akun pegawai, mengganti bagian "Peran tambahan" pada tab Akun menjadi kartu 5 Checkbox "Hak Akses Pegawai" interaktif beserta tombol "Simpan Hak Akses" dan toast Sonner, serta menampilkan semua centang aktif permanen (`checked` & `disabled`) dengan badge `Superadmin (Hak Akses Mutlak)` untuk akun `ADMIN` / `admin`.
-- `app/(aplikasi)/admin/hak-akses/page.tsx` & `components/admin/matriks-hak-akses.tsx`: Menyertakan akun Superadmin (`ADMIN` / `admin`) maupun seluruh pegawai berakun dengan semua centang aktif & terkunci (`disabled`) serta badge `Superadmin (Hak Akses Mutlak)` untuk Superadmin, dan membatasi pengubahan centang hanya bagi Superadmin (`bolehKelola`).
+- `server/auth/pengguna.ts`: Membedakan peran efektif `SUPERADMIN` (khusus akun `eerza311`/`admin`) dari peran `ADMIN` milik pegawai; `adalahSuperadmin(u)` dan bypass mutlak pada `punyaHakAkses` hanya berlaku bagi `SUPERADMIN`, sedangkan pegawai dengan peran `ADMIN` tampil sebagai `Admin` saja dan hak aksesnya mengikuti daftar centang modular.
+- `server/aksi/akun.ts` & `server/aksi/auth.ts`: Proteksi Anti-Lockout dikhususkan untuk akun Superadmin (`eerza311`/`admin`) sehingga hak akses para pegawai ber-peran `Admin` dapat diatur oleh Superadmin, serta mendukung login menggunakan ID `eerza311` maupun `admin`.
+- `lib/menu.ts` & `app/(aplikasi)/layout.tsx`: Memperbarui `MENU` dan `menuUntuk(peran, hakAkses)` agar mendukung peran `SUPERADMIN`, `ADMIN`, `ATASAN`, `PEGAWAI`, dan `u.hakAkses`.
+- `server/kueri/pegawai-detail.ts`, `components/pegawai/akun-pegawai.tsx`, & `app/(aplikasi)/pegawai/[id]/page.tsx`: Hanya akun Superadmin (`eerza311`/`admin`) yang menampilkan lencana `Superadmin (Hak Akses Mutlak)` dengan centang terkunci; pegawai ber-peran Admin menampilkan lencana `Admin` dengan centang yang dapat diatur.
+- `app/(aplikasi)/admin/hak-akses/page.tsx` & `components/admin/matriks-hak-akses.tsx`: Menampilkan `eerza311 (Superadmin)` dengan lencana `Superadmin (Hak Akses Mutlak)` (centang terkunci), sementara para pegawai yang sebelumnya tampil sebagai Superadmin kini tampil dengan lencana `Admin` dan centangnya dapat dikelola.
 - `app/(aplikasi)/admin/page.tsx`: Menambahkan kartu navigasi "Hak akses pegawai" (`/admin/hak-akses`) dan memperbarui guard halaman menjadi `wajibHakAkses("PENGATURAN_ADMIN")`.
 - **Proteksi Halaman & Layanan/Action Terkait**:
   - `app/(aplikasi)/cuti/saldo/page.tsx` & `server/aksi/saldo.ts`: Menggunakan `wajibHakAkses("KELOLA_SALDO_CUTI")`.

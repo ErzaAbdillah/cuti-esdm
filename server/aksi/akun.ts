@@ -4,7 +4,7 @@ import { randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { HakAkses, Peran } from "@/lib/generated/prisma/enums";
-import { SEMUA_HAK_AKSES } from "@/lib/hak-akses";
+import { adalahAkunSuperadmin, HAK_AKSES_BAWAAN_KEPEGAWAIAN, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
 import { hashPassword } from "@/lib/password";
 import { catatAudit } from "../audit";
 import { adalahSuperadmin, punyaHakAkses, punyaPeran, wajibLogin } from "../auth/pengguna";
@@ -62,11 +62,11 @@ export async function buatKodeAktivasi(pegawaiId: string): Promise<HasilAkun> {
 
 async function wajibAdmin() {
   const u = await wajibLogin();
-  return adalahSuperadmin(u) ? u : null;
+  return adalahSuperadmin(u) || punyaPeran(u, "ADMIN") || punyaHakAkses(u, "PENGATURAN_ADMIN") ? u : null;
 }
 
-function akunAdalahSuperadmin(target: { loginId: string; peran: { peran: Peran }[] }): boolean {
-  return target.loginId.toLowerCase() === "admin" || target.peran.some((p) => p.peran === "ADMIN");
+function akunAdalahSuperadmin(target: { loginId: string; googleEmail?: string | null }): boolean {
+  return adalahAkunSuperadmin(target);
 }
 
 async function ambilUser(userId: string) {
@@ -166,13 +166,30 @@ export async function aturHakAkses(userId: string, hakAkses: HakAkses[]): Promis
   const target = await db.user.findUnique({ where: { id: userId }, include: { hakAkses: true, peran: true } });
   if (!target) return { galat: "Akun tidak ditemukan." };
   if (akunAdalahSuperadmin(target)) {
-    return { galat: "Hak akses Superadmin (Admin) bersifat permanen dan tidak dapat dikurangi atau dicabut." };
+    return { galat: "Hak akses Superadmin bersifat permanen dan tidak dapat dikurangi atau dicabut." };
+  }
+  if (userId === u.userId && !adalahSuperadmin(u) && !unik.includes("PENGATURAN_ADMIN")) {
+    return { galat: "Anda tidak bisa mencabut hak akses Pengaturan Admin dari akun sendiri." };
   }
 
   await db.$transaction(async (tx) => {
     await tx.userHakAkses.deleteMany({ where: { userId } });
     if (unik.length > 0) {
       await tx.userHakAkses.createMany({ data: unik.map((h) => ({ userId, hakAkses: h })) });
+    }
+    // Selaraskan peran ADMIN / KEPEGAWAIAN dengan hak akses modular agar fallback tidak menimpa pilihan centang.
+    const peranBaru = new Set<Peran>(target.peran.map((p) => p.peran));
+    if (unik.includes("PENGATURAN_ADMIN")) {
+      peranBaru.add("ADMIN");
+    } else {
+      peranBaru.delete("ADMIN");
+    }
+    if (!HAK_AKSES_BAWAAN_KEPEGAWAIAN.some((h) => unik.includes(h))) {
+      peranBaru.delete("KEPEGAWAIAN");
+    }
+    await tx.userPeran.deleteMany({ where: { userId } });
+    if (peranBaru.size > 0) {
+      await tx.userPeran.createMany({ data: [...peranBaru].map((peran) => ({ userId, peran })) });
     }
     await catatAudit(
       {

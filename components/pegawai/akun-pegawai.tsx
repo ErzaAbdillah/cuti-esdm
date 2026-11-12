@@ -24,7 +24,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { HakAkses, Peran } from "@/lib/generated/prisma/enums";
-import { DAFTAR_HAK_AKSES, HAK_AKSES_BAWAAN_KEPEGAWAIAN, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
+import { adalahAkunSuperadmin, DAFTAR_HAK_AKSES, HAK_AKSES_BAWAAN_KEPEGAWAIAN, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
 import { cn } from "@/lib/utils";
 import { aturAktifAkun, aturHakAkses, buatKodeAktivasi, bukaKunci, type HasilAkun, resetPassword } from "@/server/aksi/akun";
 
@@ -88,7 +88,10 @@ export function AkunPegawai({ pegawaiId, akun, kodeAktivasiAktifSampai, bolehKel
   const [rahasia, setRahasia] = useState<{ judul: string; nilai: string; pesan?: string } | null>(null);
   const [hakAkses, setHakAkses] = useState<HakAkses[]>(akun?.hakAkses ?? []);
 
-  const adalahAdminUtama = Boolean(akun && (akun.peran.includes("ADMIN") || akun.loginId.toLowerCase() === "admin"));
+  const adalahAdminUtama = Boolean(akun && adalahAkunSuperadmin(akun));
+  const adalahAdminBiasa = Boolean(
+    akun && !adalahAdminUtama && (akun.peran.includes("ADMIN") || hakAkses.includes("PENGATURAN_ADMIN")),
+  );
   const awal = akun?.hakAkses ?? [];
   const adaPerubahan =
     !adalahAdminUtama &&
@@ -267,9 +270,17 @@ export function AkunPegawai({ pegawaiId, akun, kodeAktivasiAktifSampai, bolehKel
                       Superadmin (Hak Akses Mutlak)
                     </span>
                   ) : (
-                    <span className="inline-flex items-center rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-judul dark:bg-sky-950/60 dark:text-sky-300">
-                      {hakAkses.length} dari {DAFTAR_HAK_AKSES.length} hak aktif
-                    </span>
+                    <>
+                      {adalahAdminBiasa && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-bold text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300">
+                          <ShieldCheckIcon className="size-3.5" />
+                          Admin
+                        </span>
+                      )}
+                      <span className="inline-flex items-center rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-judul dark:bg-sky-950/60 dark:text-sky-300">
+                        {hakAkses.length} dari {DAFTAR_HAK_AKSES.length} hak aktif
+                      </span>
+                    </>
                   )}
                 </div>
               </div>

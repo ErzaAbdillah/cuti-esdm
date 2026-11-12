@@ -32,6 +32,7 @@ export interface BarisHakAksesPegawai {
   unit: string;
   aktif: boolean;
   adminUtama: boolean;
+  adalahAdmin?: boolean;
   hakAkses: HakAkses[];
 }
 
@@ -58,7 +59,10 @@ export function MatriksHakAkses({ awal, bolehKelola = true }: { awal: BarisHakAk
   const [filterAktif, setFilterAktif] = useState<TipeFilter>("semua");
   const [prosesSimpan, setProsesSimpan] = useState<{ userId: string; kode: HakAkses } | null>(null);
 
-  const jumlahAdmin = useMemo(() => baris.filter((b) => b.adminUtama).length, [baris]);
+  const jumlahAdmin = useMemo(
+    () => baris.filter((b) => b.adminUtama || b.adalahAdmin || b.hakAkses.includes("PENGATURAN_ADMIN")).length,
+    [baris],
+  );
   const jumlahKhusus = useMemo(() => baris.filter((b) => !b.adminUtama && b.hakAkses.length > 0).length, [baris]);
   const jumlahBiasa = useMemo(() => baris.filter((b) => !b.adminUtama && b.hakAkses.length === 0).length, [baris]);
 
@@ -66,7 +70,7 @@ export function MatriksHakAkses({ awal, bolehKelola = true }: { awal: BarisHakAk
     let hasil = baris;
 
     if (filterAktif === "admin") {
-      hasil = hasil.filter((b) => b.adminUtama);
+      hasil = hasil.filter((b) => b.adminUtama || b.adalahAdmin || b.hakAkses.includes("PENGATURAN_ADMIN"));
     } else if (filterAktif === "khusus") {
       hasil = hasil.filter((b) => !b.adminUtama && b.hakAkses.length > 0);
     } else if (filterAktif === "biasa") {
@@ -301,9 +305,15 @@ export function MatriksHakAkses({ awal, bolehKelola = true }: { awal: BarisHakAk
                               <span className="font-semibold text-judul">{b.nama}</span>
                             )}
 
-                            {b.adminUtama && (
+            {b.adminUtama && (
                               <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[0.65rem] font-bold text-primary dark:bg-primary/20">
                                 <SparklesIcon className="size-2.5" /> Superadmin (Hak Akses Mutlak)
+                              </span>
+                            )}
+
+                            {!b.adminUtama && (b.adalahAdmin || b.hakAkses.includes("PENGATURAN_ADMIN")) && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-[0.65rem] font-bold text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300">
+                                Admin
                               </span>
                             )}
 

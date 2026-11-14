@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { bisaDibatalkan, bisaDitolak, STATUS_DISETUJUI, STATUS_SETELAH_TAHAP } from "@/lib/domain/alur-cuti";
-import { rincianPemakaian } from "@/lib/domain/saldo-cuti";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import type { StatusCuti } from "@/lib/generated/prisma/enums";
 import { perluNotaDinas } from "@/lib/formulir/nota-dinas";
@@ -119,10 +118,9 @@ export async function simpanFormulir(id: string | null, masukan: MasukanFormulir
       const levelSurat = lama?.levelSurat ?? (await levelSuratPegawai(pegawai!));
 
       // Hitung ulang catatan sisa cuti tahunan (V. Catatan cuti) secara independen dari database.
-      const pakai = saldo ? rincianPemakaian(saldo) : null;
-      const sisaN2 = saldo && pakai ? Math.max(0, saldo.sisaN2 - pakai.dariN2) : 0;
-      const sisaN1 = saldo && pakai ? Math.max(0, saldo.sisaN1 - pakai.dariN1) : 0;
-      const sisaN = saldo && pakai ? Math.max(0, saldo.hakTahunIni + saldo.penyesuaian - pakai.dariN) : 0;
+      const sisaN2 = saldo ? saldo.sisaN2 : 0;
+      const sisaN1 = saldo ? saldo.sisaN1 : 0;
+      const sisaN = saldo ? saldo.hakTahunIni + saldo.penyesuaian : 0;
       const potongTahunan = jenis.potongSaldoTahunan || jenis.kode === "TAHUNAN";
       let sisaHari = potongTahunan ? cek.jumlahHari : 0;
       const potongN2 = Math.min(sisaN2, sisaHari);

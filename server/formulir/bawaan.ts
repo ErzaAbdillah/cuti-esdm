@@ -3,7 +3,6 @@ import type { BarisSisaCuti, IsianFormulir, Pejabat } from "@/lib/formulir/isian
 import type { IsianNotaDinas } from "@/lib/formulir/nota-dinas";
 import { formatNip, parseNip } from "@/lib/domain/nip";
 import { namaLengkap } from "@/lib/domain/pegawai";
-import { rincianPemakaian } from "@/lib/domain/saldo-cuti";
 import type { LevelSurat } from "@/lib/generated/prisma/enums";
 import { hariIniWita } from "@/lib/tanggal";
 import { db } from "../db";
@@ -79,11 +78,11 @@ export async function bawaanFormulir(pegawaiId: string, level: LevelSurat, tahun
   }
 
   const golongan = p.pangkatGolongan?.golongan.replace("/", " / ");
-  const pakai = saldo ? rincianPemakaian(saldo) : null;
+  // Ambil angka murni hak cuti per tahun yang terdaftar di database saldo
   const catatanTahunan: [BarisSisaCuti, BarisSisaCuti, BarisSisaCuti] = [
-    { tahun: String(tahun - 2), sisa: saldo && pakai ? angka(saldo.sisaN2 - pakai.dariN2) : "", keterangan: "" },
-    { tahun: String(tahun - 1), sisa: saldo && pakai ? angka(saldo.sisaN1 - pakai.dariN1) : "", keterangan: "" },
-    { tahun: String(tahun), sisa: saldo && pakai ? angka(saldo.hakTahunIni + saldo.penyesuaian - pakai.dariN) : "", keterangan: "" },
+    { tahun: String(tahun - 2), sisa: saldo ? angka(saldo.sisaN2) : "", keterangan: "" },
+    { tahun: String(tahun - 1), sisa: saldo ? angka(saldo.sisaN1) : "", keterangan: "" },
+    { tahun: String(tahun), sisa: saldo ? angka(saldo.hakTahunIni + saldo.penyesuaian) : "", keterangan: "" },
   ];
 
   // Nota dinas pengantar (Eselon II ke Gubernur, Eselon III ke Sekda); hal & isi disusun di form dari isian cuti.

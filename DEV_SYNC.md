@@ -35,11 +35,34 @@
 
 ## Status Saat Ini
 - **Fase Aktif:** Ready to Push & Deploy
-- **Fitur/Modul Aktif:** Penyesuaian Label Kolom Saldo Cuti & Blank Space Sisa Saldo 0 pada Formulir
+- **Fitur/Modul Aktif:** Sinkronisasi Angka V. Catatan Cuti dengan Hak 2024, Hak 2025, Hak 2026 & Deploy Vercel
 - **Penanggung Jawab Terakhir:** Coder
 
 ## 1. Cetak Biru & Skema Data (Diisi oleh Conversation 3 - Architect)
 *Rancangan alur sistem, struktur tabel/database, dan daftar file yang harus dibuat/dieksekusi oleh Coder:*
+
+### G. Sinkronisasi Angka V. Catatan Cuti Persis Sesuai Hak 2024, Hak 2025, Hak 2026
+1. **Akar Masalah:**
+   - Sebelumnya, pada `server/formulir/bawaan.ts` dan `server/aksi/cuti.ts`, sistem secara otomatis mengurangkan riwayat cuti lampau (`saldo.terpakai`) menggunakan fungsi `rincianPemakaian(saldo)` (`saldo.sisaN2 - pakai.dariN2`, dst.) sebelum formulir dibuka.
+   - Akibatnya, pada pegawai seperti Fahriansyah yang memiliki `Hak 2024: 4` dan `Hak 2025: 5`, karena ada riwayat cuti lampau terpakai 6 hari, sistem langsung menghabiskan kuota 2024 (menjadi 0 / blank) dan sebagian kuota 2025 sebelum pegawai mengajukan cuti baru.
+   - Hal ini membuat pegawai dan Admin bingung karena angka pada formulir tidak cocok dengan angka `Hak 2024 (4)`, `Hak 2025 (5)`, dan `Hak 2026 (12)` yang tertera di menu *Saldo & Rekap Cuti*.
+
+2. **Solusi & Perubahan Logika:**
+   - Pada `server/formulir/bawaan.ts`:
+     - Nilai awal `catatanTahunan` harus langsung mengambil nilai murni dari saldo cuti:
+       - Baris 2024 $\rightarrow$ `saldo ? angka(saldo.sisaN2) : ""` (contoh Fahriansyah: 4).
+       - Baris 2025 $\rightarrow$ `saldo ? angka(saldo.sisaN1) : ""` (contoh Fahriansyah: 5).
+       - Baris 2026 $\rightarrow$ `saldo ? angka(saldo.hakTahunIni + saldo.penyesuaian) : ""` (contoh Fahriansyah: 12).
+       - Jika bernilai $\le 0$, tetap mengembalikan string kosong `""` (blank space).
+     - Hapus pengurangan `pakai.dariN2` dan `pakai.dariN1` dari nilai awal formulir agar angka di formulir persis sama dengan tabel `/cuti/saldo`.
+   - Pada `components/cuti/form-formulir.tsx`:
+     - Basis perhitungan `catatanAwal` menggunakan nilai murni `Hak 2024 (saldo.sisaN2)`, `Hak 2025 (saldo.sisaN1)`, dan `Hak 2026 (saldo.hakTahunIni + penyesuaian)`.
+     - Saat memilih tanggal cuti tahunan, simulasi pengurangan baru berjalan dari angka basis tersebut.
+   - Pada `server/aksi/cuti.ts`:
+     - Sinkronkan logika penyimpanan formulir agar `sisaN2 = saldo ? saldo.sisaN2 : 0`, `sisaN1 = saldo ? saldo.sisaN1 : 0`, dan `sisaN = saldo ? saldo.hakTahunIni + saldo.penyesuaian : 0`.
+3. **Instruksi Deployment:**
+   - Jalankan `npm run typecheck` dan `npm test`.
+   - Lakukan commit dan `git push origin main` agar Vercel otomatis mendeploy versi terbaru ke `https://cuti-esdm.vercel.app`.
 
 ### F. Penyesuaian Label Kolom Saldo & Blank Space Sisa Saldo 0
 1. **Penyesuaian Header Kolom Saldo & Rekap Cuti (`app/(aplikasi)/cuti/saldo/page.tsx`):**
@@ -146,17 +169,19 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 - `tests/unit/hak-akses.test.ts`: Unit test Vitest untuk konstanta hak akses dan penyaringan menu navigasi `menuUntuk(peran, hakAkses)`.
 
 ### File Diubah
-- `app/(aplikasi)/cuti/saldo/page.tsx`: Mengubah header kolom tabel saldo cuti dari `N-2 ({tahun - 2})` dan `N-1 ({tahun - 1})` menjadi `Hak {tahun - 2}` dan `Hak {tahun - 1}` (misal `Hak 2024`, `Hak 2025`, `Hak 2026`).
-- `components/cuti/kelola-saldo.tsx`: Mengubah label bidang pada dialog `UbahSaldo` dari `"Sisa N-1"` dan `"Sisa N-2"` menjadi `` `Hak ${tahun - 1}` `` dan `` `Hak ${tahun - 2}` ``.
-- `server/formulir/bawaan.ts`: Mengubah helper `angka` menjadi `(n: number) => (n > 0 ? String(n) : "")` agar sisa cuti bernilai 0 ditampilkan kosong (blank space) tanpa tanda hubung `---`.
+- `server/formulir/bawaan.ts`:
+  - Mengambil angka murni hak cuti per tahun (`saldo.sisaN2` untuk N-2/2024, `saldo.sisaN1` untuk N-1/2025, dan `saldo.hakTahunIni + saldo.penyesuaian` untuk N/2026) tanpa memotong `pakai.dariN2`/`pakai.dariN1`/`pakai.dariN` terlebih dahulu pada nilai awal formulir, sehingga angka di `V. Catatan cuti` persis sesuai dengan kolom `Hak 2024`, `Hak 2025`, dan `Hak 2026` di menu Saldo & Rekap Cuti.
+  - Mengubah helper `angka` menjadi `(n: number) => (n > 0 ? String(n) : "")` agar sisa cuti bernilai 0 ditampilkan kosong (blank space) tanpa tanda hubung `---`.
 - `components/cuti/form-formulir.tsx`:
+  - Menggunakan `catatanAwal` berbasis angka murni `Hak 2024`, `Hak 2025`, dan `Hak 2026` untuk simulasi pengurangan reaktif saat rentang tanggal cuti tahunan dipilih, serta mengembalikan ke nilai basis murni saat tanggal belum dipilih atau bukan cuti tahunan.
   - Mengubah helper `formatSisa` pada `hitungCatatanTahunan` menjadi `(n: number) => (n > 0 ? String(n) : "")` agar kolom Sisa bernilai 0 pada form dan pratinjau lembar A4 tampil kosong tanpa strip `---`.
   - Mengunci kolom `Tahun` (`readOnly`, `tabIndex={-1}`, `className="bg-slate-100 font-medium text-slate-700 cursor-not-allowed select-none"`) dan `Sisa` (`readOnly`, `tabIndex={-1}`, `className="bg-slate-100 font-semibold text-slate-900 cursor-not-allowed select-none"`) pada bagian `V. Catatan cuti` tanpa handler `onChange`, sementara kolom `Keterangan` tetap dapat diisi.
   - Memperbarui teks panduan di atas tabel menjadi `"Sisa cuti tahunan terisi dan berkurang otomatis dari saldo cuti Anda (tidak dapat diubah manual)."`
-  - Menambahkan logika pengurangan otomatis dan reaktif (`hitungCatatanTahunan`) yang menyimpan basis `catatanAwal` (`sisaN2`, `sisaN1`, `sisaN`) dan mengurangi sisa secara berurutan (N-2 -> N-1 -> N sesuai PP 11/2017) saat jenis cuti tahunan (`potongSaldoTahunan` / kode `"TAHUNAN"`) serta rentang tanggal dipilih (`jumlahHari > 0`), atau mengembalikan ke `catatanAwal` saat bukan cuti tahunan / tanggal belum dipilih.
 - `server/aksi/cuti.ts`:
-  - Pada `simpanFormulir`: menghitung ulang `catatanTahunan` (`tahun` dan `sisa` untuk N-2, N-1, N) secara independen dari tabel `saldo_cuti` di database (`rincianPemakaian` dikurangi `cek.jumlahHari` bila jenis cuti memotong saldo tahunan, dengan `formatSisa` mengembalikan `""` bila nilai `<= 0`) serta mempertahankan `keterangan` dari pemohon untuk mencegah manipulasi client-side.
+  - Pada `simpanFormulir`: menghitung ulang `catatanTahunan` (`tahun` dan `sisa` untuk N-2, N-1, N) secara independen dari nilai murni tabel `saldo_cuti` di database (`sisaN2 = saldo.sisaN2`, `sisaN1 = saldo.sisaN1`, `sisaN = saldo.hakTahunIni + saldo.penyesuaian` dikurangi `cek.jumlahHari` bila jenis cuti memotong saldo tahunan, dengan `formatSisa` mengembalikan `""` bila nilai `<= 0`) serta mempertahankan `keterangan` dari pemohon.
   - Pada `pratinjauCuti`: menerima parameter opsional `kecualiId` agar pratinjau pada halaman ubah formulir (`/cuti/[id]/formulir`) tidak menganggap pengajuan yang sedang diedit bertabrakan dengan dirinya sendiri.
+- `app/(aplikasi)/cuti/saldo/page.tsx`: Mengubah header kolom tabel saldo cuti dari `N-2 ({tahun - 2})` dan `N-1 ({tahun - 1})` menjadi `Hak {tahun - 2}` dan `Hak {tahun - 1}` (misal `Hak 2024`, `Hak 2025`, `Hak 2026`).
+- `components/cuti/kelola-saldo.tsx`: Mengubah label bidang pada dialog `UbahSaldo` dari `"Sisa N-1"` dan `"Sisa N-2"` menjadi `` `Hak ${tahun - 1}` `` dan `` `Hak ${tahun - 2}` ``.
 - `app/(aplikasi)/cuti/[id]/formulir/page.tsx`: Meneruskan `catatanAwal: bawaan.catatanTahunan` (saldo murni sebelum dikurangi pengajuan aktif) ke `FormFormulir` agar pengurangan reaktif saat mengedit formulir tidak memotong saldo dua kali (double deduction).
 - `server/kueri/cuti.ts`: Menyertakan properti `potongSaldoTahunan` pada daftar `jenis` di `opsiPengajuan`.
 - `lib/peran.ts`: Menambahkan peran efektif `SUPERADMIN` (`"Superadmin"`) pada `PeranEfektif` dan `LABEL_PERAN` agar tampilan profil dan header menampilkan role `Superadmin` untuk akun `eerza311` (`admin`).

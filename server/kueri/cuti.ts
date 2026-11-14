@@ -42,7 +42,7 @@ export async function opsiPengajuan(pegawaiId: string) {
   return {
     jenis: jenis
       .sort((a, b) => urutan.indexOf(a.kode) - urutan.indexOf(b.kode))
-      .map((j) => ({ id: j.id, nama: j.nama, wajibLampiran: j.wajibLampiran, bolehTanggalLampau: j.bolehTanggalLampau, kode: j.kode })),
+      .map((j) => ({ id: j.id, nama: j.nama, wajibLampiran: j.wajibLampiran, bolehTanggalLampau: j.bolehTanggalLampau, kode: j.kode, potongSaldoTahunan: j.potongSaldoTahunan })),
     rekan: rekan.map((r) => ({ id: r.id, nama: namaLengkap(r) })),
     atasan: p.atasanLangsung ? `${namaLengkap(p.atasanLangsung)} — ${p.atasanLangsung.jabatan?.nama ?? ""}` : null,
     noHp: p.noHp ?? "",

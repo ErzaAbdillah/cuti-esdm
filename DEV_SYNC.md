@@ -34,12 +34,24 @@
   - Background Worker: `app/api/tugas/harian/route.ts` (Cron pembaruan status cuti selesai & kirim antrean email)
 
 ## Status Saat Ini
-- **Fase Aktif:** Ready to Push & Deploy (Role Superadmin khusus `eerza311` / `admin` & Pegawai Admin Biasa)
-- **Fitur/Modul Aktif:** Manajemen Hak Akses Pegawai (Granular Permissions) & Superadmin Role
+- **Fase Aktif:** Ready to Push & Deploy
+- **Fitur/Modul Aktif:** Otomatisasi & Penguncian Sisa Cuti Tahunan (Bagian V. Catatan Cuti Formulir Pengajuan)
 - **Penanggung Jawab Terakhir:** Coder
 
 ## 1. Cetak Biru & Skema Data (Diisi oleh Conversation 3 - Architect)
 *Rancangan alur sistem, struktur tabel/database, dan daftar file yang harus dibuat/dieksekusi oleh Coder:*
+
+### E. Otomatisasi & Penguncian Sisa Cuti Tahunan (Bagian V. Catatan Cuti)
+1. **Latar Belakang & Kebutuhan:**
+   - Pada form pengajuan cuti (`/cuti/ajukan` dan `/cuti/[id]/formulir`), bagian *V. Catatan Cuti* (Tabel Cuti Tahunan N-2, N-1, N) sebelumnya dapat diedit bebas oleh pemohon, sehingga berisiko dimanipulasi secara manual.
+   - Kebutuhan baru:
+     - Kolom `Tahun` dan kolom `Sisa` pada tabel *V. Catatan Cuti* harus **terisi otomatis dari database saldo cuti** pegawai yang bersangkutan.
+     - Saat pegawai memilih tanggal cuti (jika jenis cutinya memotong saldo tahunan / Cuti Tahunan), kolom `Sisa` harus **otomatis berkurang secara reaktif** di antarmuka & pratinjau formulir sesuai jumlah hari kerja yang diajukan (memotong berurutan mulai dari N-2, lalu N-1, lalu N).
+     - Kolom `Tahun` dan `Sisa` **wajib dikunci (`readOnly` / `disabled`)** agar tidak bisa diubah oleh pegawai. Hanya kolom `Keterangan` yang dapat diisi opsional.
+     - Di sisi backend (`server/aksi/cuti.ts`), nilai `catatanTahunan` divalidasi dan dihitung ulang secara independen dari database untuk mencegah manipulasi client-side.
+2. **Target File yang Diubah:**
+   - `components/cuti/form-formulir.tsx`: Tambahkan state reaktif sisa cuti yang otomatis berkurang saat tanggal/lamanya cuti berubah, kunci input `Tahun` dan `Sisa` dengan `readOnly` + styling disabled (`bg-slate-100 cursor-not-allowed select-none`), perbarui teks keterangan panduan.
+   - `server/aksi/cuti.ts`: Pastikan pada `simpanFormulir`, nilai sisa catatan cuti tahunan disinkronkan dengan data saldo riil di database.
 
 ### A. Ringkasan Fitur
 Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Admin untuk setiap pegawai yang memiliki akun, mencakup 5 hak akses:
@@ -106,12 +118,27 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 *Daftar file yang baru dibuat/diubah dan ringkasan logika backend/sistemnya:*
 
 ### File Baru
+- `scripts/impor-saldo-2026.ts`: Skrip CLI untuk membaca `data-impor/saldo-cuti-2026.csv` (91 baris pegawai), mencocokkan pegawai berdasarkan NIP tanpa spasi (dengan fallback nama), menghitung `sisaN1` dan `sisaN2` (maks 6 hari/tahun sesuai PP 11/2017 dari `totalSisaBerlaku - sisa2026`), melakukan `upsert` ke tabel `saldo_cuti` tahun `2026`, dan mencatat entri `mutasi_saldo_cuti` (`jenis: "SALDO_AWAL"`, `jumlah: hakTahunIni + sisaN1 + sisaN2 - terpakai`).
+  - **Hasil Eksekusi ke DB Produksi Neon (`.env.vercel`)**:
+    - **Berhasil**: **89 pegawai** (seluruh 89 ASN ber-NIP di database berhasil tersinkronisasi saldo cuti 2026 dan mutasi saldo awalnya).
+    - **Belum ditemukan di tabel `pegawai` (2 baris tanpa NIP)**:
+      - Baris 22: `Mahdiani` (NIP kosong di CSV, belum terdaftar di tabel `pegawai`).
+      - Baris 69: `Rosriadi, S.Sos` (NIP kosong di CSV, belum terdaftar di tabel `pegawai`).
 - `lib/hak-akses.ts`: Definisi konstanta `DAFTAR_HAK_AKSES`, `SEMUA_HAK_AKSES`, `LABEL_HAK_AKSES`, `DESKRIPSI_HAK_AKSES`, dan `HAK_AKSES_BAWAAN_KEPEGAWAIAN` untuk 5 hak akses granular (`KELOLA_SALDO_CUTI`, `PROSES_CUTI`, `KELOLA_PEGAWAI`, `KELOLA_DOKUMEN_ORGANISASI`, `PENGATURAN_ADMIN`).
 - `components/admin/matriks-hak-akses.tsx`: Komponen client tabel matriks interaktif daftar pegawai berakun dengan 5 kolom checkbox centang instan (optimistic state + panggilan server action `aturHakAkses` + notifikasi toast Sonner + pencarian nama/NIP/login).
 - `app/(aplikasi)/admin/hak-akses/page.tsx`: Halaman Admin `/admin/hak-akses` untuk melihat dan mengelola matriks hak akses seluruh pegawai berakun sekaligus.
 - `tests/unit/hak-akses.test.ts`: Unit test Vitest untuk konstanta hak akses dan penyaringan menu navigasi `menuUntuk(peran, hakAkses)`.
 
 ### File Diubah
+- `components/cuti/form-formulir.tsx`:
+  - Mengunci kolom `Tahun` (`readOnly`, `tabIndex={-1}`, `className="bg-slate-100 font-medium text-slate-700 cursor-not-allowed select-none"`) dan `Sisa` (`readOnly`, `tabIndex={-1}`, `className="bg-slate-100 font-semibold text-slate-900 cursor-not-allowed select-none"`) pada bagian `V. Catatan cuti` tanpa handler `onChange`, sementara kolom `Keterangan` tetap dapat diisi.
+  - Memperbarui teks panduan di atas tabel menjadi `"Sisa cuti tahunan terisi dan berkurang otomatis dari saldo cuti Anda (tidak dapat diubah manual)."`
+  - Menambahkan logika pengurangan otomatis dan reaktif (`hitungCatatanTahunan`) yang menyimpan basis `catatanAwal` (`sisaN2`, `sisaN1`, `sisaN`) dan mengurangi sisa secara berurutan (N-2 -> N-1 -> N sesuai PP 11/2017) saat jenis cuti tahunan (`potongSaldoTahunan` / kode `"TAHUNAN"`) serta rentang tanggal dipilih (`jumlahHari > 0`), atau mengembalikan ke `catatanAwal` saat bukan cuti tahunan / tanggal belum dipilih.
+- `server/aksi/cuti.ts`:
+  - Pada `simpanFormulir`: menghitung ulang `catatanTahunan` (`tahun` dan `sisa` untuk N-2, N-1, N) secara independen dari tabel `saldo_cuti` di database (`rincianPemakaian` dikurangi `cek.jumlahHari` bila jenis cuti memotong saldo tahunan) dengan tetap mempertahankan `keterangan` dari pemohon untuk mencegah manipulasi client-side.
+  - Pada `pratinjauCuti`: menerima parameter opsional `kecualiId` agar pratinjau pada halaman ubah formulir (`/cuti/[id]/formulir`) tidak menganggap pengajuan yang sedang diedit bertabrakan dengan dirinya sendiri.
+- `app/(aplikasi)/cuti/[id]/formulir/page.tsx`: Meneruskan `catatanAwal: bawaan.catatanTahunan` (saldo murni sebelum dikurangi pengajuan aktif) ke `FormFormulir` agar pengurangan reaktif saat mengedit formulir tidak memotong saldo dua kali (double deduction).
+- `server/kueri/cuti.ts`: Menyertakan properti `potongSaldoTahunan` pada daftar `jenis` di `opsiPengajuan`.
 - `lib/peran.ts`: Menambahkan peran efektif `SUPERADMIN` (`"Superadmin"`) pada `PeranEfektif` dan `LABEL_PERAN` agar tampilan profil dan header menampilkan role `Superadmin` untuk akun `eerza311` (`admin`).
 - `lib/hak-akses.ts`: Menambahkan fungsi `adalahAkunSuperadmin(akun)` yang membatasi status Superadmin (Hak Akses Mutlak & Anti-Lockout) hanya untuk akun `eerza311` (`loginId: "admin"`, `loginId: "eerza311"`, atau `googleEmail: "eerza311@gmail.com"`).
 - `server/auth/sesi.ts`: Menambahkan `hakAkses: true` pada `include.user` di fungsi `bacaSesi()`.

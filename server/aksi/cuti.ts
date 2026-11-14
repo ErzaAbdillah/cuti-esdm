@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { bisaDibatalkan, bisaDitolak, STATUS_DISETUJUI, STATUS_SETELAH_TAHAP } from "@/lib/domain/alur-cuti";
+import { rincianPemakaian } from "@/lib/domain/saldo-cuti";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import type { StatusCuti } from "@/lib/generated/prisma/enums";
 import { perluNotaDinas } from "@/lib/formulir/nota-dinas";
@@ -21,12 +22,14 @@ const tanggal = (s: string) => new Date(`${s}T00:00:00Z`);
 const isoDate = z.iso.date("Tanggal tidak valid.");
 
 /** Hitung hari & cek saldo saat form diisi (tanpa menyimpan). */
-export async function pratinjauCuti(input: { jenisCutiId: string; tanggalMulai: string; tanggalSelesai: string }) {
+export async function pratinjauCuti(input: { jenisCutiId: string; tanggalMulai: string; tanggalSelesai: string; kecualiId?: string | null }) {
   const u = await wajibLogin();
-  if (!u.pegawai) return { galat: "Akun tidak terhubung dengan data pegawai." };
-  const p = z.object({ jenisCutiId: z.uuid(), tanggalMulai: isoDate, tanggalSelesai: isoDate }).safeParse(input);
+  const p = z.object({ jenisCutiId: z.uuid(), tanggalMulai: isoDate, tanggalSelesai: isoDate, kecualiId: z.uuid().nullable().optional() }).safeParse(input);
   if (!p.success) return { galat: null };
-  const h = await validasiPengajuan({ pegawaiId: u.pegawai.id, jenisCutiId: p.data.jenisCutiId, mulai: tanggal(p.data.tanggalMulai), selesai: tanggal(p.data.tanggalSelesai) });
+  const lama = p.data.kecualiId ? await db.pengajuanCuti.findUnique({ where: { id: p.data.kecualiId }, select: { pegawaiId: true } }) : null;
+  const pegawaiId = lama?.pegawaiId ?? u.pegawai?.id;
+  if (!pegawaiId) return { galat: "Akun tidak terhubung dengan data pegawai." };
+  const h = await validasiPengajuan({ pegawaiId, jenisCutiId: p.data.jenisCutiId, mulai: tanggal(p.data.tanggalMulai), selesai: tanggal(p.data.tanggalSelesai), kecualiId: p.data.kecualiId ?? undefined });
   if (h.ok) return { jumlahHari: h.jumlahHari, satuan: h.satuan, sisaSetelah: h.sisaSetelah };
   return { galat: Object.values(h.galat)[0] ?? null, jumlahHari: h.jumlahHari };
 }
@@ -108,10 +111,34 @@ export async function simpanFormulir(id: string | null, masukan: MasukanFormulir
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${pegawaiId}))`;
       const cek = await validasiPengajuan({ pegawaiId, jenisCutiId: d.jenisCutiId, mulai, selesai, kecualiId: lama?.id }, tx);
       if (!cek.ok) throw new GalatValidasi(cek.galat);
-      const pegawai = lama ? null : await tx.pegawai.findUniqueOrThrow({ where: { id: pegawaiId }, include: { jabatan: true } });
+      const [pegawai, jenis, saldo] = await Promise.all([
+        lama ? null : tx.pegawai.findUniqueOrThrow({ where: { id: pegawaiId }, include: { jabatan: true } }),
+        tx.jenisCuti.findUniqueOrThrow({ where: { id: d.jenisCutiId }, select: { potongSaldoTahunan: true, kode: true } }),
+        tx.saldoCuti.findUnique({ where: { pegawaiId_tahun: { pegawaiId, tahun: cek.tahunSaldo } } }),
+      ]);
       const levelSurat = lama?.levelSurat ?? (await levelSuratPegawai(pegawai!));
+
+      // Hitung ulang catatan sisa cuti tahunan (V. Catatan cuti) secara independen dari database.
+      const pakai = saldo ? rincianPemakaian(saldo) : null;
+      const sisaN2 = saldo && pakai ? Math.max(0, saldo.sisaN2 - pakai.dariN2) : 0;
+      const sisaN1 = saldo && pakai ? Math.max(0, saldo.sisaN1 - pakai.dariN1) : 0;
+      const sisaN = saldo && pakai ? Math.max(0, saldo.hakTahunIni + saldo.penyesuaian - pakai.dariN) : 0;
+      const potongTahunan = jenis.potongSaldoTahunan || jenis.kode === "TAHUNAN";
+      let sisaHari = potongTahunan ? cek.jumlahHari : 0;
+      const potongN2 = Math.min(sisaN2, sisaHari);
+      sisaHari -= potongN2;
+      const potongN1 = Math.min(sisaN1, sisaHari);
+      sisaHari -= potongN1;
+      const potongN = Math.min(sisaN, sisaHari);
+      const formatSisa = (n: number) => (saldo ? (n > 0 ? String(n) : "---") : "");
+      const catatanTahunan: typeof formulir.catatanTahunan = [
+        { tahun: String(cek.tahunSaldo - 2), sisa: formatSisa(sisaN2 - potongN2), keterangan: formulir.catatanTahunan[0].keterangan },
+        { tahun: String(cek.tahunSaldo - 1), sisa: formatSisa(sisaN1 - potongN1), keterangan: formulir.catatanTahunan[1].keterangan },
+        { tahun: String(cek.tahunSaldo), sisa: formatSisa(sisaN - potongN), keterangan: formulir.catatanTahunan[2].keterangan },
+      ];
+
       // Nota dinas hanya untuk Eselon II & III.
-      const { notaDinas, ...isian } = formulir;
+      const { notaDinas, ...isian } = { ...formulir, catatanTahunan };
       const data = {
         jenisCutiId: d.jenisCutiId,
         tanggalMulai: mulai,

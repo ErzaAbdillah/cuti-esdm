@@ -22,8 +22,17 @@ import { pratinjauCuti, simpanFormulir } from "@/server/aksi/cuti";
 export interface PropsFormFormulir {
   /** null = pengajuan baru. */
   id: string | null;
-  jenis: { id: string; nama: string; kode: string; bolehTanggalLampau: boolean }[];
-  awal: { isian: IsianFormulir; jenisCutiId: string; tanggalMulai: string; tanggalSelesai: string; alasan: string; alamat: string };
+  jenis: { id: string; nama: string; kode: string; bolehTanggalLampau: boolean; potongSaldoTahunan?: boolean }[];
+  awal: {
+    isian: IsianFormulir;
+    /** Nilai saldo awal sebelum dikurangi pengajuan ini (dipakai saat ubah formulir). */
+    catatanAwal?: IsianFormulir["catatanTahunan"];
+    jenisCutiId: string;
+    tanggalMulai: string;
+    tanggalSelesai: string;
+    alasan: string;
+    alamat: string;
+  };
   /** Level surat pemohon; Eselon II & III juga mengisi nota dinas. */
   level: string;
   hariIni: string;
@@ -74,12 +83,53 @@ function IsianPejabat({ awalan, p, ubah }: { awalan: string; p: Pejabat; ubah: (
 const tgl = (s: string) => (/^\d{4}-\d{2}-\d{2}$/.test(s) ? formatTanggal(new Date(`${s}T00:00:00Z`)) : "");
 
 /**
+ * Simulasi pemotongan sisa cuti tahunan (PP 11/2017: N-2 -> N-1 -> N) secara
+ * reaktif berdasarkan jumlah hari pengajuan aktif, sambil mempertahankan keterangan.
+ */
+function hitungCatatanTahunan(
+  catatanAwal: IsianFormulir["catatanTahunan"],
+  sekarang: IsianFormulir["catatanTahunan"],
+  jumlahHari: number,
+  adalahTahunan: boolean,
+): IsianFormulir["catatanTahunan"] {
+  if (!adalahTahunan || jumlahHari <= 0) {
+    return [
+      { tahun: catatanAwal[0].tahun, sisa: catatanAwal[0].sisa, keterangan: sekarang[0].keterangan },
+      { tahun: catatanAwal[1].tahun, sisa: catatanAwal[1].sisa, keterangan: sekarang[1].keterangan },
+      { tahun: catatanAwal[2].tahun, sisa: catatanAwal[2].sisa, keterangan: sekarang[2].keterangan },
+    ];
+  }
+  const sisaN2 = Number(catatanAwal[0].sisa) || 0;
+  const sisaN1 = Number(catatanAwal[1].sisa) || 0;
+  const sisaN = Number(catatanAwal[2].sisa) || 0;
+
+  let sisaHari = jumlahHari;
+  const potongN2 = Math.min(sisaN2, sisaHari);
+  sisaHari -= potongN2;
+  const potongN1 = Math.min(sisaN1, sisaHari);
+  sisaHari -= potongN1;
+  const potongN = Math.min(sisaN, sisaHari);
+
+  const sisaAkhirN2 = sisaN2 - potongN2;
+  const sisaAkhirN1 = sisaN1 - potongN1;
+  const sisaAkhirN = sisaN - potongN;
+
+  const formatSisa = (n: number) => (n > 0 ? String(n) : "---");
+  return [
+    { tahun: catatanAwal[0].tahun, sisa: formatSisa(sisaAkhirN2), keterangan: sekarang[0].keterangan },
+    { tahun: catatanAwal[1].tahun, sisa: formatSisa(sisaAkhirN1), keterangan: sekarang[1].keterangan },
+    { tahun: catatanAwal[2].tahun, sisa: formatSisa(sisaAkhirN), keterangan: sekarang[2].keterangan },
+  ];
+}
+
+/**
  * Formulir Permintaan dan Pemberian Cuti — plus Nota Dinas pengantar untuk
  * Eselon II & III. Pegawai mengisi semua bagian, menyimpan, lalu mencetak —
  * tanpa verifikasi. Pratinjau di samping sama dengan hasil cetak.
  */
 export function FormFormulir({ id, jenis, awal, level, hariIni }: PropsFormFormulir) {
   const router = useRouter();
+  const [catatanAwal] = useState<IsianFormulir["catatanTahunan"]>(() => awal.catatanAwal ?? awal.isian.catatanTahunan);
   const [f, setF] = useState<IsianFormulir>(awal.isian);
   const [jenisCutiId, setJenisCutiId] = useState(awal.jenisCutiId);
   const [mulai, setMulai] = useState(awal.tanggalMulai);
@@ -94,6 +144,7 @@ export function FormFormulir({ id, jenis, awal, level, hariIni }: PropsFormFormu
   const [menunggu, mulaiKirim] = useTransition();
   const ubah = <K extends keyof IsianFormulir>(k: K, v: IsianFormulir[K]) => setF((x) => ({ ...x, [k]: v }));
   const j = jenis.find((x) => x.id === jenisCutiId);
+  const potongTahunan = j?.potongSaldoTahunan === true || j?.kode === "TAHUNAN";
   const levelNota = perluNotaDinas(level) ? level : null;
 
   /** Hal & isi nota dinas yang disusun dari isian cuti. */
@@ -115,17 +166,31 @@ export function FormFormulir({ id, jenis, awal, level, hariIni }: PropsFormFormu
   const ubahNota = <K extends keyof IsianNotaDinas>(k: K, v: IsianNotaDinas[K]) => setF((x) => (x.notaDinas ? { ...x, notaDinas: { ...x.notaDinas, [k]: v } } : x));
   const ubahTtd = (v: Partial<IsianNotaDinas["penandatangan"]>) => setF((x) => (x.notaDinas ? { ...x, notaDinas: { ...x.notaDinas, penandatangan: { ...x.notaDinas.penandatangan, ...v } } } : x));
 
-  // Hitung hari kerja & cek saldo; isi "Lamanya" otomatis selama belum diubah tangan.
+  // Hitung hari kerja & cek saldo; isi "Lamanya" dan kurangi sisa cuti tahunan otomatis.
   useEffect(() => {
-    if (!jenisCutiId || !mulai || !selesai) return;
+    let aktif = true;
     const t = setTimeout(async () => {
-      const h = await pratinjauCuti({ jenisCutiId, tanggalMulai: mulai, tanggalSelesai: selesai });
+      if (!jenisCutiId || !mulai || !selesai) {
+        if (!aktif) return;
+        setF((x) => ({ ...x, catatanTahunan: hitungCatatanTahunan(catatanAwal, x.catatanTahunan, 0, false) }));
+        setInfo(null);
+        return;
+      }
+      const h = await pratinjauCuti({ jenisCutiId, tanggalMulai: mulai, tanggalSelesai: selesai, kecualiId: id });
+      if (!aktif) return;
       const n = "jumlahHari" in h ? h.jumlahHari : undefined;
-      if (n && !lamanyaManual) setF((x) => ({ ...x, lamanya: teksLamanya(n, terbilang(n), "satuan" in h && h.satuan ? h.satuan : "hari kerja") }));
+      setF((x) => ({
+        ...x,
+        ...(n && !lamanyaManual ? { lamanya: teksLamanya(n, terbilang(n), "satuan" in h && h.satuan ? h.satuan : "hari kerja") } : {}),
+        catatanTahunan: hitungCatatanTahunan(catatanAwal, x.catatanTahunan, n ?? 0, potongTahunan),
+      }));
       setInfo(h.galat ? h.galat : n ? `${n} ${"satuan" in h ? h.satuan : "hari"}${"sisaSetelah" in h && h.sisaSetelah != null ? ` · sisa saldo setelah cuti: ${h.sisaSetelah} hari` : ""}` : null);
     }, 250);
-    return () => clearTimeout(t);
-  }, [jenisCutiId, mulai, selesai, lamanyaManual]);
+    return () => {
+      aktif = false;
+      clearTimeout(t);
+    };
+  }, [id, jenisCutiId, mulai, selesai, lamanyaManual, potongTahunan, catatanAwal]);
 
   const html = htmlFormulir(f, { jenisKode: j?.kode ?? "", tanggalMulai: tgl(mulai), tanggalSelesai: tgl(selesai), alasan, alamat });
 
@@ -218,11 +283,11 @@ export function FormFormulir({ id, jenis, awal, level, hariIni }: PropsFormFormu
         </Bagian>
 
         <Bagian judul="V. Catatan cuti">
-          <p className="text-xs text-slate-600">Sisa cuti tahunan diisi dari data saldo; ubah bila perlu.</p>
+          <p className="text-xs text-slate-600">Sisa cuti tahunan terisi dan berkurang otomatis dari saldo cuti Anda (tidak dapat diubah manual).</p>
           {f.catatanTahunan.map((b, i) => (
             <div key={i} className="grid grid-cols-[5rem_5rem_1fr] gap-2">
-              <Input aria-label={`Tahun baris ${i + 1}`} value={b.tahun} className="bg-white" onChange={(e) => ubah("catatanTahunan", f.catatanTahunan.map((x, k) => (k === i ? { ...x, tahun: e.target.value } : x)) as IsianFormulir["catatanTahunan"])} />
-              <Input aria-label={`Sisa ${b.tahun}`} value={b.sisa} className="bg-white" onChange={(e) => ubah("catatanTahunan", f.catatanTahunan.map((x, k) => (k === i ? { ...x, sisa: e.target.value } : x)) as IsianFormulir["catatanTahunan"])} />
+              <Input aria-label={`Tahun baris ${i + 1}`} value={b.tahun} readOnly tabIndex={-1} className="bg-slate-100 font-medium text-slate-700 cursor-not-allowed select-none" />
+              <Input aria-label={`Sisa ${b.tahun}`} value={b.sisa} readOnly tabIndex={-1} className="bg-slate-100 font-semibold text-slate-900 cursor-not-allowed select-none" />
               <Input aria-label={`Keterangan ${b.tahun}`} value={b.keterangan} placeholder="Keterangan" className="bg-white" onChange={(e) => ubah("catatanTahunan", f.catatanTahunan.map((x, k) => (k === i ? { ...x, keterangan: e.target.value } : x)) as IsianFormulir["catatanTahunan"])} />
             </div>
           ))}

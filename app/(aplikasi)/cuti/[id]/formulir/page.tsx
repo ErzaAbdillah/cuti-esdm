@@ -7,6 +7,7 @@ import { kunciTanggal } from "@/lib/domain/hari-kerja";
 import { hariIniWita } from "@/lib/tanggal";
 import { punyaHakAkses, punyaPeran, wajibLogin } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
+import { bawaanFormulir } from "@/server/formulir/bawaan";
 import { isianFormulir } from "@/server/formulir/data";
 import { opsiPengajuan } from "@/server/kueri/cuti";
 
@@ -21,7 +22,11 @@ export default async function UbahFormulir({ params }: PageProps<"/cuti/[id]/for
   if (!p) notFound();
   if (!(u.pegawai?.id === p.pegawaiId || punyaHakAkses(u, "PROSES_CUTI") || punyaPeran(u, "KEPEGAWAIAN", "ADMIN"))) redirect("/akses-ditolak");
   if (p.status !== "DIAJUKAN") redirect(`/cuti/${id}`);
-  const o = await opsiPengajuan(p.pegawaiId);
+  const [o, isian, bawaan] = await Promise.all([
+    opsiPengajuan(p.pegawaiId),
+    isianFormulir(p),
+    bawaanFormulir(p.pegawaiId, p.levelSurat, p.tahunSaldo ?? undefined),
+  ]);
   const iso = (d: Date) => d.toISOString().slice(0, 10);
 
   return (
@@ -37,7 +42,15 @@ export default async function UbahFormulir({ params }: PageProps<"/cuti/[id]/for
         jenis={o.jenis}
         level={p.levelSurat}
         hariIni={kunciTanggal(hariIniWita())}
-        awal={{ isian: await isianFormulir(p), jenisCutiId: p.jenisCutiId, tanggalMulai: iso(p.tanggalMulai), tanggalSelesai: iso(p.tanggalSelesai), alasan: p.alasan, alamat: p.alamatSelamaCuti }}
+        awal={{
+          isian,
+          catatanAwal: bawaan.catatanTahunan,
+          jenisCutiId: p.jenisCutiId,
+          tanggalMulai: iso(p.tanggalMulai),
+          tanggalSelesai: iso(p.tanggalSelesai),
+          alasan: p.alasan,
+          alamat: p.alamatSelamaCuti,
+        }}
       />
     </div>
   );

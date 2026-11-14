@@ -92,8 +92,8 @@ export default async function SaldoCuti({ searchParams }: PageProps<"/cuti/saldo
               <thead className="bg-sky-50/80 text-judul">
                 <tr>
                   <th className="px-3 py-2 text-left">Nama / NIP</th>
-                  <th className="px-2 py-2 text-center">N-2 ({tahun - 2})</th>
-                  <th className="px-2 py-2 text-center">N-1 ({tahun - 1})</th>
+                  <th className="px-2 py-2 text-center">Hak {tahun - 2}</th>
+                  <th className="px-2 py-2 text-center">Hak {tahun - 1}</th>
                   <th className="px-2 py-2 text-center">Hak {tahun}</th>
                   <th className="px-2 py-2 text-center">Penyesuaian</th>
                   <th className="px-2 py-2 text-center">Jumlah</th>

@@ -130,7 +130,7 @@ export async function simpanFormulir(id: string | null, masukan: MasukanFormulir
       const potongN1 = Math.min(sisaN1, sisaHari);
       sisaHari -= potongN1;
       const potongN = Math.min(sisaN, sisaHari);
-      const formatSisa = (n: number) => (saldo ? (n > 0 ? String(n) : "---") : "");
+      const formatSisa = (n: number) => (saldo ? (n > 0 ? String(n) : "") : "");
       const catatanTahunan: typeof formulir.catatanTahunan = [
         { tahun: String(cek.tahunSaldo - 2), sisa: formatSisa(sisaN2 - potongN2), keterangan: formulir.catatanTahunan[0].keterangan },
         { tahun: String(cek.tahunSaldo - 1), sisa: formatSisa(sisaN1 - potongN1), keterangan: formulir.catatanTahunan[1].keterangan },

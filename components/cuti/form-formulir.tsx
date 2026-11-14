@@ -114,7 +114,7 @@ function hitungCatatanTahunan(
   const sisaAkhirN1 = sisaN1 - potongN1;
   const sisaAkhirN = sisaN - potongN;
 
-  const formatSisa = (n: number) => (n > 0 ? String(n) : "---");
+  const formatSisa = (n: number) => (n > 0 ? String(n) : "");
   return [
     { tahun: catatanAwal[0].tahun, sisa: formatSisa(sisaAkhirN2), keterangan: sekarang[0].keterangan },
     { tahun: catatanAwal[1].tahun, sisa: formatSisa(sisaAkhirN1), keterangan: sekarang[1].keterangan },

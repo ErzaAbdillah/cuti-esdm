@@ -29,7 +29,7 @@ function masaKerja(nip: string | null, tanggalMasuk: Date | null, hariIni: Date)
   return tahun >= 0 ? `${tahun} Tahun` : "";
 }
 
-const angka = (n: number) => (n > 0 ? String(n) : "---");
+const angka = (n: number) => (n > 0 ? String(n) : "");
 
 /**
  * Nilai awal formulir untuk pegawai & level surat, mengikuti contoh formulir

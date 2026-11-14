@@ -37,8 +37,8 @@ export function UbahSaldo({ pegawaiId, nama, tahun, saldo }: { pegawaiId: string
           <input type="hidden" name="tahun" value={tahun} />
           <div className="grid grid-cols-2 gap-3">
             <Bidang label="Hak tahun ini" name="hakTahunIni" type="number" min={0} max={30} defaultValue={saldo?.hakTahunIni ?? 12} />
-            <Bidang label="Sisa N-1" name="sisaN1" type="number" min={0} max={30} defaultValue={saldo?.sisaN1 ?? 0} />
-            <Bidang label="Sisa N-2" name="sisaN2" type="number" min={0} max={30} defaultValue={saldo?.sisaN2 ?? 0} />
+            <Bidang label={`Hak ${tahun - 1}`} name="sisaN1" type="number" min={0} max={30} defaultValue={saldo?.sisaN1 ?? 0} />
+            <Bidang label={`Hak ${tahun - 2}`} name="sisaN2" type="number" min={0} max={30} defaultValue={saldo?.sisaN2 ?? 0} />
             <Bidang label="Penyesuaian (±)" name="penyesuaian" type="number" min={-30} max={30} defaultValue={saldo?.penyesuaian ?? 0} />
           </div>
           <Bidang label="Alasan perubahan" name="catatan" placeholder="mis. Koreksi sesuai SK cuti 2025" required />

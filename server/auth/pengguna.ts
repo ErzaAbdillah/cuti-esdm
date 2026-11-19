@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { namaLengkap } from "@/lib/domain/pegawai";
 import { formatNip } from "@/lib/domain/nip";
+import { urlFotoProfil } from "@/lib/foto-profil";
 import type { HakAkses, Peran } from "@/lib/generated/prisma/enums";
 import { adalahAkunSuperadmin, HAK_AKSES_BAWAAN_KEPEGAWAIAN, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
 import type { PeranEfektif } from "@/lib/peran";
@@ -16,6 +17,7 @@ export interface PenggunaSaatIni {
   sesiId: string;
   loginId: string;
   googleEmail: string | null;
+  fotoUrl: string | null;
   wajibGantiPassword: boolean;
   peran: ReadonlySet<PeranEfektif>;
   hakAkses: ReadonlySet<HakAkses>;
@@ -79,6 +81,7 @@ export const penggunaSaatIni = cache(async (): Promise<PenggunaSaatIni | null> =
     sesiId: sesi.id,
     loginId: sesi.user.loginId,
     googleEmail: sesi.user.googleEmail,
+    fotoUrl: urlFotoProfil(sesi.user.id, sesi.user.fotoProfil?.diubahPada),
     wajibGantiPassword: sesi.user.wajibGantiPassword,
     peran,
     hakAkses,

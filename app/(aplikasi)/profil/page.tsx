@@ -1,11 +1,14 @@
 import { CircleCheckIcon, TriangleAlertIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { FormFotoProfil } from "@/components/auth/form-foto-profil";
 import { FormGantiPassword } from "@/components/auth/form-ganti-password";
 import { FormPutuskanGoogle } from "@/components/auth/form-putuskan-google";
 import { TombolGoogle } from "@/components/auth/tombol-google";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { inisialNama } from "@/lib/foto-profil";
 import { punyaPassword } from "@/lib/password";
 import { LABEL_PERAN } from "@/lib/peran";
 import { bolehAturPassword, googleAktif } from "@/server/auth/google";
@@ -63,6 +66,27 @@ export default async function Profil({ searchParams }: PageProps<"/profil">) {
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-judul">Foto profil</CardTitle>
+            <CardDescription>Tampil di pojok kanan atas aplikasi dan halaman data pegawai.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {u.wajibGantiPassword ? (
+              <div className="flex items-center gap-4">
+                <Avatar className="size-20 shrink-0 ring-2 ring-sky-100">
+                  {u.fotoUrl && <AvatarImage key={u.fotoUrl} src={u.fotoUrl} alt={`Foto profil ${u.pegawai?.namaLengkap ?? u.loginId}`} />}
+                  <AvatarFallback className="bg-primary text-lg font-semibold text-primary-foreground">
+                    {inisialNama(u.pegawai?.namaLengkap ?? u.loginId)}
+                  </AvatarFallback>
+                </Avatar>
+                <p className="text-sm text-slate-700">Buat atau ganti password terlebih dahulu sebelum mengubah foto profil.</p>
+              </div>
+            ) : (
+              <FormFotoProfil nama={u.pegawai?.namaLengkap ?? u.loginId} fotoUrl={u.fotoUrl} />
+            )}
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader>
             <CardTitle className="text-judul">Data akun</CardTitle>

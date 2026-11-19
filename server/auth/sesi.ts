@@ -53,7 +53,16 @@ export const bacaSesi = cache(async () => {
 
   const sesi = await db.sesi.findUnique({
     where: { id: hashToken(token) },
-    include: { user: { include: { peran: true, hakAkses: true, pegawai: { select: { aktif: true } } } } },
+    include: {
+      user: {
+        include: {
+          peran: true,
+          hakAkses: true,
+          pegawai: { select: { aktif: true } },
+          fotoProfil: { select: { diubahPada: true } },
+        },
+      },
+    },
   });
   if (!sesi) return null;
 

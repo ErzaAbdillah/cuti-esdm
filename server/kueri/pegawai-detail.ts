@@ -2,6 +2,7 @@ import "server-only";
 import { tentukanLevelSurat } from "@/lib/domain/level-surat";
 import { formatNip } from "@/lib/domain/nip";
 import { namaLengkap, pangkatTampil } from "@/lib/domain/pegawai";
+import { urlFotoProfil } from "@/lib/foto-profil";
 import { adalahAkunSuperadmin, HAK_AKSES_BAWAAN_KEPEGAWAIAN, type HakAkses, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
 import { samarkanAlamat, samarkanHp, samarkanNik } from "@/lib/samaran";
 import { hariIniWita } from "@/lib/tanggal";
@@ -27,7 +28,7 @@ export async function detailPegawai(id: string) {
       unitKerja: true,
       pangkatGolongan: true,
       atasanLangsung: { include: { jabatan: true } },
-      user: { include: { peran: true, hakAkses: true } },
+      user: { include: { peran: true, hakAkses: true, fotoProfil: { select: { diubahPada: true } } } },
       saldoCuti: { where: { tahun } },
       pengajuanCuti: { include: { jenisCuti: true }, orderBy: { dibuatPada: "desc" }, take: 20 },
       kodeAktivasi: { where: { dipakaiPada: null, kedaluwarsaPada: { gt: new Date() } }, orderBy: { dibuatPada: "desc" }, take: 1 },
@@ -84,6 +85,7 @@ export async function detailPegawai(id: string) {
           terakhirLogin: p.user.terakhirLogin,
           wajibGantiPassword: p.user.wajibGantiPassword,
           googleEmail: p.user.googleEmail,
+          fotoUrl: urlFotoProfil(p.user.id, p.user.fotoProfil?.diubahPada),
           peran: p.user.peran.map((r) => r.peran),
           hakAkses: (() => {
             const set = new Set<HakAkses>(p.user.hakAkses.map((h) => h.hakAkses));

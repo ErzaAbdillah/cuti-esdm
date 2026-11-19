@@ -49,7 +49,7 @@ export default async function LayoutAplikasi({ children }: LayoutProps<"/">) {
                 </span>
               )}
             </Link>
-            <MenuPengguna nama={nama} keterangan={keterangan} />
+            <MenuPengguna nama={nama} keterangan={keterangan} fotoUrl={u.fotoUrl} />
           </div>
         </header>
         <main id="konten" className="mx-auto w-full max-w-7xl px-4 pb-10 pt-5 sm:px-6">

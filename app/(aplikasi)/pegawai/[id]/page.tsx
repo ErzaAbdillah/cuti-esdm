@@ -6,11 +6,13 @@ import type { ReactNode } from "react";
 import { AkunPegawai } from "@/components/pegawai/akun-pegawai";
 import { DataSensitif } from "@/components/pegawai/data-sensitif";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LABEL_STATUS_KEPEGAWAIAN } from "@/lib/domain/pegawai";
 import { saldoTersedia, totalHak } from "@/lib/domain/saldo-cuti";
+import { inisialNama } from "@/lib/foto-profil";
 import { LABEL_LEVEL_SURAT, LABEL_STATUS_CUTI, WARNA_STATUS_CUTI } from "@/lib/label";
 import { formatTanggal } from "@/lib/tanggal";
 import { cn } from "@/lib/utils";
@@ -47,17 +49,25 @@ export default async function HalamanDetailPegawai({ params, searchParams }: Pag
   return (
     <div className="grid gap-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          {staf && (
-            <Link href="/pegawai" className="mb-1 inline-flex items-center gap-1 text-sm text-primary hover:underline">
-              <ArrowLeftIcon className="size-4" /> Data Pegawai
-            </Link>
-          )}
-          <h1 className="text-2xl font-bold tracking-tight text-judul">{p.namaLengkap}</h1>
-          <p className="text-sm text-slate-700">
-            {p.nip ?? p.idNonAsn} · {LABEL_STATUS_KEPEGAWAIAN[p.statusKepegawaian]}
-            {!p.aktif && <span className="ml-2 rounded bg-slate-200 px-1.5 text-xs">nonaktif</span>}
-          </p>
+        <div className="flex min-w-0 items-center gap-3.5">
+          <Avatar className="size-14 shrink-0 ring-2 ring-sky-100">
+            {p.akun?.fotoUrl && <AvatarImage key={p.akun.fotoUrl} src={p.akun.fotoUrl} alt={`Foto profil ${p.namaLengkap}`} />}
+            <AvatarFallback className="bg-primary text-base font-semibold text-primary-foreground">
+              {inisialNama(p.namaLengkap)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            {staf && (
+              <Link href="/pegawai" className="mb-1 inline-flex items-center gap-1 text-sm text-primary hover:underline">
+                <ArrowLeftIcon className="size-4" /> Data Pegawai
+              </Link>
+            )}
+            <h1 className="text-2xl font-bold tracking-tight text-judul">{p.namaLengkap}</h1>
+            <p className="text-sm text-slate-700">
+              {p.nip ?? p.idNonAsn} · {LABEL_STATUS_KEPEGAWAIAN[p.statusKepegawaian]}
+              {!p.aktif && <span className="ml-2 rounded bg-slate-200 px-1.5 text-xs">nonaktif</span>}
+            </p>
+          </div>
         </div>
         {kepegawaian && (
           <Button asChild>

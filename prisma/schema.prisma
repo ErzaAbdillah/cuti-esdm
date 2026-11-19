@@ -214,8 +214,21 @@ model User {
   keteranganDicatat KeteranganKehadiran[]
   mutasiSaldo       MutasiSaldoCuti[]
   alurPersetujuan   AlurPersetujuan[]
+  fotoProfil        FotoProfil?
 
   @@map("users")
+}
+
+model FotoProfil {
+  userId     String   @id @map("user_id") @db.Uuid
+  data       Bytes
+  mime       String
+  ukuran     Int
+  diubahPada DateTime @default(now()) @updatedAt @map("diubah_pada") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("foto_profil")
 }
 
 model UserPeran {

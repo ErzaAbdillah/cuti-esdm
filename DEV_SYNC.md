@@ -36,8 +36,8 @@
   - Background Worker: `app/api/tugas/harian/route.ts` (Cron pembaruan status cuti selesai & kirim antrean email)
 
 ## Status Saat Ini
-- **Fase Aktif:** Testing & Debugging (Perbaikan Keamanan Tahap 1 & 2 Selesai — Siap Review QA / Deploy)
-- **Fitur/Modul Aktif:** Perbaikan Keamanan Login, Daftar Akun, & Akun Google (Tahap 1 & Tahap 2) + Akun Dummy Uji
+- **Fase Aktif:** Testing & Debugging (Fitur Foto Profil Selesai — Siap Review / Push & Deploy)
+- **Fitur/Modul Aktif:** Foto Profil Pegawai pada Halaman Profil & Password, Header Akun, dan Detail Pegawai
 - **Penanggung Jawab Terakhir:** Coder
 
 ## 1. Cetak Biru & Skema Data (Diisi oleh Conversation 3 - Architect)
@@ -171,6 +171,16 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 - `components/admin/matriks-hak-akses.tsx`: Komponen client tabel matriks interaktif daftar pegawai berakun dengan 5 kolom checkbox centang instan (optimistic state + panggilan server action `aturHakAkses` + notifikasi toast Sonner + pencarian nama/NIP/login).
 - `app/(aplikasi)/admin/hak-akses/page.tsx`: Halaman Admin `/admin/hak-akses` untuk melihat dan mengelola matriks hak akses seluruh pegawai berakun sekaligus.
 - `tests/unit/hak-akses.test.ts`: Unit test Vitest untuk konstanta hak akses dan penyaringan menu navigasi `menuUntuk(peran, hakAkses)`.
+
+### File Ditambah / Diubah (Fitur Foto Profil)
+- `prisma/schema.prisma` & `prisma/migrations/20261119151727_foto_profil/migration.sql`: Menambahkan tabel terpisah `foto_profil` (`FotoProfil`) untuk menyimpan gambar profil pegawai langsung di database PostgreSQL (supaya aman dan tidak hilang saat aplikasi berjalan di Vercel), tanpa memberatkan pengambilan data login harian.
+- `lib/foto-profil.ts`: Menambahkan helper bersama untuk pengecekan keaslian gambar (JPG, PNG, WebP lewat pemeriksaan isi file asli/magic bytes agar file palsu atau SVG berbahaya ditolak), pembuat inisial nama `inisialNama()`, serta pembuat alamat foto berversi `urlFotoProfil()`.
+- `server/aksi/profil.ts`: Menambahkan aksi server `unggahFotoProfil()` dan `hapusFotoProfil()` yang mewajibkan login sah, memvalidasi berkas foto (maks 2 MB), mencatat jejak aktivitas ke audit log, dan memperbarui tampilan seluruh halaman (`revalidatePath`).
+- `app/api/profil/foto/[userId]/route.ts`: Menambahkan alamat penyaji foto profil (`/api/profil/foto/[userId]`) yang hanya dapat dibuka jika sudah login, menolak akun/pegawai nonaktif, dan mengirim header cache pribadi + anti-sniffing.
+- `server/auth/sesi.ts`, `server/auth/pengguna.ts`, & `server/kueri/pegawai-detail.ts`: Menyertakan waktu pembaruan foto profil untuk menghasilkan `fotoUrl` di menu pengguna pojok kanan atas dan di halaman detail pegawai.
+- `components/auth/form-foto-profil.tsx` & `app/(aplikasi)/profil/page.tsx`: Menambahkan kartu **Foto profil** di halaman **Profil & password** lengkap dengan pratinjau langsung, pemotongan persegi otomatis `512×512` di browser agar ringan, tombol pilih/ganti foto, dan konfirmasi hapus foto.
+- `components/tata-letak/menu-pengguna.tsx`, `app/(aplikasi)/layout.tsx`, & `app/(aplikasi)/pegawai/[id]/page.tsx`: Menampilkan foto profil pegawai (otomatis kembali ke inisial nama jika belum ada foto) pada menu akun di pojok kanan atas dan pada judul halaman detail pegawai.
+- `tests/unit/foto-profil.test.ts`: Menambahkan 8 pengujian otomatis untuk memastikan gambar asli JPG/PNG/WebP diterima, file berbahaya/palsu ditolak, akses tanpa login mendapat `401`, pegawai nonaktif ditolak (`404`), serta unggah/hapus foto mencatat audit log.
 
 ### File Diubah (Tahap 1)
 - `lib/password.ts`: Menambahkan `PENANDA_TANPA_PASSWORD` dan `punyaPassword()` untuk membedakan pegawai yang daftar lewat Google dan belum membuat password sendiri.

@@ -5,7 +5,7 @@
 ## 0. Ringkasan Proyek & Tech Stack (Referensi Semua Agent)
 - **Deskripsi Singkat:** **Layanan Cuti ESDM Kalsel** — Aplikasi web internal Dinas ESDM Provinsi Kalimantan Selatan untuk pengelolaan data pegawai, pengajuan cuti berjenjang (standar formulir BKN), penerbitan surat cuti & nota dinas per eselon (editor Tiptap, versioning, cetak/PDF), serta ruang dokumen kepegawaian terenkripsi. *(Catatan: Modul absensi lama telah dinonaktifkan/deprecated, tabel di DB dipertahankan untuk histori).*
 - **Tech Stack & Library:**
-  - **Framework & Runtime:** Next.js 16.4.2 (App Router), React 19.3.0, TypeScript 5, Node.js 24.
+  - **Framework & Runtime:** Next.js 16.4.6 (App Router), React 19.3.0, TypeScript 5, Node.js 24.
   - **Database & ORM:** PostgreSQL 17 + Prisma ORM 7.10.1 (`@prisma/adapter-pg`, sesi DB wajib UTC, timezone tampilan `Asia/Makassar` - WITA). Ekstensi `pg_trgm` untuk pencarian.
   - **Styling & UI:** Tailwind CSS v4, Radix UI / shadcn/ui, Lucide Icons, Sonner (toast), Tiptap 3 (editor surat).
   - **Autentikasi & Keamanan:** Cookie sesi HttpOnly (`__Host-` pada HTTPS) + hash token sesi di database (`sesi`), argon2id (`@node-rs/argon2`), Google OAuth 2.0 (opsional), proteksi CSRF, proteksi brute-force login (`batas-login.ts`), enkripsi AES-256-GCM untuk dokumen privat.
@@ -36,8 +36,8 @@
   - Background Worker: `app/api/tugas/harian/route.ts` (Cron pembaruan status cuti selesai & kirim antrean email)
 
 ## Status Saat Ini
-- **Fase Aktif:** Testing & Debugging (Fitur Foto Profil Selesai — Siap Review / Push & Deploy)
-- **Fitur/Modul Aktif:** Foto Profil Pegawai pada Halaman Profil & Password, Header Akun, dan Detail Pegawai
+- **Fase Aktif:** Selesai & Siap Deploy (Fitur Foto Profil + Upgrade Keamanan Next.js 16.4.6 Terverifikasi)
+- **Fitur/Modul Aktif:** Foto Profil Pegawai + Upgrade Keamanan Next.js `16.4.2` → `16.4.6`
 - **Penanggung Jawab Terakhir:** Coder
 
 ## 1. Cetak Biru & Skema Data (Diisi oleh Conversation 3 - Architect)
@@ -171,6 +171,10 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 - `components/admin/matriks-hak-akses.tsx`: Komponen client tabel matriks interaktif daftar pegawai berakun dengan 5 kolom checkbox centang instan (optimistic state + panggilan server action `aturHakAkses` + notifikasi toast Sonner + pencarian nama/NIP/login).
 - `app/(aplikasi)/admin/hak-akses/page.tsx`: Halaman Admin `/admin/hak-akses` untuk melihat dan mengelola matriks hak akses seluruh pegawai berakun sekaligus.
 - `tests/unit/hak-akses.test.ts`: Unit test Vitest untuk konstanta hak akses dan penyaringan menu navigasi `menuUntuk(peran, hakAkses)`.
+
+### File Diubah (Upgrade Keamanan Next.js 16.4.2 → 16.4.6)
+- `package.json` & `package-lock.json`: Memperbarui versi `next` dan `eslint-config-next` dari `16.4.2` ke `16.4.6` untuk menutup kerentanan keamanan yang dilaporkan oleh Next.js.
+- `next.config.ts`: Menambahkan `experimental.agentUpgrade: "security"` sesuai rekomendasi resmi proses upgrade keamanan Next.js tanpa mengubah pengaturan lainnya.
 
 ### File Ditambah / Diubah (Fitur Foto Profil)
 - `prisma/schema.prisma` & `prisma/migrations/20261119151727_foto_profil/migration.sql`: Menambahkan tabel terpisah `foto_profil` (`FotoProfil`) untuk menyimpan gambar profil pegawai langsung di database PostgreSQL (supaya aman dan tidak hilang saat aplikasi berjalan di Vercel), tanpa memberatkan pengambilan data login harian.

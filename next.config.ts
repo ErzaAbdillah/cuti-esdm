@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   serverExternalPackages: ["@node-rs/argon2"],
   experimental: {
+    agentUpgrade: "security",
     // Lampiran cuti & dokumen maks. 10 MB (spesifikasi [9]) + overhead form.
     serverActions: { bodySizeLimit: "11mb" },
   },

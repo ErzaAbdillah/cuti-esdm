@@ -7,10 +7,25 @@ import "server-only";
 export function asalSah(req: Request): boolean {
   const origin = req.headers.get("origin");
   if (!origin) return false;
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  let originUrl: URL;
   try {
-    return new URL(origin).host === host;
+    originUrl = new URL(origin);
   } catch {
     return false;
   }
+  if (originUrl.protocol !== "https:" && originUrl.protocol !== "http:") return false;
+
+  const appUrl = process.env.APP_URL;
+  if (appUrl) {
+    try {
+      const resmi = new URL(appUrl);
+      if (originUrl.host === resmi.host && originUrl.protocol === resmi.protocol) return true;
+    } catch {
+      // Abaikan APP_URL bila tidak valid.
+    }
+  }
+
+  const host = (req.headers.get("x-forwarded-host") ?? req.headers.get("host"))?.trim();
+  if (!host || /[\s,]/.test(host)) return false;
+  return originUrl.host === host;
 }

@@ -34,7 +34,7 @@ export default async function LogLogin({ searchParams }: PageProps<"/admin/log-l
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-judul">Log login</h1>
-          <p className="text-sm text-slate-700">Percobaan masuk berhasil & gagal. 5 kali gagal mengunci akun 15 menit; 20 percobaan per IP per 15 menit.</p>
+          <p className="text-sm text-slate-700">Percobaan masuk berhasil &amp; gagal. 5 kali gagal mengunci akun 15 menit; 60 percobaan per IP per 15 menit.</p>
         </div>
         <Link href="/admin/audit-log" className="text-sm font-medium text-primary hover:underline">
           Audit log →

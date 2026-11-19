@@ -1,13 +1,13 @@
-import { CircleCheckIcon, TriangleAlertIcon, UnlinkIcon } from "lucide-react";
+import { CircleCheckIcon, TriangleAlertIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FormGantiPassword } from "@/components/auth/form-ganti-password";
+import { FormPutuskanGoogle } from "@/components/auth/form-putuskan-google";
 import { TombolGoogle } from "@/components/auth/tombol-google";
-import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { punyaPassword } from "@/lib/password";
 import { LABEL_PERAN } from "@/lib/peran";
-import { putuskanGoogle } from "@/server/aksi/auth";
 import { bolehAturPassword, googleAktif } from "@/server/auth/google";
 import { wajibLogin } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
@@ -16,6 +16,8 @@ const PESAN_GOOGLE: Record<string, [string, boolean]> = {
   terhubung: ["Akun Google berhasil dihubungkan. Berikutnya Anda bisa masuk dengan Google.", true],
   diputus: ["Akun Google sudah diputus dari akun ini.", true],
   dipakai: ["Akun Google itu sudah terhubung ke akun pegawai lain.", false],
+  "sudah-terhubung": ["Akun ini sudah terhubung dengan akun Google lain. Putuskan Google lama terlebih dahulu sebelum mengganti.", false],
+  "sesi-berubah": ["Sesi login berubah saat menghubungkan Google. Silakan ulangi dari halaman Profil.", false],
 };
 
 export const metadata: Metadata = { title: "Profil" };
@@ -23,8 +25,12 @@ export const metadata: Metadata = { title: "Profil" };
 export default async function Profil({ searchParams }: PageProps<"/profil">) {
   const u = await wajibLogin({ lewatiWajibGanti: true });
   const { wajib, atur, google } = await searchParams;
-  const [akun, bolehAtur] = await Promise.all([db.user.findUniqueOrThrow({ where: { id: u.userId }, select: { googleEmail: true } }), bolehAturPassword(u.userId)]);
-  const aturUlang = atur === "1" && bolehAtur;
+  const [akun, bolehAtur] = await Promise.all([
+    db.user.findUniqueOrThrow({ where: { id: u.userId }, select: { googleEmail: true, passwordHash: true } }),
+    bolehAturPassword(u.userId),
+  ]);
+  const belumPunyaPassword = !punyaPassword(akun.passwordHash);
+  const aturUlang = (atur === "1" && bolehAtur) || belumPunyaPassword;
   const pesanGoogle = typeof google === "string" ? PESAN_GOOGLE[google] : undefined;
 
   const baris: [string, string | null | undefined][] = [
@@ -85,13 +91,18 @@ export default async function Profil({ searchParams }: PageProps<"/profil">) {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-judul">{aturUlang ? "Buat password baru" : "Ganti password"}</CardTitle>
+            <CardTitle className="text-judul">{belumPunyaPassword ? "Buat password" : aturUlang ? "Buat password baru" : "Ganti password"}</CardTitle>
             <CardDescription>
-              {aturUlang ? "Anda masuk lewat Google, jadi password lama tidak diperlukan. " : ""}Setelah diganti, sesi di perangkat lain otomatis keluar.
+              {belumPunyaPassword
+                ? "Anda mendaftar dengan Google dan belum memiliki password. Buat password agar tetap bisa masuk dengan NIP. "
+                : aturUlang
+                  ? "Anda masuk lewat Google, jadi password lama tidak diperlukan. "
+                  : ""}
+              Setelah diganti, sesi di perangkat lain otomatis keluar.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <FormGantiPassword tanpaPasswordLama={aturUlang} />
+            <FormGantiPassword key={aturUlang ? "atur" : "ganti"} tanpaPasswordLama={aturUlang} />
           </CardContent>
         </Card>
         {googleAktif() && (
@@ -106,11 +117,7 @@ export default async function Profil({ searchParams }: PageProps<"/profil">) {
                   <p className="text-sm text-slate-800">
                     Terhubung dengan <b>{akun.googleEmail}</b>
                   </p>
-                  <form action={putuskanGoogle}>
-                    <Button type="submit" variant="outline" className="bg-white">
-                      <UnlinkIcon data-icon="inline-start" /> Putuskan Google
-                    </Button>
-                  </form>
+                  <FormPutuskanGoogle perluBuatPassword={belumPunyaPassword || u.wajibGantiPassword} />
                 </>
               ) : (
                 <TombolGoogle mode="hubungkan">Hubungkan akun Google</TombolGoogle>

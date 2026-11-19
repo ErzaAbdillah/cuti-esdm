@@ -11,11 +11,18 @@ export async function GET(req: Request) {
   if (!googleAktif()) redirect("/login?google=nonaktif");
   const g = await selesaikanGoogle(new URL(req.url).searchParams);
   if (!g.ok) redirect("/login?google=gagal");
-  const pemilik = await db.user.findUnique({ where: { googleSub: g.sub } });
+  const pemilik = await db.user.findUnique({
+    where: { googleSub: g.sub },
+    include: { pegawai: { select: { aktif: true } } },
+  });
 
   if (g.mode === "hubungkan") {
     const u = await penggunaSaatIni();
     if (!u) redirect("/login");
+    if (g.userId !== u.userId || g.sesiId !== u.sesiId) redirect("/profil?google=sesi-berubah");
+    const saatIni = await db.user.findUnique({ where: { id: u.userId }, select: { googleSub: true } });
+    if (!saatIni) redirect("/login");
+    if (saatIni.googleSub && saatIni.googleSub !== g.sub) redirect("/profil?google=sudah-terhubung");
     if (pemilik && pemilik.id !== u.userId) redirect("/profil?google=dipakai");
     await db.user.update({ where: { id: u.userId }, data: { googleSub: g.sub, googleEmail: g.email } });
     await catatAudit({ userId: u.userId, aksi: "HUBUNGKAN_GOOGLE", entitas: "users", entitasId: u.userId, sesudah: { googleEmail: g.email } });
@@ -27,7 +34,7 @@ export async function GET(req: Request) {
     await simpanIdentitasTertunda({ sub: g.sub, email: g.email });
     redirect(g.mode === "reset" ? "/daftar/google?lupa=1" : "/daftar/google");
   }
-  if (!pemilik.aktif) {
+  if (!pemilik.aktif || (pemilik.pegawai && !pemilik.pegawai.aktif)) {
     await catatPercobaan(pemilik.loginId, false, "GOOGLE_AKUN_NONAKTIF", pemilik.id);
     redirect("/login?google=nonaktif-akun");
   }

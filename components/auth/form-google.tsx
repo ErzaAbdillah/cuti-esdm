@@ -32,7 +32,7 @@ export function FormGoogleBaru() {
         autoComplete="off"
         defaultValue={hasil.nilai?.verifikasi}
         galat={g.verifikasi}
-        petunjuk="NIK 16 digit sesuai KTP, atau kode aktivasi dari Kepegawaian."
+        petunjuk="Kode aktivasi dari Kepegawaian, atau NIK 16 digit bila email Google Anda sama dengan email di data kepegawaian."
         required
       />
       <Button type="submit" size="lg" disabled={proses} className="w-full">
@@ -75,7 +75,7 @@ export function FormGooglePulihkan() {
         inputMode="numeric"
         defaultValue={hasil.nilai?.verifikasi}
         galat={g.verifikasi}
-        petunjuk="NIK 16 digit sesuai KTP. Maksimal 3 kali salah per hari."
+        petunjuk="NIK 16 digit sesuai KTP; email Google harus sama dengan email yang tercatat di data kepegawaian."
         required
       />
       <Button type="submit" size="lg" disabled={proses} className="w-full">

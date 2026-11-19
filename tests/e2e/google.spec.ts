@@ -51,12 +51,13 @@ test("akun lama: hubungkan Google dengan NIP + password, lalu putuskan dari prof
   // Tanpa izin dari alur Google, ?atur=1 tetap meminta password lama.
   await page.goto("/profil?atur=1");
   await expect(page.getByLabel("Password lama")).toBeVisible();
+  await page.getByLabel("Konfirmasi password untuk memutus Google").fill(PASSWORD);
   await page.getByRole("button", { name: "Putuskan Google" }).click();
   await expect(page.getByText("Akun Google sudah diputus dari akun ini.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Hubungkan akun Google" })).toBeVisible();
 });
 
-test("lupa password akun lama: NIK salah ditolak dengan pesan umum", async ({ page, context, baseURL }) => {
+test("lupa password akun lama: NIK salah atau email Google tidak cocok ditolak dengan pesan umum", async ({ page, context, baseURL }) => {
   await context.addCookies([{ name: "g-tertunda", value: cookieTertunda({ sub: `uji-${Date.now()}`, email: "lupa@gmail.com" }), url: baseURL! }]);
   await page.goto("/daftar/google?lupa=1");
   await expect(page.getByRole("tab", { name: "Lupa password" })).toHaveAttribute("aria-selected", "true");
@@ -64,19 +65,27 @@ test("lupa password akun lama: NIK salah ditolak dengan pesan umum", async ({ pa
   await page.getByLabel("NIP / ID Pegawai").fill("PJLP-TIDAK-ADA");
   await page.getByLabel("NIK").fill("9999000000000000");
   await page.getByRole("button", { name: "Verifikasi & buat password baru" }).click();
-  await expect(page.getByText(/Verifikasi gagal: NIP atau NIK tidak cocok/)).toBeVisible();
+  await expect(page.getByText(/Verifikasi gagal: NIP, NIK, atau email Google tidak cocok/)).toBeVisible();
 });
 
-/** Butuh E2E_DATABASE_URL (DB yang sama dengan server uji) untuk membaca NIK akun demo. */
-test("lupa password akun lama: NIP + NIK → Google terhubung → password baru tanpa password lama", async ({ page, context, baseURL }) => {
+/** Butuh E2E_DATABASE_URL (DB yang sama dengan server uji) untuk membaca NIK & email akun demo. */
+test("lupa password akun lama: NIP + NIK + email Google cocok → Google terhubung → password baru", async ({ page, context, baseURL }) => {
   test.skip(!PASSWORD || !process.env.E2E_DATABASE_URL, "SEED_PASSWORD_DEV / E2E_DATABASE_URL belum diisi");
   const { Client } = await import("pg");
   const pg = new Client({ connectionString: process.env.E2E_DATABASE_URL });
   await pg.connect();
-  const { rows } = await pg.query<{ nik: string }>("select nik from pegawai where nip = $1", [NIP.staf]);
+  const { rows } = await pg.query<{ nik: string; email: string }>("select nik, email from pegawai where nip = $1", [NIP.staf]);
   await pg.end();
 
-  const email = `lupa-${Date.now()}@gmail.com`;
+  // Sembarang Gmail yang berbeda dari email pegawai wajib ditolak walau NIP + NIK benar.
+  await context.addCookies([{ name: "g-tertunda", value: cookieTertunda({ sub: `palsu-${Date.now()}`, email: "penyerang@gmail.com" }), url: baseURL! }]);
+  await page.goto("/daftar/google?lupa=1");
+  await page.getByLabel("NIP / ID Pegawai").fill(NIP.staf);
+  await page.getByLabel("NIK").fill(rows[0].nik);
+  await page.getByRole("button", { name: "Verifikasi & buat password baru" }).click();
+  await expect(page.getByText(/Verifikasi gagal: NIP, NIK, atau email Google tidak cocok/)).toBeVisible();
+
+  const email = rows[0].email;
   await context.addCookies([{ name: "g-tertunda", value: cookieTertunda({ sub: `uji-${Date.now()}`, email }), url: baseURL! }]);
   await page.goto("/daftar/google?lupa=1");
   await page.getByLabel("NIP / ID Pegawai").fill(NIP.staf);
@@ -88,8 +97,9 @@ test("lupa password akun lama: NIP + NIK → Google terhubung → password baru 
   await page.getByLabel("Password baru", { exact: true }).fill(PASSWORD);
   await page.getByLabel("Ulangi password baru").fill(PASSWORD);
   await page.getByRole("button", { name: "Simpan password" }).click();
-  await expect(page.getByText(/Password baru tersimpan/)).toBeVisible();
+  await expect(page.getByText(/Password tersimpan/)).toBeVisible();
   await expect(page.getByText(`Terhubung dengan ${email}`)).toBeVisible();
+  await page.getByLabel("Konfirmasi password untuk memutus Google").fill(PASSWORD);
   await page.getByRole("button", { name: "Putuskan Google" }).click();
   await expect(page.getByText("Akun Google sudah diputus dari akun ini.")).toBeVisible();
 });

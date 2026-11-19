@@ -45,6 +45,11 @@ export const skemaPasswordBaru = z
   .object({ password: passwordBaru, konfirmasi: z.string() })
   .refine((d) => d.password === d.konfirmasi, { path: ["konfirmasi"], message: "Konfirmasi password tidak sama." });
 
+/** Konfirmasi password akun sebelum memutuskan tautan Google. */
+export const skemaPutuskanGoogle = z.object({
+  password: z.string().min(1, "Masukkan password akun Anda untuk memutuskan Google."),
+});
+
 /** Menghubungkan akun Google: akun baru (NIP + NIK/kode) atau akun lama (NIP + password). */
 export const skemaGoogleBaru = z.object({
   loginId: z.string().trim().min(1, "Isi NIP atau ID pegawai.").max(64),
@@ -67,6 +72,13 @@ export function galatPerField(e: z.ZodError): Partial<Record<string, string>> {
 
 /** Hanya izinkan path relatif di dalam aplikasi (cegah open redirect). */
 export function tujuanAman(lanjut: string | undefined | null, cadangan = "/beranda"): string {
-  if (!lanjut || !lanjut.startsWith("/") || lanjut.startsWith("//") || lanjut.startsWith("/\\")) return cadangan;
-  return lanjut;
+  if (!lanjut || !lanjut.startsWith("/") || lanjut.startsWith("//") || lanjut.startsWith("/\\") || /[\u0000-\u001f\u007f]/.test(lanjut)) {
+    return cadangan;
+  }
+  try {
+    const u = new URL(lanjut, "https://lokal.invalid");
+    return u.origin === "https://lokal.invalid" ? `${u.pathname}${u.search}${u.hash}` : cadangan;
+  } catch {
+    return cadangan;
+  }
 }

@@ -67,6 +67,10 @@ export async function simpanImporPegawai(kiriman: unknown, userId: string | null
         const p = ada
           ? await tx.pegawai.update({ where: { id: ada.id }, data: isi })
           : await tx.pegawai.create({ data: { ...(isi as DataPegawai), atasanLangsungId: null, levelSuratOverride: null } });
+        if (ada && !p.aktif) {
+          await tx.user.updateMany({ where: { pegawaiId: p.id, aktif: true }, data: { aktif: false } });
+          await tx.sesi.deleteMany({ where: { user: { pegawaiId: p.id } } });
+        }
         if (ada) ubah++;
         else baru++;
         simpanan.push({ id: p.id, unitId: p.unitKerjaId, jabatanId: p.jabatanId, nipAtasan, lama: !!ada });

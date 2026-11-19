@@ -1,17 +1,22 @@
 "use client";
 
 import { CircleCheckIcon, KeyRoundIcon, TriangleAlertIcon } from "lucide-react";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { toast } from "sonner";
 import { Bidang } from "@/components/form/bidang";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { HasilForm } from "@/lib/validasi/auth";
 import { aturPasswordBaru, gantiPassword } from "@/server/aksi/auth";
 
-/** `tanpaPasswordLama`: lupa password, sudah dibuktikan lewat Google. */
+/** `tanpaPasswordLama`: lupa password lewat Google, atau buat password awal setelah daftar Google. */
 export function FormGantiPassword({ tanpaPasswordLama = false }: { tanpaPasswordLama?: boolean }) {
   const [hasil, aksi, proses] = useActionState<HasilForm, FormData>(tanpaPasswordLama ? aturPasswordBaru : gantiPassword, {});
   const g = hasil.galatField ?? {};
+
+  useEffect(() => {
+    if (hasil.sukses) toast.success(hasil.sukses);
+  }, [hasil.sukses]);
 
   return (
     <form action={aksi} className="grid gap-4" noValidate key={hasil.sukses}>

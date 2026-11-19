@@ -1,5 +1,8 @@
 import { hash, verify } from "@node-rs/argon2";
 
+/** Penanda khusus pada `passwordHash` untuk akun Google yang belum membuat password sendiri. */
+export const PENANDA_TANPA_PASSWORD = "!tanpa-password-google";
+
 /** Argon2id dengan parameter minimum rekomendasi OWASP (19 MiB, t=2, p=1). */
 const OPSI_ARGON2 = {
   algorithm: 2, // Algorithm.Argon2id (const enum tidak bisa dipakai dengan isolatedModules)
@@ -7,6 +10,10 @@ const OPSI_ARGON2 = {
   timeCost: 2,
   parallelism: 1,
 } as const;
+
+export function punyaPassword(hashTersimpan: string): boolean {
+  return hashTersimpan.startsWith("$argon2");
+}
 
 /** Mengembalikan pesan galat, atau null jika password memenuhi syarat. */
 export function validasiPassword(password: string): string | null {
@@ -21,6 +28,7 @@ export function hashPassword(password: string): Promise<string> {
 }
 
 export async function cocokPassword(hashTersimpan: string, password: string): Promise<boolean> {
+  if (!punyaPassword(hashTersimpan)) return false;
   try {
     return await verify(hashTersimpan, password);
   } catch {

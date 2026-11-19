@@ -14,7 +14,8 @@ export async function infoPermintaan(): Promise<{ ip: string | null; userAgent: 
   } catch {
     return { ip: null, userAgent: null };
   }
+  const daftarVercel = h.get("x-vercel-forwarded-for")?.split(",").map((s) => s.trim()).filter(Boolean) ?? [];
   const daftar = h.get("x-forwarded-for")?.split(",").map((s) => s.trim()).filter(Boolean) ?? [];
-  const ip = daftar.at(-1) ?? h.get("x-real-ip") ?? null;
+  const ip = daftarVercel.at(-1) ?? daftar.at(-1) ?? h.get("x-real-ip")?.trim() ?? null;
   return { ip, userAgent: h.get("user-agent")?.slice(0, 300) ?? null };
 }

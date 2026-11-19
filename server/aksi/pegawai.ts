@@ -81,6 +81,11 @@ export async function simpanPegawai(pegawaiId: string | null, _: HasilForm, form
       if (sebelum?.user && loginBaru && sebelum.user.loginId !== loginBaru) {
         await tx.user.update({ where: { id: sebelum.user.id }, data: { loginId: loginBaru } });
       }
+      // Bila pegawai dinonaktifkan, otomatis nonaktifkan akun login & hentikan seluruh sesinya.
+      if (sebelum?.user && !hasil.aktif && sebelum.user.aktif) {
+        await tx.user.update({ where: { id: sebelum.user.id }, data: { aktif: false } });
+        await tx.sesi.deleteMany({ where: { userId: sebelum.user.id } });
+      }
       await catatAudit(
         {
           userId: u.userId,

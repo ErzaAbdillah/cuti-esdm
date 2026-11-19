@@ -7,6 +7,7 @@ export async function GET(req: Request) {
   if (!googleAktif()) redirect("/login?google=nonaktif");
   const diminta = new URL(req.url).searchParams.get("mode") as ModeGoogle | null;
   const mode = diminta && MODE_GOOGLE.includes(diminta) ? diminta : "masuk";
-  if (mode === "hubungkan" && !(await penggunaSaatIni())) redirect("/login");
-  redirect(await mulaiGoogle(mode));
+  const u = mode === "hubungkan" ? await penggunaSaatIni() : null;
+  if (mode === "hubungkan" && !u) redirect("/login");
+  redirect(await mulaiGoogle(mode, u ? { userId: u.userId, sesiId: u.sesiId } : undefined));
 }

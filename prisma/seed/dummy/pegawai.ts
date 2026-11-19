@@ -7,7 +7,7 @@
 import { tentukanAtasanLangsung, type UnitStruktur } from "../../../lib/domain/atasan";
 import { namaLengkap } from "../../../lib/domain/pegawai";
 import type { Peran, StatusKepegawaian } from "../../../lib/generated/prisma/enums";
-import { hashPassword } from "../../../lib/password";
+import { hashPassword, PENANDA_TANPA_PASSWORD } from "../../../lib/password";
 import type { Db } from "../klien";
 
 /** Akun demo dengan NIP tetap (dipakai README & tes E2E). Password: SEED_PASSWORD_DEV. */
@@ -19,14 +19,32 @@ export const AKUN_DEMO = {
   kepalaSeksi: { nip: "198103172005011904", unit: "SEKSI_WASDAL_GTL", jabatan: "Kepala Seksi Pengawas dan Pengendalian Ketenagalistrikan" },
   staf: { nip: "199002202015031905", unit: "SEKSI_WASDAL_GTL", jabatan: "Penelaah Teknis Kebijakan" },
   pppk: { nip: "199508082024212906", unit: "SEKSI_WASDAL_GTL", jabatan: "Pengadministrasi Perkantoran" },
-  /** Belum punya akun — untuk menguji aktivasi dengan NIP + NIK. */
-  tanpaAkun: { nip: "199206062019031907", nik: "9999000000000907", unit: "SEKSI_PENGUSAHAAN_GTL", jabatan: "Pengolah Data dan Informasi" },
+  /** Belum punya akun — untuk menguji aktivasi dengan NIP + NIK (+ email Google dummy yang cocok). */
+  tanpaAkun: {
+    nip: "199206062019031907",
+    nik: "9999000000000907",
+    email: "pegawai.aktivasi.dummy@gmail.com",
+    unit: "SEKSI_PENGUSAHAAN_GTL",
+    jabatan: "Pengolah Data dan Informasi",
+  },
+  /** Akun aktif terdaftar Google-only (tanpa password awal) — untuk menguji login Google, buat password, & proteksi Google. */
+  googleDummy: {
+    nip: "199405102020121908",
+    nik: "9999000000000908",
+    email: "pegawai.google.dummy@gmail.com",
+    googleSub: "dummy-google-sub-199405102020121908",
+    unit: "SEKSI_PENGUSAHAAN_GTL",
+    jabatan: "Penelaah Teknis Kebijakan",
+  },
 } as const;
 
-const DEMO_PER_POSISI = new Map<string, { nip: string; nik?: string }>(
+const DEMO_PER_POSISI = new Map<string, { nip: string; nik?: string; email?: string }>(
   Object.values(AKUN_DEMO)
     .filter((d): d is Extract<typeof d, { nip: string }> => "nip" in d)
-    .map((d) => [`${d.unit}|${d.jabatan}`, { nip: d.nip, nik: "nik" in d ? d.nik : undefined }]),
+    .map((d) => [
+      `${d.unit}|${d.jabatan}`,
+      { nip: d.nip, nik: "nik" in d ? d.nik : undefined, email: "email" in d ? d.email : undefined },
+    ]),
 );
 
 // ─── PRNG deterministik agar hasil seed selalu sama ───
@@ -242,7 +260,7 @@ export async function seedPegawaiDummy(db: Db) {
         pendidikanTerakhir: pendidikan,
         alamatDomisili: `Jl. Contoh Fiktif No. ${antara(1, 120)}, Banjarbaru`,
         noHp: `0800${pad(antara(0, 99999999), 8)}`,
-        email: `${slug}.${nip.slice(-3)}@example.com`,
+        email: demo?.email ?? `${slug}.${nip.slice(-3)}@example.com`,
         pangkatGolonganId: pg?.id,
         tmtPangkat: pg ? new Date(Date.UTC(antara(2018, 2025), pilih([3, 9]), 1)) : null,
         jabatanId: p.jabatanId,
@@ -296,8 +314,15 @@ export async function seedPegawaiDummy(db: Db) {
     const demo = Object.values(AKUN_DEMO).some((x) => "nip" in x && x.nip === d.nip);
     if (!demo && !d.struktural && i % 7 === 3) continue;
     const peran: Peran[] = d.nip === AKUN_DEMO.kepegawaian.nip ? ["KEPEGAWAIAN"] : [];
+    const adalahGoogleDummy = d.nip === AKUN_DEMO.googleDummy.nip;
     await db.user.create({
-      data: { loginId: d.nip, pegawaiId: d.id, passwordHash: hash, peran: { create: peran.map((p) => ({ peran: p })) } },
+      data: {
+        loginId: d.nip,
+        pegawaiId: d.id,
+        passwordHash: adalahGoogleDummy ? PENANDA_TANPA_PASSWORD : hash,
+        ...(adalahGoogleDummy ? { googleSub: AKUN_DEMO.googleDummy.googleSub, googleEmail: AKUN_DEMO.googleDummy.email } : {}),
+        peran: { create: peran.map((p) => ({ peran: p })) },
+      },
     });
     akun++;
   }

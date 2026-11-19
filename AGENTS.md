@@ -7,3 +7,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Aturan Bahasa & Komunikasi (Berlaku untuk Semua AI Agent)
+- Gunakan **Bahasa Indonesia yang sederhana, lugas, dan ramah untuk pemula** di bidang pemrograman.
+- Hindari istilah teknis yang terlalu rumit/berlebihan (seperti jargon keamanan atau arsitektur tingkat lanjut). Jika memang perlu menyebut istilah teknis, jelaskan artinya secara singkat menggunakan bahasa sehari-hari atau perumpamaan sederhana.
+- Fokus menjelaskan **apa dampaknya bagi pegawai/admin** dan **apa yang akan dilakukan sistem**, bukan detail teknis yang membingungkan.

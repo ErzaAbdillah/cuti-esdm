@@ -53,13 +53,13 @@ export const bacaSesi = cache(async () => {
 
   const sesi = await db.sesi.findUnique({
     where: { id: hashToken(token) },
-    include: { user: { include: { peran: true, hakAkses: true } } },
+    include: { user: { include: { peran: true, hakAkses: true, pegawai: { select: { aktif: true } } } } },
   });
   if (!sesi) return null;
 
   const sekarang = Date.now();
   const kedaluwarsa = sesi.kedaluwarsaPada.getTime() <= sekarang || sesi.dibuatPada.getTime() + MAKS_MS <= sekarang;
-  if (kedaluwarsa || !sesi.user.aktif) {
+  if (kedaluwarsa || !sesi.user.aktif || (sesi.user.pegawai && !sesi.user.pegawai.aktif)) {
     await db.sesi.delete({ where: { id: sesi.id } }).catch(() => {});
     return null;
   }

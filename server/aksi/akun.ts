@@ -62,7 +62,7 @@ export async function buatKodeAktivasi(pegawaiId: string): Promise<HasilAkun> {
 
 async function wajibAdmin() {
   const u = await wajibLogin();
-  return adalahSuperadmin(u) || punyaPeran(u, "ADMIN") || punyaHakAkses(u, "PENGATURAN_ADMIN") ? u : null;
+  return adalahSuperadmin(u) || punyaPeran(u, "ADMIN") ? u : null;
 }
 
 function akunAdalahSuperadmin(target: { loginId: string; googleEmail?: string | null }): boolean {
@@ -79,6 +79,12 @@ export async function resetPassword(userId: string): Promise<HasilAkun> {
   if (!u) return { galat: "Hanya Admin yang bisa mereset password." };
   const target = await ambilUser(userId);
   if (!target) return { galat: "Akun tidak ditemukan." };
+  if (akunAdalahSuperadmin(target) && !adalahSuperadmin(u)) {
+    return { galat: "Password akun Superadmin dilindungi dan tidak dapat direset oleh pengguna lain." };
+  }
+  if (target.peran.some((p) => p.peran === "ADMIN") && target.id !== u.userId && !adalahSuperadmin(u)) {
+    return { galat: "Reset password akun Admin lain hanya dapat dilakukan oleh Superadmin." };
+  }
 
   const sementara = buatPasswordSementara();
   await db.user.update({
@@ -96,6 +102,9 @@ export async function bukaKunci(userId: string): Promise<HasilAkun> {
   if (!u) return { galat: "Hanya Admin yang bisa membuka kunci akun." };
   const target = await ambilUser(userId);
   if (!target) return { galat: "Akun tidak ditemukan." };
+  if (akunAdalahSuperadmin(target) && !adalahSuperadmin(u)) {
+    return { galat: "Aksi pada akun Superadmin hanya dapat dilakukan oleh Superadmin." };
+  }
   await db.user.update({ where: { id: userId }, data: { gagalBerturut: 0, terkunciSampai: null } });
   await catatAudit({ userId: u.userId, aksi: "BUKA_KUNCI_AKUN", entitas: "users", entitasId: userId });
   if (target.pegawaiId) revalidatePath(`/pegawai/${target.pegawaiId}`);

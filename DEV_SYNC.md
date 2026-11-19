@@ -1,5 +1,7 @@
 # WORKSPACE SYNC & PROJECT HUB
 
+> **Aturan Bahasa untuk Semua AI Agent:** Selalu gunakan **Bahasa Indonesia yang sederhana, mudah dipahami, dan ramah bagi pemula** (tidak terlalu teknis). Jelaskan dampak fitur/masalah dengan bahasa sehari-hari yang praktis agar mudah dimengerti pengguna.
+
 ## 0. Ringkasan Proyek & Tech Stack (Referensi Semua Agent)
 - **Deskripsi Singkat:** **Layanan Cuti ESDM Kalsel** — Aplikasi web internal Dinas ESDM Provinsi Kalimantan Selatan untuk pengelolaan data pegawai, pengajuan cuti berjenjang (standar formulir BKN), penerbitan surat cuti & nota dinas per eselon (editor Tiptap, versioning, cetak/PDF), serta ruang dokumen kepegawaian terenkripsi. *(Catatan: Modul absensi lama telah dinonaktifkan/deprecated, tabel di DB dipertahankan untuk histori).*
 - **Tech Stack & Library:**
@@ -34,8 +36,8 @@
   - Background Worker: `app/api/tugas/harian/route.ts` (Cron pembaruan status cuti selesai & kirim antrean email)
 
 ## Status Saat Ini
-- **Fase Aktif:** Ready to Push & Deploy
-- **Fitur/Modul Aktif:** Sinkronisasi Angka V. Catatan Cuti dengan Hak 2024, Hak 2025, Hak 2026 & Deploy Vercel
+- **Fase Aktif:** Testing & Debugging (Perbaikan Keamanan Tahap 1 & 2 Selesai — Siap Review QA / Deploy)
+- **Fitur/Modul Aktif:** Perbaikan Keamanan Login, Daftar Akun, & Akun Google (Tahap 1 & Tahap 2) + Akun Dummy Uji
 - **Penanggung Jawab Terakhir:** Coder
 
 ## 1. Cetak Biru & Skema Data (Diisi oleh Conversation 3 - Architect)
@@ -157,6 +159,8 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 *Daftar file yang baru dibuat/diubah dan ringkasan logika backend/sistemnya:*
 
 ### File Baru
+- `components/auth/form-putuskan-google.tsx`: Form khusus untuk memutus tautan Google di halaman Profil dengan syarat wajib sudah punya password dan memasukkan konfirmasi password, supaya pegawai tidak terkunci sendiri.
+- `tests/unit/auth-keamanan.test.ts`: Pengujian unit keamanan alur Daftar dengan Google, Lupa Password Google, Pembuatan Password Awal, Putuskan Google, anti-penimpaan Google / pengikatan sesi OAuth, dan anti-reset password Superadmin memakai akun dummy (`pegawai.google.dummy@gmail.com` / `pegawai.aktivasi.dummy@gmail.com`).
 - `scripts/impor-saldo-2026.ts`: Skrip CLI untuk membaca `data-impor/saldo-cuti-2026.csv` (91 baris pegawai), mencocokkan pegawai berdasarkan NIP tanpa spasi (dengan fallback nama), menghitung `sisaN1` dan `sisaN2` (maks 6 hari/tahun sesuai PP 11/2017 dari `totalSisaBerlaku - sisa2026`), melakukan `upsert` ke tabel `saldo_cuti` tahun `2026`, dan mencatat entri `mutasi_saldo_cuti` (`jenis: "SALDO_AWAL"`, `jumlah: hakTahunIni + sisaN1 + sisaN2 - terpakai`).
   - **Hasil Eksekusi ke DB Produksi Neon (`.env.vercel`)**:
     - **Berhasil**: **89 pegawai** (seluruh 89 ASN ber-NIP di database berhasil tersinkronisasi saldo cuti 2026 dan mutasi saldo awalnya).
@@ -168,7 +172,31 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 - `app/(aplikasi)/admin/hak-akses/page.tsx`: Halaman Admin `/admin/hak-akses` untuk melihat dan mengelola matriks hak akses seluruh pegawai berakun sekaligus.
 - `tests/unit/hak-akses.test.ts`: Unit test Vitest untuk konstanta hak akses dan penyaringan menu navigasi `menuUntuk(peran, hakAkses)`.
 
-### File Diubah
+### File Diubah (Tahap 1)
+- `lib/password.ts`: Menambahkan `PENANDA_TANPA_PASSWORD` dan `punyaPassword()` untuk membedakan pegawai yang daftar lewat Google dan belum membuat password sendiri.
+- `lib/validasi/auth.ts`: Menambahkan `skemaPutuskanGoogle` untuk konfirmasi password sebelum memutus tautan Google.
+- `server/auth/google.ts` & `app/api/auth/google/route.ts`: Mengikat `userId` dan `sesiId` pada cookie state OAuth saat `mode=hubungkan`.
+- `app/api/auth/google/callback/route.ts`: Memeriksa kecocokan `userId`/`sesiId` pada `mode=hubungkan` dan menolak penimpaan akun Google yang sudah terhubung sebelumnya.
+- `server/aksi/auth.ts`:
+  - Mewajibkan kesesuaian email Google dengan `pegawai.email` saat aktivasi atau pemulihan memakai NIK (tanpa kode sekali pakai dari Kepegawaian), sehingga sembarang Gmail tidak lagi bisa membajak akun bermodal NIP + NIK.
+  - Mengeluarkan semua sesi perangkat lain (`hapusSesiLain`) saat pemulihan atau pemutusan Google.
+  - Mengizinkan pendaftar Google-only membuat password pertamanya (`aturPasswordBaru`) dari menu Profil, dan menolak `hubungkanGoogleAkunLama` apabila akun sudah terhubung Google lain atau masih memakai password sementara Admin.
+  - Mewajibkan sudah punya password & konfirmasi password saat memanggil `putuskanGoogle()`.
+
+### File Diubah (Tahap 2)
+- `server/permintaan.ts`: Memperbarui `infoPermintaan()` agar membaca alamat jaringan/IP asli dari header Vercel (`x-vercel-forwarded-for`) terlebih dahulu sebelum fallback ke `x-forwarded-for` dan `x-real-ip`.
+- `server/auth/batas-login.ts` & `app/(aplikasi)/admin/log-login/page.tsx`: Menaikkan batas salah login per alamat IP menjadi `60` percobaan per 15 menit (agar satu kantor yang berbagi Wi-Fi tidak mudah ikut terkunci), mengecualikan catatan `"IP_DIBATASI"` supaya percobaan yang sudah ditolak tidak terus memperpanjang waktu blokir, dan mendukung jalannya pengecekan di dalam transaksi database.
+- `server/auth/csrf.ts` & `lib/validasi/auth.ts`: Memperketat `asalSah()` (validasi protokol `http:`/`https:`, kecocokan `APP_URL`, serta menolak header `host` ganda/palsu) dan memperketat `tujuanAman()` dari karakter kontrol maupun alamat tujuan palsu agar redirect setelah login selalu tetap berada di dalam aplikasi.
+- `server/auth/sesi.ts`, `app/api/auth/google/callback/route.ts`, `server/aksi/pegawai.ts`, & `server/layanan/impor-pegawai.ts`: Menyinkronkan status aktif pegawai (`pegawai.aktif`) ke akun login. Jika pegawai dinonaktifkan lewat menu data pegawai atau impor Excel, akun loginnya langsung dinonaktifkan dan sesi aktifnya dihapus; pembacaan sesi (`bacaSesi()`) dan login Google juga otomatis menolak pegawai yang sudah nonaktif.
+- `server/auth/google.ts`: Menambahkan verifikasi tanda tangan digital resmi (`RS256`) untuk `id_token` Google memakai daftar kunci publik Google (`https://www.googleapis.com/oauth2/v3/certs`), memberi batas waktu koneksi 8 detik (`AbortSignal.timeout(8000)`), serta menambahkan `hapusSemuaCookieGoogle()` untuk membersihkan seluruh cookie sementara Google (`g-alur`, `g-tertunda`, `g-reset`).
+- `server/aksi/auth.ts`:
+  - Mengantrekan pemeriksaan batas salah password (`5x`, kunci 15 menit) dan batas salah NIK aktivasi (`5x` per `1 jam`) menggunakan kunci antrean transaksi database (`pg_advisory_xact_lock`) supaya percobaan cepat yang dikirim bersamaan tidak bisa mengakali batas hitungan.
+  - Menyamakan pesan error salah password pada percobaan ke-1 sampai ke-4 agar status apakah suatu NIP sudah punya akun atau belum tidak mudah ditebak.
+  - Menolak login pegawai nonaktif, menangani konflik data ganda (`P2002`) saat `buatAkun`, dan memastikan semua cookie sementara Google ikut terhapus saat `keluar()`.
+- `tests/unit/auth-keamanan.test.ts`: Memperbarui pengujian otomatis untuk memeriksa penguncian salah password 5x, penguncian salah NIK 5x per jam, penolakan token Google palsu, penolakan login pegawai nonaktif, penghapusan cookie saat logout, serta validasi `asalSah()` dan `tujuanAman()`.
+- `server/aksi/akun.ts`: Memperketat `wajibAdmin()` hanya untuk pemilik peran `ADMIN`/`SUPERADMIN` dan memblokir `resetPassword()` maupun `bukaKunci()` atas akun Superadmin (dan akun Admin lain) dari pengguna bukan Superadmin.
+- `app/(aplikasi)/profil/page.tsx`, `components/auth/form-ganti-password.tsx`, & `components/auth/form-google.tsx`: Menyesuaikan tampilan Profil agar pendaftar Google diarahkan membuat password terlebih dahulu sebelum bisa memutus Google, menampilkan pesan error Google terbaru, serta memperbarui teks petunjuk form pemulihan/aktivasi.
+- `prisma/seed/dummy/pegawai.ts` & `tests/e2e/google.spec.ts`: Menambahkan akun dummy Google (`googleDummy`: NIP `199405102020121908`, NIK `9999000000000908`, email `pegawai.google.dummy@gmail.com`) serta email dummy pada `tanpaAkun` (`NIP 199206062019031907`, `NIK 9999000000000907`, `pegawai.aktivasi.dummy@gmail.com`), dan menyesuaikan skenario E2E Google agar memverifikasi proteksi baru.
 - `server/formulir/bawaan.ts`:
   - Mengambil angka murni hak cuti per tahun (`saldo.sisaN2` untuk N-2/2024, `saldo.sisaN1` untuk N-1/2025, dan `saldo.hakTahunIni + saldo.penyesuaian` untuk N/2026) tanpa memotong `pakai.dariN2`/`pakai.dariN1`/`pakai.dariN` terlebih dahulu pada nilai awal formulir, sehingga angka di `V. Catatan cuti` persis sesuai dengan kolom `Hak 2024`, `Hak 2025`, dan `Hak 2026` di menu Saldo & Rekap Cuti.
   - Mengubah helper `angka` menjadi `(n: number) => (n > 0 ? String(n) : "")` agar sisa cuti bernilai 0 ditampilkan kosong (blank space) tanpa tanda hubung `---`.

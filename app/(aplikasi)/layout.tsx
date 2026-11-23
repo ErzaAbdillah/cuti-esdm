@@ -29,7 +29,7 @@ export default async function LayoutAplikasi({ children }: LayoutProps<"/">) {
     <PenyediaTema awal={tema}>
       <div className="min-h-dvh lg:pl-66">
         <SidebarDesktop menu={menu} />
-        <header className="sticky top-0 z-20 bg-background/85 px-4 pb-1 pt-3 backdrop-blur-md sm:px-6">
+        <header className="sticky top-0 z-20 px-4 pt-3 sm:px-6">
           <div className="kaca flex h-14 items-center gap-2 rounded-2xl px-2 sm:px-3">
             <MenuSeluler menu={menu} />
             <div className="min-w-0 flex-1 lg:hidden">

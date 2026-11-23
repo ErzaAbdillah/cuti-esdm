@@ -39,9 +39,9 @@
   - Background Worker: `app/api/tugas/harian/route.ts` (Cron pembaruan status cuti selesai & kirim antrean email)
 
 ## Status Saat Ini
-- **Fase Aktif:** Ready to Push & Deploy (Terverifikasi Browser & Build)
-- **Fitur/Modul Aktif:** Tema Tampilan Bawaan `Cursor Dark` (`cursor-dark`) + Polesan Kontras, Toast Dinamis, Isolasi Cetak A4, & Perbaikan Responsif HP
-- **Penanggung Jawab Terakhir:** Debugger / QA
+- **Fase Aktif:** Selesai & Dirilis ke Vercel (Kotak Hitam Header Dihapus + Kapsul Bilah Atas Dipekatkan)
+- **Fitur/Modul Aktif:** Perbaikan Kotak Hitam Header & Kepekatan Kapsul Bilah Profil (`app/(aplikasi)/layout.tsx` & `app/globals.css`)
+- **Penanggung Jawab Terakhir:** Coder
 
 ## 1. Cetak Biru & Skema Data (Diisi oleh Conversation 3 - Architect)
 *Rancangan alur sistem, struktur tabel/database, dan daftar file yang harus dibuat/dieksekusi oleh Coder:*
@@ -175,6 +175,10 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 - `app/(aplikasi)/admin/hak-akses/page.tsx`: Halaman Admin `/admin/hak-akses` untuk melihat dan mengelola matriks hak akses seluruh pegawai berakun sekaligus.
 - `tests/unit/hak-akses.test.ts`: Unit test Vitest untuk konstanta hak akses dan penyaringan menu navigasi `menuUntuk(peran, hakAkses)`.
 
+### File Diubah (Perbaikan Kotak Hitam Header Atas)
+- `app/(aplikasi)/layout.tsx`: Menghapus latar gelap persegi panjang (`bg-background/85 pb-1 backdrop-blur-md`) pada elemen `<header>` pembungkus bilah profil atas agar kotak hitam yang memotong latar gradasi di atas halaman hilang sepenuhnya.
+- `app/globals.css`: Memekatkan warna latar **hanya di dalam kapsul bilah atas** (`header > .kaca` memakai `color-mix(in srgb, var(--popover) 95%, transparent)` dengan `backdrop-filter: blur(16px) saturate(145%)` serta menghapus `background-color` ganda di `html[data-tema="cursor-dark"] .kaca` agar berlaku merata di ketiga tema) sehingga kotak hitam di luar kapsul tetap hilang sementara teks/tombol di belakang bilah tidak membayang tembus saat layar digulir.
+
 ### File Diubah (Tema Bawaan Cursor Dark)
 - `lib/tema.ts`: Mendaftarkan tema baru `"cursor-dark"` (**Cursor Dark**, hitam arang `#0E0E10` – `#18181B`, teks putih jernih `#EDEDEF`, aksen biru modern `#60A5FA`), menjadikannya `TEMA_BAWAAN` (tema default), dan memperbarui `normalisasiTema()` agar fallback ke `"cursor-dark"`.
 - `app/layout.tsx`: Membaca cookie `tema` langsung dari server saat halaman pertama kali dibuka lalu memasang atribut `data-tema={tema}` pada tag `<html>` (dan `themeColor: "#0E0E10"`) sehingga tidak muncul kedipan putih sesaat (*white flash*).
@@ -296,6 +300,8 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 - [ ] **[CATATAN] [DEV_SYNC.md bagian 1.C]**: Blueprint menyebut route `/cuti/rekap`, namun rekap terintegrasi pada `/cuti/saldo` dan `/cetak/rekap-cuti`.
 
 ## 5. Riwayat Selesai (Resolved)
+- [x] **[SEDANG - Tampilan Gulir Kapsul Header] [app/globals.css (`header > .kaca`)]**: Memekatkan warna hanya di dalam kapsul bilah atas (`color-mix` 95% `--popover` di semua 3 tema) tanpa menambah latar apa pun pada `<header>` pembungkusnya, sehingga kotak hitam tetap hilang dan konten/tombol di belakang bilah tidak lagi membayang tembus saat halaman digulir.
+- [x] **[VERIFIKASI QA - Penghapusan Kotak Hitam Header] [2026-11-23]**: Verifikasi langsung di browser (`1280×800` laptop & `390×844` HP) pada halaman `/pegawai` dan `/cuti/ajukan` di tema **Cursor Dark**, **Mossy Stone**, dan **Langit Pagi**. Kotak hitam persegi panjang di atas bilah profil dipastikan hilang sepenuhnya, nol overflow horizontal, nol error konsol, serta `npm run typecheck`, `npm run lint`, dan `npm test` (115/115) lulus bersih.
 - [x] **[TINGGI - Tampilan HP] [components/surat/pratinjau-a4.tsx, components/cuti/form-formulir.tsx, components/surat/form-surat.tsx]**: Ditemukan saat uji browser HP (`390×844`) bahwa pratinjau kertas A4 di `/cuti/ajukan` melebar keluar layar hingga memunculkan gulir horizontal dan terpotong ke kanan. Diperbaiki dengan mengunci lebar grid kolom (`grid-cols-1` & `min-w-0`) serta membuat isi pratinjau `PratinjauA4` memposisikan diri di dalam bingkai terukur (`relative` + `absolute` saat pratinjau, kembali `static` saat cetak), sehingga kertas A4 mengecil pas di layar HP tanpa gulir samping.
 - [x] **[SEDANG - Tampilan Gulir] [app/(aplikasi)/layout.tsx, app/globals.css (`header > .kaca`)]**: Ditemukan saat uji browser bahwa bilah navigasi atas yang terlalu tembus pandang membuat tulisan formulir/kertas putih di belakangnya bertabrakan dengan judul aplikasi saat layar digulir. Diperbaiki dengan memberi lapisan buram ringan pada area atas (`bg-background/85 backdrop-blur-md`) dan meningkatkan kepekatan latar bilah atas (`color-mix` 95% `--popover`) agar tulisan di header tetap tajam di ketiga tema.
 - [x] **[VERIFIKASI QA - Browser Lengkap (Laptop 1280×800 & HP 390×844)] [2026-11-23]**: Berhasil masuk melalui `/login`, memverifikasi tampilan `/beranda`, `/profil`, `/cuti/ajukan` (dropdown jenis cuti terbaca jelas, kolom Tahun & Sisa cuti tahunan terkunci dan otomatis berkurang saat tanggal dipilih, pratinjau A4 pas di layar laptop & HP), serta `/cetak/formulir/[id]` (kertas putih bersih dengan teks hitam pekat saat `Cursor Dark` aktif, tanpa error konsol). Uji pindah tema **Cursor Dark → Langit Pagi → Mossy Stone → Cursor Dark** memastikan pop-up *toast* mengikuti gelap/terang (`dark`/`light`) dan tema tersimpan setelah Keluar ke `/login`.

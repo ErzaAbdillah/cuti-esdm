@@ -284,7 +284,7 @@ export function MatriksHakAkses({ awal, bolehKelola = true }: { awal: BarisHakAk
                           className={cn(
                             "flex size-9 shrink-0 items-center justify-center rounded-xl font-mono text-xs font-bold shadow-2xs",
                             b.adminUtama
-                              ? "bg-primary text-white"
+                              ? "bg-primary text-primary-foreground"
                               : "bg-sky-100 text-judul dark:bg-sky-950 dark:text-sky-200",
                           )}
                           aria-hidden

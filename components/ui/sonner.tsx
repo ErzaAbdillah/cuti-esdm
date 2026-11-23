@@ -1,12 +1,28 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
+function bacaTemaSonner(): "light" | "dark" {
+  if (typeof document === "undefined") return "dark"
+  return document.documentElement.dataset.tema === "langit-pagi" ? "light" : "dark"
+}
+
 const Toaster = ({ ...props }: ToasterProps) => {
+  const [tema, setTema] = useState<"light" | "dark">("dark")
+
+  useEffect(() => {
+    const sinkron = () => setTema(bacaTemaSonner())
+    sinkron()
+    const obs = new MutationObserver(sinkron)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-tema"] })
+    return () => obs.disconnect()
+  }, [])
+
   return (
     <Sonner
-      theme="light"
+      theme={tema}
       className="toaster group"
       icons={{
         success: (

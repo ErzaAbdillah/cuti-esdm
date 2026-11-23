@@ -203,7 +203,7 @@ export default async function DetailCuti({ params, searchParams }: PageProps<"/c
             <ol className="relative grid gap-4 border-l-2 border-sky-200 pl-4">
               {p.riwayat.map((r) => (
                 <li key={r.id} className="relative">
-                  <span className={cn("absolute -left-[1.4rem] top-1 size-3 rounded-full ring-4 ring-white", r.keStatus === "DITOLAK" || r.keStatus === "DIBATALKAN" ? "bg-merah" : "bg-brand")} aria-hidden />
+                  <span className={cn("absolute -left-[1.4rem] top-1 size-3 rounded-full ring-4 ring-background", r.keStatus === "DITOLAK" || r.keStatus === "DIBATALKAN" ? "bg-merah" : "bg-brand")} aria-hidden />
                   <p className="text-sm font-semibold text-judul">{LABEL_STATUS_CUTI[r.keStatus]}</p>
                   <p className="text-xs text-slate-600">
                     {r.oleh ? (r.oleh.pegawai ? namaLengkap(r.oleh.pegawai) : r.oleh.loginId) : "Sistem"} · {formatTanggalJam(r.waktu)}

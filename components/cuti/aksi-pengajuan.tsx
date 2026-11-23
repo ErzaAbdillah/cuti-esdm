@@ -132,7 +132,7 @@ export function FormKeputusanEksternal({ id, tujuan }: { id: string; tujuan: str
       <Bidang label="Nomor surat izin" name="nomorSurat" galat={g.nomorSurat} placeholder="mis. 800.1.11.4/1234/BKD/2026" />
       <div className="grid gap-1.5">
         <Label htmlFor={`berkas-${id}`}>Surat izin (PDF/JPG/PNG, maks. 10 MB)</Label>
-        <input id={`berkas-${id}`} type="file" name="berkas" accept=".pdf,.jpg,.jpeg,.png" className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-white file:px-3 file:py-2 file:font-semibold file:text-judul" />
+        <input id={`berkas-${id}`} type="file" name="berkas" accept=".pdf,.jpg,.jpeg,.png" className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-sky-100 file:px-3 file:py-2 file:font-semibold file:text-judul hover:file:bg-sky-200" />
         {g.berkas && <p className="text-xs font-medium text-destructive">{g.berkas}</p>}
       </div>
       <Bidang label="Catatan (opsional)" name="catatan" />

@@ -215,7 +215,7 @@ export default async function MasterData({ searchParams }: PageProps<"/admin/mas
       </div>
       <nav aria-label="Master data" className="flex flex-wrap gap-1 rounded-xl border border-sky-100 bg-white/70 p-1">
         {TAB.map(([k, label]) => (
-          <Link key={k} href={`/admin/master?tab=${k}`} aria-current={k === tab ? "page" : undefined} className={cn("rounded-lg px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-sky-50", k === tab && "bg-primary text-white hover:bg-primary")}>
+          <Link key={k} href={`/admin/master?tab=${k}`} aria-current={k === tab ? "page" : undefined} className={cn("rounded-lg px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-sky-50", k === tab && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground")}>
             {label}
           </Link>
         ))}

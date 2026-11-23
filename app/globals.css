@@ -101,6 +101,117 @@
 }
 
 /*
+ * Tema "Cursor Dark" — Hitam arang / obsidian modern (tema bawaan).
+ * Background: #0E0E10, Surface: #18181B, Foreground: #EDEDEF, Accent: #60A5FA.
+ */
+html[data-tema="cursor-dark"] {
+  color-scheme: dark;
+
+  --brand: #60a5fa;
+  --judul: #f4f4f5;
+  --emas: #f5c542;
+  --emas-foreground: #1c1503;
+  --merah: #f87171;
+
+  --background: #0e0e10;
+  --foreground: #ededef;
+  --card: rgb(24 24 27 / 0.88);
+  --card-foreground: #ededef;
+  --popover: #18181b;
+  --popover-foreground: #ededef;
+  --primary: #60a5fa;
+  --primary-foreground: #09090b;
+  --secondary: #222227;
+  --secondary-foreground: #ededef;
+  --muted: #1d1d22;
+  --muted-foreground: #a1a1aa;
+  --accent: #27272e;
+  --accent-foreground: #ededef;
+  --destructive: #f87171;
+  --border: #27272a;
+  --input: #3f3f46;
+  --ring: #60a5fa;
+  --chart-1: #60a5fa;
+  --chart-2: #3b82f6;
+  --chart-3: #f5c542;
+  --chart-4: #f87171;
+  --chart-5: #a1a1aa;
+  --sidebar: rgb(20 20 24 / 0.92);
+  --sidebar-foreground: #ededef;
+  --sidebar-primary: #60a5fa;
+  --sidebar-primary-foreground: #09090b;
+  --sidebar-accent: #222227;
+  --sidebar-accent-foreground: #ededef;
+  --sidebar-border: #27272a;
+  --sidebar-ring: #60a5fa;
+
+  /* Penyesuaian skala warna utilitas agar teks & input kontras tinggi di atas #0E0E10 - #18181B */
+  --color-slate-950: #fafafa;
+  --color-slate-900: #ededef;
+  --color-slate-800: #d4d4d8;
+  --color-slate-700: #c4c4cc;
+  --color-slate-600: #a1a1aa;
+  --color-slate-500: #8f8f9b;
+  --color-slate-400: #71717a;
+  --color-slate-300: #3f3f46;
+  --color-slate-200: #2c2c33;
+  --color-slate-100: #222227;
+  --color-slate-50: #18181b;
+
+  --color-sky-950: #eff6ff;
+  --color-sky-900: #bfdbfe;
+  --color-sky-800: #93c5fd;
+  --color-sky-700: #60a5fa;
+  --color-sky-600: #3b82f6;
+  --color-sky-500: #3b82f6;
+  --color-sky-400: #2563eb;
+  --color-sky-300: #1d4ed8;
+  --color-sky-200: #1e3a5f;
+  --color-sky-100: #17253b;
+  --color-sky-50: #131c2b;
+
+  --color-indigo-900: #c7d2fe;
+  --color-indigo-800: #a5b4fc;
+  --color-indigo-700: #818cf8;
+  --color-indigo-300: #4338ca;
+  --color-indigo-100: #1e1f3a;
+
+  --color-emerald-950: #d1fae5;
+  --color-emerald-900: #a7f3d0;
+  --color-emerald-800: #6ee7b7;
+  --color-emerald-700: #34d399;
+  --color-emerald-300: #1e5e45;
+  --color-emerald-200: #184a36;
+  --color-emerald-100: #123628;
+  --color-emerald-50: #0d261c;
+
+  --color-amber-950: #fef3c7;
+  --color-amber-900: #fde68a;
+  --color-amber-800: #fcd34d;
+  --color-amber-700: #fbbf24;
+  --color-amber-300: #785a1c;
+  --color-amber-200: #574115;
+  --color-amber-100: #3d2e0f;
+  --color-amber-50: #29200d;
+
+  --color-red-900: #fecaca;
+  --color-red-800: #fca5a5;
+  --color-red-700: #f87171;
+  --color-red-300: #7a2b33;
+  --color-red-200: #5c2228;
+  --color-red-100: #3f181c;
+  --color-red-50: #2a1215;
+
+  --color-rose-900: #fecdd3;
+  --color-rose-800: #fda4af;
+  --color-rose-700: #fb7185;
+  --color-rose-300: #881337;
+  --color-rose-200: #6b1230;
+  --color-rose-100: #3d1220;
+  --color-rose-50: #290d16;
+}
+
+/*
  * Tema "Mossy Stone" — Hijau lumut teduh.
  * Background: #161E1A, Foreground: #D6DFDC, Accent: #52A478.
  */
@@ -169,6 +280,46 @@ html[data-tema="mossy-stone"] {
   --color-sky-200: #29523C;
   --color-sky-100: #1F3D2D;
   --color-sky-50: #192E23;
+
+  --color-indigo-900: #c7d2fe;
+  --color-indigo-800: #a5b4fc;
+  --color-indigo-700: #818cf8;
+  --color-indigo-300: #4338ca;
+  --color-indigo-100: #20263b;
+
+  --color-emerald-950: #d1fae5;
+  --color-emerald-900: #a7f3d0;
+  --color-emerald-800: #6ee7b7;
+  --color-emerald-700: #52a478;
+  --color-emerald-300: #2a5f43;
+  --color-emerald-200: #214c36;
+  --color-emerald-100: #1a3b2a;
+  --color-emerald-50: #142c20;
+
+  --color-amber-950: #fef3c7;
+  --color-amber-900: #fde68a;
+  --color-amber-800: #fcd34d;
+  --color-amber-700: #fbbf24;
+  --color-amber-300: #755b22;
+  --color-amber-200: #564218;
+  --color-amber-100: #3d2f12;
+  --color-amber-50: #2a210f;
+
+  --color-red-900: #fecaca;
+  --color-red-800: #fca5a5;
+  --color-red-700: #f27474;
+  --color-red-300: #783035;
+  --color-red-200: #5a2429;
+  --color-red-100: #3e191d;
+  --color-red-50: #2a1316;
+
+  --color-rose-900: #fecdd3;
+  --color-rose-800: #fda4af;
+  --color-rose-700: #fb7185;
+  --color-rose-300: #85203b;
+  --color-rose-200: #66192e;
+  --color-rose-100: #3d1521;
+  --color-rose-50: #2a1018;
 }
 
 @layer base {
@@ -198,6 +349,16 @@ html[data-tema="mossy-stone"] {
   background-position: top center, center;
 }
 
+html[data-tema="cursor-dark"] .latar-langit {
+  background-image:
+    radial-gradient(circle at 18% 12%, rgb(96 165 250 / 0.12) 0%, transparent 42%),
+    radial-gradient(circle at 82% 85%, rgb(99 102 241 / 0.08) 0%, transparent 48%),
+    linear-gradient(180deg, #0e0e10 0%, #09090b 100%);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
 html[data-tema="mossy-stone"] .latar-langit {
   background-image:
     radial-gradient(circle at 15% 15%, rgb(82 164 120 / 0.14) 0%, transparent 45%),
@@ -217,26 +378,126 @@ html[data-tema="mossy-stone"] .latar-langit {
   box-shadow: 0 8px 30px -12px rgb(12 74 110 / 0.18), 0 1px 2px rgb(12 74 110 / 0.06);
 }
 
+html[data-tema="cursor-dark"] .kaca {
+  background-color: rgb(20 20 24 / 0.88);
+  border-color: rgb(255 255 255 / 0.09);
+  box-shadow: 0 12px 36px -14px rgb(0 0 0 / 0.72), inset 0 1px 0 rgb(255 255 255 / 0.05);
+}
+
 html[data-tema="mossy-stone"] .kaca {
   border-color: rgb(82 164 120 / 0.24);
   box-shadow: 0 8px 30px -12px rgb(0 0 0 / 0.55), 0 1px 2px rgb(0 0 0 / 0.35);
 }
 
+header > .kaca {
+  background-color: color-mix(in srgb, var(--popover) 95%, transparent);
+}
+
+/* Penyesuaian permukaan putih pada input/tombol/laci di tema Cursor Dark (kecuali lembar cetak A4) */
+html[data-tema="cursor-dark"] .bg-white:not(.lembar-cetak):not(.lembar-cetak *),
+html[data-tema="cursor-dark"] .bg-white\/95:not(.lembar-cetak):not(.lembar-cetak *),
+html[data-tema="cursor-dark"] .bg-white\/90:not(.lembar-cetak):not(.lembar-cetak *),
+html[data-tema="cursor-dark"] .bg-white\/80:not(.lembar-cetak):not(.lembar-cetak *),
+html[data-tema="cursor-dark"] .bg-white\/70:not(.lembar-cetak):not(.lembar-cetak *),
+html[data-tema="cursor-dark"] .bg-white\/60:not(.lembar-cetak):not(.lembar-cetak *) {
+  background-color: #18181b;
+  color: var(--foreground);
+}
+
+html[data-tema="cursor-dark"] :is(button, a, [role="button"]).bg-white:not(.lembar-cetak):not(.lembar-cetak *):not(:disabled):hover,
+html[data-tema="cursor-dark"] :is(button, a, [role="button"]).bg-white\/95:not(.lembar-cetak):not(.lembar-cetak *):not(:disabled):hover,
+html[data-tema="cursor-dark"] :is(button, a, [role="button"]).bg-white\/90:not(.lembar-cetak):not(.lembar-cetak *):not(:disabled):hover,
+html[data-tema="cursor-dark"] :is(button, a, [role="button"]).bg-white\/80:not(.lembar-cetak):not(.lembar-cetak *):not(:disabled):hover,
+html[data-tema="cursor-dark"] :is(button, a, [role="button"]).bg-white\/70:not(.lembar-cetak):not(.lembar-cetak *):not(:disabled):hover,
+html[data-tema="cursor-dark"] :is(button, a, [role="button"]).bg-white\/60:not(.lembar-cetak):not(.lembar-cetak *):not(:disabled):hover,
+html[data-tema="cursor-dark"] .hover\:bg-white:not(.lembar-cetak):not(.lembar-cetak *):hover {
+  background-color: #27272e;
+  color: var(--foreground);
+}
+
+html[data-tema="cursor-dark"] input:not([type="checkbox"]):not([type="radio"]):not(.lembar-cetak *),
+html[data-tema="cursor-dark"] textarea:not(.lembar-cetak *),
+html[data-tema="cursor-dark"] select:not(.lembar-cetak *) {
+  color: var(--foreground);
+}
+
+html[data-tema="cursor-dark"] select option {
+  background-color: #18181b;
+  color: #ededef;
+}
+
+html[data-tema="cursor-dark"] .hover\:bg-white\/60:hover {
+  background-color: rgb(255 255 255 / 0.08);
+}
+
 /* Penyesuaian permukaan putih pada input/tombol/laci di tema Mossy Stone (kecuali lembar cetak/A4) */
-html[data-tema="mossy-stone"] .bg-white:not(.lembar-cetak),
-html[data-tema="mossy-stone"] .bg-white\/95:not(.lembar-cetak),
-html[data-tema="mossy-stone"] .bg-white\/80:not(.lembar-cetak),
-html[data-tema="mossy-stone"] .bg-white\/70:not(.lembar-cetak),
-html[data-tema="mossy-stone"] .bg-white\/60:not(.lembar-cetak) {
+html[data-tema="mossy-stone"] .bg-white:not(.lembar-cetak):not(.lembar-cetak *),
+html[data-tema="mossy-stone"] .bg-white\/95:not(.lembar-cetak):not(.lembar-cetak *),
+html[data-tema="mossy-stone"] .bg-white\/90:not(.lembar-cetak):not(.lembar-cetak *),
+html[data-tema="mossy-stone"] .bg-white\/80:not(.lembar-cetak):not(.lembar-cetak *),
+html[data-tema="mossy-stone"] .bg-white\/70:not(.lembar-cetak):not(.lembar-cetak *),
+html[data-tema="mossy-stone"] .bg-white\/60:not(.lembar-cetak):not(.lembar-cetak *) {
   background-color: rgb(29 40 34 / 0.88);
   color: var(--foreground);
+}
+
+html[data-tema="mossy-stone"] :is(button, a, [role="button"]).bg-white:not(.lembar-cetak):not(.lembar-cetak *):not(:disabled):hover,
+html[data-tema="mossy-stone"] :is(button, a, [role="button"]).bg-white\/95:not(.lembar-cetak):not(.lembar-cetak *):not(:disabled):hover,
+html[data-tema="mossy-stone"] :is(button, a, [role="button"]).bg-white\/90:not(.lembar-cetak):not(.lembar-cetak *):not(:disabled):hover,
+html[data-tema="mossy-stone"] :is(button, a, [role="button"]).bg-white\/80:not(.lembar-cetak):not(.lembar-cetak *):not(:disabled):hover,
+html[data-tema="mossy-stone"] :is(button, a, [role="button"]).bg-white\/70:not(.lembar-cetak):not(.lembar-cetak *):not(:disabled):hover,
+html[data-tema="mossy-stone"] :is(button, a, [role="button"]).bg-white\/60:not(.lembar-cetak):not(.lembar-cetak *):not(:disabled):hover,
+html[data-tema="mossy-stone"] .hover\:bg-white:not(.lembar-cetak):not(.lembar-cetak *):hover {
+  background-color: rgb(42 58 49 / 0.96);
+  color: var(--foreground);
+}
+
+html[data-tema="mossy-stone"] input:not([type="checkbox"]):not([type="radio"]):not(.lembar-cetak *),
+html[data-tema="mossy-stone"] textarea:not(.lembar-cetak *),
+html[data-tema="mossy-stone"] select:not(.lembar-cetak *) {
+  color: var(--foreground);
+}
+
+html[data-tema="mossy-stone"] select option {
+  background-color: #1d2822;
+  color: #d6dfdc;
 }
 
 html[data-tema="mossy-stone"] .hover\:bg-white\/60:hover {
   background-color: rgb(82 164 120 / 0.16);
 }
 
+/* Lembar cetak A4/Legal selalu putih bersih dengan teks hitam pekat di tema apa pun */
+.lembar-cetak {
+  color-scheme: light;
+  background-color: #ffffff;
+  color: #000000;
+  --background: #ffffff;
+  --foreground: #000000;
+  --border: #cfe8f7;
+  --ring: #0284c7;
+  --muted: #f1f5f9;
+  --muted-foreground: #475569;
+  --judul: #0c4a6e;
+  --primary: #0369a1;
+  --primary-foreground: #ffffff;
+  --color-sky-100: #e0f2fe;
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+}
+
 @media print {
+  html, body {
+    color-scheme: light !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
   .latar-langit { display: none; }
 }
 

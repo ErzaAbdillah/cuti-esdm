@@ -221,9 +221,9 @@ export function FormFormulir({ id, jenis, awal, level, hariIni }: PropsFormFormu
   const label = (k: string, teks: string) => (menunggu && cetakan === k ? "Menyimpan…" : teks);
 
   return (
-    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <div
-        className="grid gap-4"
+        className="grid min-w-0 grid-cols-1 gap-4"
         onFocusCapture={(e) => {
           // Pratinjau mengikuti dokumen yang sedang diisi.
           if (nota && e.target.matches("input, textarea, select")) setPratinjau(e.target.closest("[data-nota]") ? "nota" : "formulir");
@@ -379,7 +379,7 @@ export function FormFormulir({ id, jenis, awal, level, hariIni }: PropsFormFormu
         </p>
       </div>
 
-      <div className="grid gap-2 xl:sticky xl:top-4">
+      <div className="grid min-w-0 grid-cols-1 gap-2 xl:sticky xl:top-4">
         {nota && levelNota ? (
           <Tabs value={pratinjau} onValueChange={setPratinjau}>
             <TabsList className="bg-white/60">

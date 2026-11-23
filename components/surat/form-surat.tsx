@@ -166,8 +166,8 @@ export function FormSurat(p: PropsFormSurat) {
   }
 
   return (
-    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <div className="grid gap-4">
+    <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="grid min-w-0 grid-cols-1 gap-4">
         {p.terkunci && (
           <p className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
             <LockIcon className="mt-0.5 size-4 shrink-0" aria-hidden />
@@ -244,7 +244,7 @@ export function FormSurat(p: PropsFormSurat) {
         <p className="text-xs text-slate-600">Cetak atau unduh PDF mengunci versi ini beserta nomornya; penanda tangan mengikuti tanggal surat.</p>
       </div>
 
-      <div className="grid gap-2 xl:sticky xl:top-4">
+      <div className="grid min-w-0 grid-cols-1 gap-2 xl:sticky xl:top-4">
         <h2 className="text-sm font-semibold text-judul">Pratinjau A4</h2>
         <PratinjauA4 label="Pratinjau surat">
           <LembarSurat d={lembar} />

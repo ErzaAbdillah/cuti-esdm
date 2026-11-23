@@ -18,7 +18,7 @@ export function NavSurat({ aktif }: { aktif: (typeof TAUTAN)[number]["href"] }) 
           aria-current={t.href === aktif ? "page" : undefined}
           className={cn(
             "rounded-lg px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-ring",
-            t.href === aktif && "bg-primary text-white hover:bg-primary",
+            t.href === aktif && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
           )}
         >
           {t.label}

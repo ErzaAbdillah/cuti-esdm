@@ -30,7 +30,7 @@ function terapkanKeDom(id: IdTema) {
   const info = DAFTAR_TEMA.find((t) => t.id === id);
   if (info) {
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", info.warna.accent);
+    if (meta) meta.setAttribute("content", id === "langit-pagi" ? info.warna.accent : info.warna.background);
   }
 }
 
@@ -50,9 +50,6 @@ export function PenyediaTema({ awal = TEMA_BAWAAN, children }: { awal?: IdTema; 
 
   useEffect(() => {
     terapkanKeDom(tema);
-    return () => {
-      terapkanKeDom(TEMA_BAWAAN);
-    };
   }, [tema]);
 
   function aturTema(baru: IdTema) {
@@ -90,17 +87,17 @@ export function TombolTema({ className }: { className?: string }) {
               <div className="flex items-center gap-2.5">
                 <span className="flex items-center -space-x-1" aria-hidden>
                   <span
-                    className="size-4 rounded-full ring-1 ring-black/20"
+                    className="size-4 rounded-full ring-1 ring-foreground/25"
                     style={{ backgroundColor: t.warna.background }}
                     title={`Background ${t.warna.background}`}
                   />
                   <span
-                    className="size-4 rounded-full ring-1 ring-black/20"
+                    className="size-4 rounded-full ring-1 ring-foreground/25"
                     style={{ backgroundColor: t.warna.foreground }}
                     title={`Foreground ${t.warna.foreground}`}
                   />
                   <span
-                    className="size-4 rounded-full ring-1 ring-black/20"
+                    className="size-4 rounded-full ring-1 ring-foreground/25"
                     style={{ backgroundColor: t.warna.accent }}
                     title={`Accent ${t.warna.accent}`}
                   />

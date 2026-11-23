@@ -26,10 +26,10 @@ export function PratinjauA4({ children, label, lebarMm = 210 }: { children: Reac
   }, [lebarMm]);
 
   return (
-    <figure aria-label={label} ref={luar} className="w-full overflow-hidden print:h-auto! print:overflow-visible" style={{ height: ukuran.tinggi || undefined }}>
+    <figure aria-label={label} ref={luar} className="relative w-full min-w-0 overflow-hidden print:static print:h-auto! print:overflow-visible" style={{ height: ukuran.tinggi || undefined }}>
       <div
         ref={dalam}
-        className="origin-top-left shadow-lg ring-1 ring-slate-200 print:w-auto! print:transform-none! print:shadow-none print:ring-0"
+        className="lembar-cetak absolute left-0 top-0 origin-top-left shadow-lg ring-1 ring-slate-200 print:static print:w-auto! print:transform-none! print:shadow-none print:ring-0"
         style={{ width: `${lebarMm}mm`, transform: `scale(${ukuran.skala})` }}
       >
         {children}

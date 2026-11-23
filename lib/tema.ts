@@ -1,6 +1,6 @@
 export const KUKI_TEMA = "tema";
 
-export type IdTema = "langit-pagi" | "mossy-stone";
+export type IdTema = "cursor-dark" | "langit-pagi" | "mossy-stone";
 
 export interface InfoTema {
   id: IdTema;
@@ -15,9 +15,19 @@ export interface InfoTema {
 
 export const DAFTAR_TEMA: readonly InfoTema[] = [
   {
+    id: "cursor-dark",
+    nama: "Cursor Dark",
+    keterangan: "Hitam arang modern bawaan",
+    warna: {
+      background: "#0E0E10",
+      foreground: "#EDEDEF",
+      accent: "#60A5FA",
+    },
+  },
+  {
     id: "langit-pagi",
     nama: "Langit Pagi",
-    keterangan: "Biru cerah bawaan",
+    keterangan: "Biru cerah bersih",
     warna: {
       background: "#F0F9FF",
       foreground: "#0F172A",
@@ -36,9 +46,11 @@ export const DAFTAR_TEMA: readonly InfoTema[] = [
   },
 ] as const;
 
-export const TEMA_BAWAAN: IdTema = "langit-pagi";
+export const TEMA_BAWAAN: IdTema = "cursor-dark";
 
 export function normalisasiTema(nilai: string | undefined | null): IdTema {
-  if (nilai === "mossy-stone") return "mossy-stone";
-  return "langit-pagi";
+  if (nilai === "langit-pagi" || nilai === "mossy-stone" || nilai === "cursor-dark") {
+    return nilai;
+  }
+  return TEMA_BAWAAN;
 }

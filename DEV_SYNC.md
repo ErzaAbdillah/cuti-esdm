@@ -1,6 +1,9 @@
 # WORKSPACE SYNC & PROJECT HUB
 
-> **Aturan Bahasa untuk Semua AI Agent:** Selalu gunakan **Bahasa Indonesia yang sederhana, mudah dipahami, dan ramah bagi pemula** (tidak terlalu teknis). Jelaskan dampak fitur/masalah dengan bahasa sehari-hari yang praktis agar mudah dimengerti pengguna.
+> **Aturan Wajib untuk Semua AI Agent:**
+> 1. **Gaya Bahasa Ramah Pemula:** Selalu gunakan **Bahasa Indonesia yang sederhana, santai, mudah dipahami pemula**, dan **jangan gunakan gaya bahasa teknis yang membingungkan**. Fokus jelaskan dampak praktis bagi pegawai/admin/pemilik aplikasi.
+> 2. **Wajib Menuliskan Prompt Penerus:** Jika pekerjaan pada sesi ini belum tuntas sepenuhnya atau perlu dilanjutkan/diperiksa oleh AI Agent lain, **WAJIB tuliskan kotak "Prompt untuk AI Agent Selanjutnya"** yang siap salin (*copy-paste*) di akhir jawaban Anda.
+> 3. **Daftar AI Agent Proyek:** `Coder` (Conv 1), `Debugger/QA` (Conv 2), `Architect` (Conv 3), `UI/UX Stylist` (Conv 4), ditambah `Chatbot` (diskusi 100% hanya baca) dan `Kantor` (forum pendapat seluruh AI Agent) — lihat folder `ai-agents/`.
 
 ## 0. Ringkasan Proyek & Tech Stack (Referensi Semua Agent)
 - **Deskripsi Singkat:** **Layanan Cuti ESDM Kalsel** — Aplikasi web internal Dinas ESDM Provinsi Kalimantan Selatan untuk pengelolaan data pegawai, pengajuan cuti berjenjang (standar formulir BKN), penerbitan surat cuti & nota dinas per eselon (editor Tiptap, versioning, cetak/PDF), serta ruang dokumen kepegawaian terenkripsi. *(Catatan: Modul absensi lama telah dinonaktifkan/deprecated, tabel di DB dipertahankan untuk histori).*
@@ -36,9 +39,9 @@
   - Background Worker: `app/api/tugas/harian/route.ts` (Cron pembaruan status cuti selesai & kirim antrean email)
 
 ## Status Saat Ini
-- **Fase Aktif:** Selesai & Siap Deploy (Fitur Foto Profil + Upgrade Keamanan Next.js 16.4.6 Terverifikasi)
-- **Fitur/Modul Aktif:** Foto Profil Pegawai + Upgrade Keamanan Next.js `16.4.2` → `16.4.6`
-- **Penanggung Jawab Terakhir:** Coder
+- **Fase Aktif:** Ready to Push & Deploy (Terverifikasi Browser & Build)
+- **Fitur/Modul Aktif:** Tema Tampilan Bawaan `Cursor Dark` (`cursor-dark`) + Polesan Kontras, Toast Dinamis, Isolasi Cetak A4, & Perbaikan Responsif HP
+- **Penanggung Jawab Terakhir:** Debugger / QA
 
 ## 1. Cetak Biru & Skema Data (Diisi oleh Conversation 3 - Architect)
 *Rancangan alur sistem, struktur tabel/database, dan daftar file yang harus dibuat/dieksekusi oleh Coder:*
@@ -172,6 +175,15 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 - `app/(aplikasi)/admin/hak-akses/page.tsx`: Halaman Admin `/admin/hak-akses` untuk melihat dan mengelola matriks hak akses seluruh pegawai berakun sekaligus.
 - `tests/unit/hak-akses.test.ts`: Unit test Vitest untuk konstanta hak akses dan penyaringan menu navigasi `menuUntuk(peran, hakAkses)`.
 
+### File Diubah (Tema Bawaan Cursor Dark)
+- `lib/tema.ts`: Mendaftarkan tema baru `"cursor-dark"` (**Cursor Dark**, hitam arang `#0E0E10` – `#18181B`, teks putih jernih `#EDEDEF`, aksen biru modern `#60A5FA`), menjadikannya `TEMA_BAWAAN` (tema default), dan memperbarui `normalisasiTema()` agar fallback ke `"cursor-dark"`.
+- `app/layout.tsx`: Membaca cookie `tema` langsung dari server saat halaman pertama kali dibuka lalu memasang atribut `data-tema={tema}` pada tag `<html>` (dan `themeColor: "#0E0E10"`) sehingga tidak muncul kedipan putih sesaat (*white flash*).
+- `components/tata-letak/tombol-tema.tsx`: Menghapus efek reset tema saat berpindah keluar halaman aplikasi supaya pilihan tema pegawai tetap terjaga konsisten hingga halaman login/keluar.
+- `app/globals.css`:
+  - Menambahkan palet warna lengkap `html[data-tema="cursor-dark"]` termasuk penyesuaian skala warna teks, kartu `.kaca`, latar `.latar-langit`, kotak peringatan (*alert*), lencana status cuti, serta penyesuaian `.bg-white:not(.lembar-cetak):not(.lembar-cetak *)` dan warna teks input/dropdown (`input`, `textarea`, `select`, `option`) agar setiap kotak isian form selalu terang terbaca di latar gelap.
+  - Mengisolasi `.lembar-cetak` (beserta `@media print`) agar lembar cetak formulir A4, surat cuti, rekap cuti, dan bilah cetak tetap putih bersih dengan teks hitam pekat di tema apa pun.
+- `tests/unit/tema.test.ts`: Memperbarui pengujian unit untuk memastikan `TEMA_BAWAAN === "cursor-dark"`, palet warna Cursor Dark terdaftar benar, dan normalisasi nilai tidak dikenal kembali ke `"cursor-dark"`.
+
 ### File Diubah (Upgrade Keamanan Next.js 16.4.2 → 16.4.6)
 - `package.json` & `package-lock.json`: Memperbarui versi `next` dan `eslint-config-next` dari `16.4.2` ke `16.4.6` untuk menutup kerentanan keamanan yang dilaporkan oleh Next.js.
 - `next.config.ts`: Menambahkan `experimental.agentUpgrade: "security"` sesuai rekomendasi resmi proses upgrade keamanan Next.js tanpa mengubah pengaturan lainnya.
@@ -244,6 +256,20 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 
 ## 3. Catatan Polesan Visual (Diisi oleh Conversation 4 - UI/UX Stylist)
 *Daftar komponen UI, styling, responsivitas, atau animasi yang baru diperbarui:*
+- **Polesan Tema Bawaan `Cursor Dark` & Keselarasan 3 Tema (`2026-11-23`):**
+  - `app/globals.css`:
+    - Melengkapi warna teks & lencana di `Cursor Dark` (menambahkan warna `rose`, `indigo`, `amber`, dan `emerald` gelap yang sebelumnya belum terdaftar sehingga beberapa label/ikon sempat gelap atau terlalu mencolok).
+    - Menambahkan dukungan warna latar/teks `bg-white/90` (kotak pencarian di matriks hak akses), memperbaiki efek sentuh (*hover*) pada tombol dan kartu putih agar tidak berubah menjadi putih silau saat diarahkan kursor di tema gelap.
+    - Menyelaraskan tema **Mossy Stone** agar kotak pesan sukses/error, lencana status, kotak isian, dan pilihan dropdown juga gelap rapi saat pegawai berpindah tema.
+    - Memperketat penguncian lembar cetak A4 (`.lembar-cetak` dan `@media print`) supaya kertas formulir, nota dinas, surat cuti, dan rekap selalu putih bersih dengan tulisan hitam pekat.
+  - `components/ui/sonner.tsx`: Membuat notifikasi melayang (*toast*) otomatis mengikuti tema aktif (tampil gelap saat **Cursor Dark** / **Mossy Stone** aktif, dan tampil terang saat **Langit Pagi** aktif).
+  - `components/ui/alert.tsx`: Memperjelas kotak pesan error (`variant="destructive"`) dengan latar merah marun lembut dan garis tepi merah agar peringatan langsung terbaca jelas di tema gelap maupun terang.
+  - `components/tata-letak/tombol-tema.tsx`: Memperjelas garis tepi bulatan contoh warna tema di menu dropdown agar lingkaran warna gelap tetap terlihat tegas, serta menyesuaikan warna bilah atas browser HP dengan warna latar tema gelap.
+  - `components/cuti/aksi-pengajuan.tsx`: Memperbaiki tombol pilih file surat izin eksternal (`file:bg-sky-100`) agar tulisannya tidak hilang putih-di-atas-putih saat mode gelap.
+  - `app/(aplikasi)/cuti/[id]/page.tsx`: Mengubah lingkaran tepi titik riwayat status cuti (`ring-background`) agar menyatu rapi dengan kartu gelap.
+  - `app/(aplikasi)/admin/master/page.tsx`, `components/admin/nav-surat.tsx`, & `components/admin/matriks-hak-akses.tsx`: Mengubah warna tulisan tab/avatar aktif dari putih tetap menjadi warna teks kontras bawaan tombol utama (`text-primary-foreground`) supaya jelas terbaca di atas warna biru terang **Cursor Dark** maupun hijau **Mossy Stone**.
+  - `app/(aplikasi)/layout.tsx`: Mengubah lencana angka notifikasi lonceng menjadi merah pekat (`bg-red-600 text-white`) agar angka putihnya kontras tajam di semua tema.
+  - *Verifikasi:* `npm run typecheck`, `npm run lint`, dan `npm test` (115/115) lulus bersih. Tampilan `/login?google=gagal` dan `/daftar` pada `Cursor Dark` telah dicek langsung di browser (layar laptop 1280px & HP 390px) — bebas melebar ke samping dan seluruh kotak form/peringatan terbaca jelas. Halaman terproteksi (`/beranda`, `/profil`, `/cuti/ajukan`, `/cetak/formulir/...`) serta perpindahan tema lewat tombol belum dapat dibuka langsung di browser lokal karena database PostgreSQL Docker lokal sedang mati, sehingga perlu dicek akhir oleh Debugger/QA saat DB aktif.
 - `components/pegawai/akun-pegawai.tsx`:
   - Menggantikan tampilan daftar peran lama dengan panel kartu interaktif 5 Hak Akses Pegawai berdesain elevated `.kaca`.
   - Menambahkan ikon unik & aksen warna untuk setiap hak akses: `WalletCardsIcon` (Saldo & Rekap), `StampIcon` (Proses Cuti), `UsersIcon` (Data Pegawai), `FolderLockIcon` (Dokumen Organisasi), dan `Settings2Icon` (Pengaturan Admin).
@@ -264,11 +290,17 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 
 ## 4. Antrean Bug & Evaluasi QA (Diisi oleh Conversation 2 - Debugger)
 *Daftar error logika, masalah tampilan, atau perbaikan yang dibutuhkan:*
+- [ ] **[RENDAH - Opsional] [app/layout.tsx:23-27 (`viewport.themeColor`)]**: Warna bilah alamat browser HP (`themeColor`) masih disetel statis `#0E0E10` di sisi server. Saat pegawai membuka halaman `/login` dengan pilihan tema **Langit Pagi** atau **Mossy Stone** (sebelum masuk ke aplikasi), bilah atas browser HP tetap memakai warna gelap `#0E0E10` sampai berganti di dalam aplikasi. Tidak mengganggu fungsi maupun keterbacaan isi halaman.
 - [ ] **[CATATAN DESAIN] [server/auth/pengguna.ts:~38-45 vs app/(aplikasi)/admin/hak-akses/page.tsx:34]**: Peran legacy `KEPEGAWAIAN` saat ini otomatis menginjeksi 3 hak akses (`KELOLA_SALDO_CUTI`, `PROSES_CUTI`, `KELOLA_PEGAWAI`) jika baris `user_hak_akses` kosong. Bila kelak ingin mencabut hak dari pegawai yang masih memiliki peran legacy tersebut, Admin disarankan menghapus peran `KEPEGAWAIAN` akun tersebut atau mengeksekusi migrasi data peran ke hak akses modular.
 - [ ] **[CATATAN DESAIN] [server/layanan/akses-dokumen.ts:63]**: Evaluasi berkelanjutan untuk menyelaraskan fungsi akses dokumen lama dengan hak akses `KELOLA_PEGAWAI` vs peran legacy.
 - [ ] **[CATATAN] [DEV_SYNC.md bagian 1.C]**: Blueprint menyebut route `/cuti/rekap`, namun rekap terintegrasi pada `/cuti/saldo` dan `/cetak/rekap-cuti`.
 
 ## 5. Riwayat Selesai (Resolved)
+- [x] **[TINGGI - Tampilan HP] [components/surat/pratinjau-a4.tsx, components/cuti/form-formulir.tsx, components/surat/form-surat.tsx]**: Ditemukan saat uji browser HP (`390×844`) bahwa pratinjau kertas A4 di `/cuti/ajukan` melebar keluar layar hingga memunculkan gulir horizontal dan terpotong ke kanan. Diperbaiki dengan mengunci lebar grid kolom (`grid-cols-1` & `min-w-0`) serta membuat isi pratinjau `PratinjauA4` memposisikan diri di dalam bingkai terukur (`relative` + `absolute` saat pratinjau, kembali `static` saat cetak), sehingga kertas A4 mengecil pas di layar HP tanpa gulir samping.
+- [x] **[SEDANG - Tampilan Gulir] [app/(aplikasi)/layout.tsx, app/globals.css (`header > .kaca`)]**: Ditemukan saat uji browser bahwa bilah navigasi atas yang terlalu tembus pandang membuat tulisan formulir/kertas putih di belakangnya bertabrakan dengan judul aplikasi saat layar digulir. Diperbaiki dengan memberi lapisan buram ringan pada area atas (`bg-background/85 backdrop-blur-md`) dan meningkatkan kepekatan latar bilah atas (`color-mix` 95% `--popover`) agar tulisan di header tetap tajam di ketiga tema.
+- [x] **[VERIFIKASI QA - Browser Lengkap (Laptop 1280×800 & HP 390×844)] [2026-11-23]**: Berhasil masuk melalui `/login`, memverifikasi tampilan `/beranda`, `/profil`, `/cuti/ajukan` (dropdown jenis cuti terbaca jelas, kolom Tahun & Sisa cuti tahunan terkunci dan otomatis berkurang saat tanggal dipilih, pratinjau A4 pas di layar laptop & HP), serta `/cetak/formulir/[id]` (kertas putih bersih dengan teks hitam pekat saat `Cursor Dark` aktif, tanpa error konsol). Uji pindah tema **Cursor Dark → Langit Pagi → Mossy Stone → Cursor Dark** memastikan pop-up *toast* mengikuti gelap/terang (`dark`/`light`) dan tema tersimpan setelah Keluar ke `/login`.
+- [x] **[SEDANG - Isolasi Kertas A4] [components/surat/pratinjau-a4.tsx:32]**: Menambahkan kelas `lembar-cetak` pada pembungkus pratinjau kertas A4/Legal (`PratinjauA4`) agar pratinjau formulir/nota dinas/surat di halaman **Ajukan Cuti** (`/cuti/ajukan`), **Ubah Formulir** (`/cuti/[id]/formulir`), dan **Editor Surat** (`/cuti/[id]/surat/[kode]`) selalu terkunci putih bersih dengan teks hitam pekat di tema apa pun (bukan hanya pada halaman `/cetak/*`).
+- [x] **[VERIFIKASI QA - Kode & Build] [2026-11-23]**: Audit seluruh perubahan CSS tema (`app/globals.css`), `components/ui/sonner.tsx`, `components/ui/alert.tsx`, `components/tata-letak/tombol-tema.tsx`, `components/cuti/aksi-pengajuan.tsx`, `app/(aplikasi)/admin/master/page.tsx`, `components/admin/nav-surat.tsx`, `components/admin/matriks-hak-akses.tsx`, `app/(aplikasi)/layout.tsx`, dan `app/(aplikasi)/cuti/[id]/page.tsx`. Hasil setelah perbaikan `pratinjau-a4.tsx`: `npm run typecheck` OK, `npm run lint` OK (0 warning/error), `npm test` 115/115 OK, dan `npm run build` OK (44 rute).
 - [x] **[KRITIS] [prisma/migrations/20261111000000_hak_akses_pegawai/migration.sql]**: Dibuat file migrasi SQL resmi untuk enum `HakAkses` dan tabel `user_hak_akses` beserta foreign key cascade ke `users`. Siap dieksekusi via `prisma migrate deploy`.
 - [x] **[TINGGI] [app/api/cuti/template-saldo/route.ts, app/api/ekspor/rekap-cuti/route.ts, app/(cetak)/cetak/rekap-cuti/page.tsx, server/kueri/lingkup-rekap.ts, server/kueri/grup-pegawai.ts]**: Diperbarui dengan `punyaHakAkses(u, "KELOLA_SALDO_CUTI")` (beserta fallback peran `KEPEGAWAIAN`) sehingga pemegang hak dapat mengunduh template saldo, mengekspor rekap, mencetak rekap, dan melihat seluruh unit kerja.
 - [x] **[TINGGI] [app/api/ekspor/pegawai/route.ts, app/api/pegawai/impor/route.ts, app/api/pegawai/template/route.ts, app/(cetak)/cetak/pegawai/page.tsx]**: Diperbarui dengan `punyaHakAkses(u, "KELOLA_PEGAWAI")` (beserta fallback peran `KEPEGAWAIAN`/`ADMIN`) sehingga aksi impor/ekspor data pegawai dan cetak data pegawai dapat diakses oleh pemegang hak modular.

@@ -39,7 +39,7 @@ export default async function LayoutAplikasi({ children }: LayoutProps<"/">) {
             <TombolTema />
             <Link
               href="/notifikasi"
-              className="relative flex size-10 items-center justify-center rounded-xl text-judul hover:bg-white/60 focus-visible:outline-2 focus-visible:outline-ring"
+              className="ikon-abu relative flex size-10 items-center justify-center rounded-xl text-judul transition-colors hover:bg-white/60 focus-visible:outline-2 focus-visible:outline-ring"
               aria-label={belumDibaca > 0 ? `Notifikasi, ${belumDibaca} belum dibaca` : "Notifikasi"}
             >
               <BellIcon className="size-5" />

@@ -65,7 +65,7 @@ export default async function DokumenOrganisasi({ searchParams }: PageProps<"/do
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {anak.map((f) => (
             <Link key={f.id} href={`/dokumen/organisasi?folder=${f.id}`} className="rounded-xl focus-visible:outline-2 focus-visible:outline-ring">
-              <Card className="h-full transition-shadow hover:shadow-lg">
+              <Card className="kartu-abu h-full transition-shadow hover:shadow-lg">
                 <CardContent className="flex items-center gap-3">
                   <FolderIcon className="size-8 text-brand" aria-hidden />
                   <div className="grid">

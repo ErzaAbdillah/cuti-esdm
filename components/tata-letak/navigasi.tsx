@@ -71,7 +71,7 @@ function DaftarMenu({ menu, onPilih }: { menu: GrupMenu[]; onPilih?: () => void 
                 onClick={onPilih}
                 aria-current={sedangAktif ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-sky-100 hover:text-judul focus-visible:outline-2 focus-visible:outline-ring",
+                  "nav-abu flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-sky-100 hover:text-judul focus-visible:outline-2 focus-visible:outline-ring",
                   sedangAktif && "bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground",
                 )}
               >

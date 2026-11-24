@@ -39,12 +39,63 @@
   - Background Worker: `app/api/tugas/harian/route.ts` (Cron pembaruan status cuti selesai & kirim antrean email)
 
 ## Status Saat Ini
-- **Fase Aktif:** Selesai & Dirilis ke Vercel (Kotak Hitam Header Dihapus + Kapsul Bilah Atas Dipekatkan)
-- **Fitur/Modul Aktif:** Perbaikan Kotak Hitam Header & Kepekatan Kapsul Bilah Profil (`app/(aplikasi)/layout.tsx` & `app/globals.css`)
+- **Fase Aktif:** Selesai & Dirilis ke Vercel (Terverifikasi Browser, Build, & Produksi)
+- **Fitur/Modul Aktif:** Animasi Tombol Interaktif "Abu Terbawa Angin" — Opsi A: Elegan Halus
 - **Penanggung Jawab Terakhir:** Coder
 
 ## 1. Cetak Biru & Skema Data (Diisi oleh Conversation 3 - Architect)
 *Rancangan alur sistem, struktur tabel/database, dan daftar file yang harus dibuat/dieksekusi oleh Coder:*
+
+### H. Animasi Tombol Interaktif "Abu Terbawa Angin" (Opsi A: Elegan Halus)
+1. **Ringkasan & Dampak bagi Pegawai/Admin:**
+   - Menambahkan efek animasi interaktif yang halus (*smooth*) dan memudar perlahan (*fading*) menyerupai kepulan abu/kabut tipis yang terbawa angin pada tombol aplikasi, kartu menu yang bisa diklik, serta sentuhan ringan pada menu navigasi samping.
+   - Tampilan dirancang serasi dengan tema bawaan **Cursor Dark** (hitam arang modern dengan aksen biru), sekaligus menyesuaikan warna kabut secara otomatis agar tetap bersih dan tulisannya tajam terbaca di **Mossy Stone** (hijau teduh) dan **Langit Pagi** (biru terang).
+   - Perubahan murni di sisi tampilan antarmuka (tidak ada perubahan tabel database maupun aturan cuti).
+
+2. **Perilaku Animasi pada 4 Kondisi (Opsi A: Elegan Halus):**
+   - **Kondisi 1 — Disentuh Kursor (*Hover*, Khusus Perangkat Berkursor):**
+     - Lapisan kabut abu tipis perlahan muncul (*fade-in* ~**260 ms**) sambil mengalir lembut menyerong dari kiri-bawah ke kanan-atas seolah tersapu embusan angin halus, disertai pendar tepi lembut pada tombol utama dan kartu.
+     - Semua aturan `:hover` wajib dibungkus di dalam `@media (hover: hover) and (pointer: fine)` (aturan agar hover hanya jalan di laptop/PC berkursor) supaya **tidak nyangkut** saat disentuh jari di layar HP.
+   - **Kondisi 2 — Ditekan (*Click / Tap* Singkat):**
+     - Merespons cepat (~**90–120 ms**): kabut berdenyut menyebar tipis ke arah tepi sambil memberikan rasa tombol tertekan mikro (`translate-y-px` / penyusutan sangat halus), sedangkan tombol pembuka dropdown/popover (`aria-haspopup`) tetap tenang tanpa melompat.
+   - **Kondisi 3 — Ditahan (*Hold* / Tekan Lama):**
+     - Selama tombol masih ditahan (`:active` berlanjut), lapisan kabut tidak berhenti kaku, melainkan terus hanyut dan "bernapas" pelan secara berulang (~**1,8–2,2 detik** per putaran lembut) sebagai tanda tombol masih aktif ditekan.
+     - Tombol yang nonaktif (`disabled` atau `aria-disabled="true"`) tidak bereaksi sama sekali.
+   - **Kondisi 4 — Kursor Pergi (*Leave / Fade-Out* Lambat):**
+     - Ciri khas utama nuansa "abu terbawa angin": saat kursor menjauh dari tombol, efek kabut tidak padam mendadak, melainkan **memudar perlahan dan tetap hanyut menjauh** dalam durasi lebih lama (~**550–650 ms**, melambat halus di akhir gerakan).
+     - Teknik implementasinya cukup memakai dua kecepatan transisi murni CSS pada lapisan kabut (kecepatan dasar lambat **~600 ms** untuk memudar pergi, dan dipersingkat menjadi **~260 ms** saat `:hover` masuk) tanpa *timer* JavaScript, sehingga tetap mulus meski kursor digerakkan bolak-balik dengan cepat.
+
+3. **Pembagian Kelas Tombol (Efek Penuh vs Super Ringan vs Dikecualikan):**
+   - **Efek Penuh ("Opsi A: Elegan Halus"):**
+     - **Tombol Aplikasi Berkotak (`components/ui/button.tsx`):** Varian `default`, `penting` (aksen emas Kalsel), `outline`, `secondary`, dan `destructive` pada ukuran teks (`xs`, `sm`, `default`, `lg`), seperti tombol *Ajukan cuti*, *Simpan*, *Masuk*, *Setujui/Tolak*, dan *Cetak / Simpan PDF*.
+     - **Tombol Kartu yang Bisa Diklik (`.kartu-abu`):** Kartu menu di halaman Admin (`app/(aplikasi)/admin/page.tsx`) dan kartu folder di Dokumen Organisasi (`app/(aplikasi)/dokumen/organisasi/page.tsx`). *Catatan:* Kartu biasa yang hanya berisi form atau tabel tidak diberi efek ini agar pegawai tidak terkecoh mengira kartu tersebut bisa diklik.
+     - **Penyesuaian Warna Kabut per 3 Tema (`app/globals.css`):** Menggunakan variabel CSS tema (`--abu-kabut`, `--abu-aksen`): arang perak bersemu biru lembut di **Cursor Dark**, kabut sage/lumut lembut di **Mossy Stone**, serta embun biru muda / kilau putih halus di **Langit Pagi** agar tidak tampak kotor di tema terang.
+   - **Efek Super Ringan (Minimalis untuk Area Padat & Navigasi):**
+     - **Tombol Ikon Kecil & Varian `ghost` (`Button` dengan `size="icon" | "icon-xs" | "icon-sm" | "icon-lg"` atau `variant="ghost"`):** Seperti ikon lihat/unduh di daftar dokumen, ikon pensil ubah saldo per baris pegawai di tabel rekap, tombol tutup dialog, dan tombol menu HP. Hanya memunculkan pendar kabut bundar tipis yang memudar cepat (~**350–400 ms**) tanpa sapuan menyamping yang ramai, supaya daftar atau tabel panjang tetap nyaman dipandang.
+     - **Menu Navigasi Samping (`components/tata-letak/navigasi.tsx`, kelas `.nav-abu`):** Sentuhan ringan sapuan halus dan *fade-out* lembut (~**400 ms**) saat disentuh kursor di desktop; item menu yang sedang aktif (`aria-current="page"`) tetap mempertahankan warna utama solid (`bg-primary text-primary-foreground`) agar posisi halaman tetap tegas terbaca.
+   - **Dikecualikan (Bebas Efek Kabut):**
+     - `Button` varian `link` (tetap tampil sebagai tautan teks biasa dengan garis bawah saat disentuh), semua tombol `disabled`/`aria-disabled`, seluruh isi lembar cetak A4/Legal (`.lembar-cetak` & `@media print`), serta pengguna yang mengaktifkan mode kurangi gerakan (`prefers-reduced-motion: reduce`).
+
+4. **Hal Wajib Dijaga / Pencegahan Bug (Checklist dari Debugger/QA):**
+   - **Aman untuk `Button` Mode Pembungkus Link (`asChild` + `Slot.Root` Radix UI):** *Dilarang keras* menambahkan tag HTML/JSX anak baru (seperti `<span ... />`) di dalam komponen `Button` (`components/ui/button.tsx`). Seluruh lapisan kabut abu **wajib** memakai lapisan semu bawaan CSS (`::before` dan `::after`) langsung pada `[data-slot="button"]`, sehingga komponen yang membungkus link atau trigger dialog (`<Button asChild><Link .../></Button>`, `<AlertDialogAction>`, dsb.) tetap memiliki tepat 1 elemen anak dan tidak pernah error.
+   - **Tidak Menghalangi Klik & Tulisan Tetap Tajam di 3 Tema:** Kedua lapisan semu (`::before` dan `::after`) wajib memakai `pointer-events: none` agar klik tidak terhalang, serta diletakkan di belakang teks lewat `z-index: -1` di dalam wadah `position: relative; isolation: isolate; overflow: hidden;` (pembatas tumpukan lapisan agar kabut berada di atas warna latar tombol, tetapi persis di belakang teks dan ikon SVG).
+   - **Ramah HP:** Efek `:hover` dibungkus `@media (hover: hover) and (pointer: fine)` agar sentuhan jari di HP tidak pernah nyangkut.
+   - **Hormat pada Mode Kurangi Animasi (`prefers-reduced-motion: reduce`):** Matikan pergeseran gerak (*keyframes* hanyut/bernapas) dan durasi *fade-out* panjang saat pengaturan ini aktif; pertahankan perubahan warna diam yang aman.
+   - **Steril di Lembar Cetak (`.lembar-cetak` & `@media print`):** Paksa mematikan `::before`, `::after`, animasi, dan transisi pada seluruh elemen di dalam `.lembar-cetak` maupun saat mencetak agar formulir BKN A4, surat cuti, dan hasil PDF Gotenberg tetap putih bersih dengan teks hitam pekat.
+
+5. **Daftar File Target (untuk Coder & UI/UX Stylist):**
+   1. **`app/globals.css`** *(Coder & UI/UX Stylist)*:
+      - Tambah token variabel kabut abu untuk `:root` (Langit Pagi), `html[data-tema="cursor-dark"]`, dan `html[data-tema="mossy-stone"]`.
+      - Tambah `@keyframes` gerak abu terbawa angin dan napas pelan saat ditahan (hanya menggerakkan `transform` & `opacity` agar ringan di perangkat).
+      - Tambah aturan CSS untuk `[data-slot="button"]` (memilah efek penuh vs super ringan berdasarkan atribut `data-size` dan `data-variant` yang sudah ada, serta mengecualikan `data-variant="link"`), kelas `.kartu-abu`, kelas `.nav-abu`, proteksi `@media (hover: hover)`, `@media (prefers-reduced-motion: reduce)`, dan pengecualian `.lembar-cetak` / `@media print`.
+   2. **`components/ui/button.tsx`** *(Coder)*:
+      - Tambah `relative isolate overflow-hidden` pada kelas dasar `buttonVariants` untuk varian berkotak (serta pastikan varian `link` memakai `overflow-visible` agar tampilan link teks tidak terpotong).
+      - Pastikan `transition` di `buttonVariants` tidak mengganggu kecepatan *fade-out* lambat pada `::before`/`::after`, dan **jangan menambah elemen anak baru** di dalam JSX agar `Slot.Root` (`asChild`) tetap 100% aman.
+   3. **`components/tata-letak/navigasi.tsx`** *(Coder & UI/UX Stylist)*:
+      - Tambahkan kelas `.nav-abu` pada komponen `<Link>` menu di `DaftarMenu` (`SidebarDesktop` & `MenuSeluler`) dengan menjaga kontras teks di 3 tema dan keterbacaan item menu yang sedang aktif.
+   4. **`app/(aplikasi)/admin/page.tsx` & `app/(aplikasi)/dokumen/organisasi/page.tsx`** *(Coder / UI/UX Stylist — Tombol Kartu)*:
+      - Tambahkan kelas `.kartu-abu` pada `<Card>` di dalam `<Link>` kartu menu Admin dan kartu folder Dokumen Organisasi agar tombol kartu ikut mendapat efek penuh Opsi A.
+      - *(Opsional polesan UI/UX Stylist)*: Tambahkan kelas sentuhan super ringan pada tombol ikon bilah atas (`components/tata-letak/tombol-tema.tsx`, ikon notifikasi `app/(aplikasi)/layout.tsx`, pemicu `components/tata-letak/menu-pengguna.tsx`) bila ingin sensasi bilah atas ikut selaras.
 
 ### G. Sinkronisasi Angka V. Catatan Cuti Persis Sesuai Hak 2024, Hak 2025, Hak 2026
 1. **Akar Masalah:**
@@ -175,6 +226,16 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 - `app/(aplikasi)/admin/hak-akses/page.tsx`: Halaman Admin `/admin/hak-akses` untuk melihat dan mengelola matriks hak akses seluruh pegawai berakun sekaligus.
 - `tests/unit/hak-akses.test.ts`: Unit test Vitest untuk konstanta hak akses dan penyaringan menu navigasi `menuUntuk(peran, hakAkses)`.
 
+### File Diubah (Animasi Tombol Interaktif "Abu Terbawa Angin" — Opsi A: Elegan Halus)
+- `app/globals.css`:
+  - Menambahkan token warna kabut abu (`--abu-kabut`, `--abu-kabut-terang`, `--abu-kabut-merah`, `--abu-aksen`, `--abu-pendar`) pada 3 tema: **Cursor Dark** (arang perak bersemu biru lembut), **Mossy Stone** (kabut sage/lumut lembut), dan **Langit Pagi** (embun biru muda & kilau putih halus).
+  - Menambahkan `@keyframes` ringan berbasis `transform` + `opacity` (`abu-hanyut`, `abu-sapuan`, `abu-napas`, `abu-pendar-napas`) untuk 4 kondisi: hover masuk (~260ms, khusus perangkat berkursor `@media (hover: hover) and (pointer: fine)` agar tidak nyangkut di HP), tekan singkat (~100ms), tahan/hold bernapas pelan (~2 detik), dan kursor pergi memudar lambat sambil hanyut menjauh (~600ms).
+  - Memilah efek penuh untuk tombol berkotak (`default`, `penting`, `outline`, `secondary`, `destructive`) dan kartu yang bisa diklik (`.kartu-abu`), serta efek super ringan (pendar bundar/sapuan tipis ~380–400ms) untuk tombol ikon (`data-size^="icon"`), varian `ghost`, dan menu navigasi (`.nav-abu`).
+  - Menjaga tombol `absolute` di `Dialog`/`Sheet` tidak bergeser (posisi diatur lewat `buttonVariants`), serta mematikan efek pada `variant="link"`, tombol `disabled`/`aria-disabled`, `@media (prefers-reduced-motion: reduce)`, `.lembar-cetak`, dan `@media print`.
+- `components/ui/button.tsx`: Menambahkan `relative isolate overflow-hidden` serta transisi terukur pada `buttonVariants` dan `overflow-visible` khusus varian `link`, **tanpa menambah elemen anak JSX baru** agar mode pembungkus `asChild` (`Slot.Root` Radix UI) tetap aman 100%.
+- `components/tata-letak/navigasi.tsx`: Menambahkan kelas `.nav-abu` pada tautan menu samping di `DaftarMenu` (`SidebarDesktop` dan `MenuSeluler`) dengan menjaga tampilan solid item halaman aktif (`aria-current="page"`).
+- `app/(aplikasi)/admin/page.tsx` & `app/(aplikasi)/dokumen/organisasi/page.tsx`: Memasang kelas `.kartu-abu` pada kartu menu Admin dan kartu folder Dokumen Organisasi yang bisa diklik (tidak dipasang pada kartu pasif).
+
 ### File Diubah (Perbaikan Kotak Hitam Header Atas)
 - `app/(aplikasi)/layout.tsx`: Menghapus latar gelap persegi panjang (`bg-background/85 pb-1 backdrop-blur-md`) pada elemen `<header>` pembungkus bilah profil atas agar kotak hitam yang memotong latar gradasi di atas halaman hilang sepenuhnya.
 - `app/globals.css`: Memekatkan warna latar **hanya di dalam kapsul bilah atas** (`header > .kaca` memakai `color-mix(in srgb, var(--popover) 95%, transparent)` dengan `backdrop-filter: blur(16px) saturate(145%)` serta menghapus `background-color` ganda di `html[data-tema="cursor-dark"] .kaca` agar berlaku merata di ketiga tema) sehingga kotak hitam di luar kapsul tetap hilang sementara teks/tombol di belakang bilah tidak membayang tembus saat layar digulir.
@@ -260,6 +321,15 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 
 ## 3. Catatan Polesan Visual (Diisi oleh Conversation 4 - UI/UX Stylist)
 *Daftar komponen UI, styling, responsivitas, atau animasi yang baru diperbarui:*
+- **Polesan Animasi Tombol "Abu Terbawa Angin" (Opsi A: Elegan Halus) (`2026-11-24`):**
+  - `app/globals.css`:
+    - **Menghilangkan loncatan gerakan saat transisi:** Menyelaraskan titik awal animasi gerak melayang (`abu-hanyut`, `abu-sapuan`) dan animasi bernapas saat ditahan (`abu-napas`, `abu-napas-ekor`, `abu-pendar-napas`) dengan posisi akhir transisi hover/klik, sehingga kabut meluncur mulus tanpa pernah mundur/melompat sesaat, lalu perlahan hanyut menjauh ke kanan-atas saat kursor pergi (~640 ms).
+    - **Pendar emas khusus tombol `penting`:** Menambahkan warna kabut dan pendar tepi emas hangat (`--abu-kabut-emas`, `--abu-aksen-emas`) khusus tombol aksen emas Kalsel di ketiga tema agar tidak memancarkan pendar biru/hijau yang kurang serasi.
+    - **Menjaga ketajaman tulisan tombol utama di Langit Pagi:** Menurunkan kadar kabut putih pada tombol utama (`--abu-kabut-terang`) di tema **Langit Pagi** menjadi 20% (dari 36%) supaya teks putih di atas tombol biru tua tetap tajam terbaca (tetap memenuhi kontras nyaman mata) saat kursor menyentuh tombol.
+    - **Efek super ringan untuk ikon bilah atas (`.ikon-abu`) & penguncian cetak:** Menambahkan kelas `.ikon-abu` (pendar kabut bundar tipis yang memudar cepat ~380 ms) serta ikut mematikannya di mode kurangi gerak (`prefers-reduced-motion`), tombol nonaktif, `.lembar-cetak`, dan `@media print`, plus memastikan tombol di dalam `.lembar-cetak` tidak menampilkan pendar atau bayangan kabut.
+  - `components/tata-letak/tombol-tema.tsx`, `app/(aplikasi)/layout.tsx`, & `components/tata-letak/menu-pengguna.tsx`:
+    - Menambahkan sentuhan ringan `.ikon-abu` pada tombol **Pilih Tema** dan ikon **Notifikasi** (lencana angka merah tetap rapi di dalam kotak dan tidak terpotong), serta `.nav-abu` pada kapsul **Menu Akun** di bilah atas agar seluruh bilah navigasi terasa serasi.
+  - *Verifikasi:* `npm run typecheck`, `npm run lint` (0 error/warning), dan `npm test` (115/115) lulus bersih. Pemeriksaan penggabungan kelas `cn` memastikan posisi tombol tutup `absolute` pada `Dialog` dan `Sheet` tidak bergeser. Halaman `/login` pada tema **Cursor Dark** telah dicek langsung di browser lokal (tombol utama *Masuk* menunjukkan kabut lembut dengan tulisan gelap tajam), sementara halaman setelah login (`/beranda`, `/admin`, `/dokumen/organisasi`, `/cuti/saldo`, dialog/laci, dan `/cetak/...`) belum dapat dibuka langsung dengan akun demo bawaan karena kata sandi database lokal berbeda — perlu dicek menyeluruh oleh **Debugger / QA**.
 - **Polesan Tema Bawaan `Cursor Dark` & Keselarasan 3 Tema (`2026-11-23`):**
   - `app/globals.css`:
     - Melengkapi warna teks & lencana di `Cursor Dark` (menambahkan warna `rose`, `indigo`, `amber`, dan `emerald` gelap yang sebelumnya belum terdaftar sehingga beberapa label/ikon sempat gelap atau terlalu mencolok).
@@ -300,6 +370,11 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 - [ ] **[CATATAN] [DEV_SYNC.md bagian 1.C]**: Blueprint menyebut route `/cuti/rekap`, namun rekap terintegrasi pada `/cuti/saldo` dan `/cetak/rekap-cuti`.
 
 ## 5. Riwayat Selesai (Resolved)
+- [x] **[VERIFIKASI QA - Animasi Tombol "Abu Terbawa Angin" & Build Produksi] [2026-11-24]**:
+  - Uji browser (`1280×800` laptop & `390×844` HP) pada halaman `/beranda`, `/admin` (9 kartu `.kartu-abu`), `/dokumen/organisasi` (4 kartu folder `.kartu-abu`), `/cuti/saldo` (ikon edit kecil + Dialog Ubah Saldo), dan detail pegawai tab **Akun** (varian `default`, `penting` emas, `outline`, `destructive`, `ghost`, dan tombol nonaktif `disabled`).
+  - Seluruh 4 kondisi animasi (hover masuk halus, klik singkat, tekan tahan bernapas, dan memudar lambat saat kursor pergi) terverifikasi rapi di ketiga tema (**Cursor Dark**, **Mossy Stone**, **Langit Pagi**), teks putih tombol utama di **Langit Pagi** tetap tajam saat di-hover, dan tombol `penting` memancarkan pendar emas hangat.
+  - Posisi tombol tutup `X` di pojok kanan atas **Dialog Ubah Saldo** dan **Sheet menu HP** terbukti tepat tanpa bergeser; efek hover aman terbungkus `@media (hover: hover) and (pointer: fine)` sehingga tidak nyangkut di HP; aturan `@media (prefers-reduced-motion: reduce)` aktif mematikan gerak; dan `/cetak/rekap-cuti` tampil putih bersih teks hitam pekat saat **Cursor Dark** aktif tanpa efek kabut tombol. *(Catatan: lencana merah lonceng notifikasi berangka `0` saat uji akun sementara, namun secara ukuran CSS `size-10 rounded-xl` + `right-1 top-1` tetap muat rapi di dalam kotak).*
+  - Seluruh pengecekan kode & build lulus bersih tanpa galat (`npm run typecheck`, `npm run lint` 0 warning, `npm test` 115/115, dan `npm run build` 44 rute) — dinyatakan **siap commit, push ke GitHub, dan deploy ke Vercel**.
 - [x] **[SEDANG - Tampilan Gulir Kapsul Header] [app/globals.css (`header > .kaca`)]**: Memekatkan warna hanya di dalam kapsul bilah atas (`color-mix` 95% `--popover` di semua 3 tema) tanpa menambah latar apa pun pada `<header>` pembungkusnya, sehingga kotak hitam tetap hilang dan konten/tombol di belakang bilah tidak lagi membayang tembus saat halaman digulir.
 - [x] **[VERIFIKASI QA - Penghapusan Kotak Hitam Header] [2026-11-23]**: Verifikasi langsung di browser (`1280×800` laptop & `390×844` HP) pada halaman `/pegawai` dan `/cuti/ajukan` di tema **Cursor Dark**, **Mossy Stone**, dan **Langit Pagi**. Kotak hitam persegi panjang di atas bilah profil dipastikan hilang sepenuhnya, nol overflow horizontal, nol error konsol, serta `npm run typecheck`, `npm run lint`, dan `npm test` (115/115) lulus bersih.
 - [x] **[TINGGI - Tampilan HP] [components/surat/pratinjau-a4.tsx, components/cuti/form-formulir.tsx, components/surat/form-surat.tsx]**: Ditemukan saat uji browser HP (`390×844`) bahwa pratinjau kertas A4 di `/cuti/ajukan` melebar keluar layar hingga memunculkan gulir horizontal dan terpotong ke kanan. Diperbaiki dengan mengunci lebar grid kolom (`grid-cols-1` & `min-w-0`) serta membuat isi pratinjau `PratinjauA4` memposisikan diri di dalam bingkai terukur (`relative` + `absolute` saat pratinjau, kembali `static` saat cetak), sehingga kertas A4 mengecil pas di layar HP tanpa gulir samping.

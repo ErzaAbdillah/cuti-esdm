@@ -26,7 +26,7 @@ export default async function Admin() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {MENU.map((m) => {
           const isi = (
-            <Card className="h-full transition-shadow hover:shadow-lg">
+            <Card className={m.tahap ? "h-full" : "kartu-abu h-full transition-shadow hover:shadow-lg"}>
               <CardHeader className="flex flex-row items-start gap-3">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-primary">
                   <m.ikon className="size-5" />

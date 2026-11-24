@@ -98,6 +98,15 @@
   --sidebar-accent-foreground: #0c4a6e;
   --sidebar-border: #cfe8f7;
   --sidebar-ring: #0284c7;
+
+  /* Token kabut "abu terbawa angin" — embun biru muda & kilau putih halus untuk tema terang */
+  --abu-kabut: rgb(14 165 233 / 0.16);
+  --abu-kabut-terang: rgb(255 255 255 / 0.2);
+  --abu-kabut-emas: rgb(255 252 235 / 0.34);
+  --abu-aksen-emas: rgb(217 160 16 / 0.36);
+  --abu-kabut-merah: rgb(200 30 30 / 0.16);
+  --abu-aksen: rgb(2 132 199 / 0.24);
+  --abu-pendar: rgb(14 165 233 / 0.16);
 }
 
 /*
@@ -144,6 +153,15 @@ html[data-tema="cursor-dark"] {
   --sidebar-accent-foreground: #ededef;
   --sidebar-border: #27272a;
   --sidebar-ring: #60a5fa;
+
+  /* Token kabut "abu terbawa angin" — arang perak bersemu biru lembut untuk Cursor Dark */
+  --abu-kabut: rgb(186 212 255 / 0.16);
+  --abu-kabut-terang: rgb(255 255 255 / 0.26);
+  --abu-kabut-emas: rgb(255 250 220 / 0.3);
+  --abu-aksen-emas: rgb(245 197 66 / 0.42);
+  --abu-kabut-merah: rgb(248 113 113 / 0.2);
+  --abu-aksen: rgb(96 165 250 / 0.34);
+  --abu-pendar: rgb(148 184 255 / 0.17);
 
   /* Penyesuaian skala warna utilitas agar teks & input kontras tinggi di atas #0E0E10 - #18181B */
   --color-slate-950: #fafafa;
@@ -255,6 +273,15 @@ html[data-tema="mossy-stone"] {
   --sidebar-accent-foreground: #D6DFDC;
   --sidebar-border: #2B3D34;
   --sidebar-ring: #52A478;
+
+  /* Token kabut "abu terbawa angin" — kabut sage/lumut lembut untuk Mossy Stone */
+  --abu-kabut: rgb(165 216 188 / 0.17);
+  --abu-kabut-terang: rgb(255 255 255 / 0.24);
+  --abu-kabut-emas: rgb(255 250 220 / 0.3);
+  --abu-aksen-emas: rgb(232 185 35 / 0.4);
+  --abu-kabut-merah: rgb(242 116 116 / 0.2);
+  --abu-aksen: rgb(82 164 120 / 0.34);
+  --abu-pendar: rgb(130 202 164 / 0.17);
 
   /* Penyesuaian skala warna utilitas agar teks & permukaan kontras di atas #161E1A */
   --color-slate-950: #E6F0EC;
@@ -466,6 +493,324 @@ html[data-tema="mossy-stone"] .hover\:bg-white\/60:hover {
   background-color: rgb(82 164 120 / 0.16);
 }
 
+/*
+ * Animasi Tombol Interaktif "Abu Terbawa Angin" (Opsi A: Elegan Halus).
+ * Murni CSS (::before & ::after, transform + opacity) agar ringan dan aman bagi Radix Slot/asChild.
+ */
+@keyframes abu-hanyut {
+  0%, 100% {
+    transform: translate3d(4%, -3%, 0) scale(1.03);
+  }
+  50% {
+    transform: translate3d(11%, -8%, 0) scale(1.07);
+  }
+}
+
+@keyframes abu-sapuan {
+  0%, 100% {
+    transform: translate3d(2%, -1%, 0) scale(1.01);
+  }
+  50% {
+    transform: translate3d(9%, -6%, 0) scale(1.06);
+  }
+}
+
+@keyframes abu-napas {
+  0%, 100% {
+    opacity: 0.94;
+    transform: translate3d(8%, -6%, 0) scale(1.08);
+  }
+  50% {
+    opacity: 0.68;
+    transform: translate3d(14%, -10%, 0) scale(1.13);
+  }
+}
+
+@keyframes abu-napas-ekor {
+  0%, 100% {
+    opacity: 0.82;
+    transform: translate3d(11%, -8%, 0) scale(1.1);
+  }
+  50% {
+    opacity: 0.54;
+    transform: translate3d(17%, -12%, 0) scale(1.15);
+  }
+}
+
+@keyframes abu-pendar-napas {
+  0%, 100% {
+    opacity: 0.96;
+    transform: scale(1.12);
+  }
+  50% {
+    opacity: 0.68;
+    transform: scale(0.98);
+  }
+}
+
+/* Efek Penuh Opsi A: tombol berkotak (default, penting, outline, secondary, destructive) & kartu klik (.kartu-abu) */
+.kartu-abu {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+[data-slot="button"]:not([data-variant="link"]):not([data-variant="ghost"]):not([data-size^="icon"]),
+.kartu-abu {
+  --abu-lapisan: var(--abu-kabut);
+  --abu-tepi: var(--abu-aksen);
+  transition:
+    color 200ms ease,
+    background-color 220ms ease,
+    border-color 540ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 560ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 200ms ease;
+}
+
+[data-slot="button"][data-variant="default"]:not([data-size^="icon"]) {
+  --abu-lapisan: var(--abu-kabut-terang);
+}
+
+[data-slot="button"][data-variant="penting"]:not([data-size^="icon"]) {
+  --abu-lapisan: var(--abu-kabut-emas);
+  --abu-tepi: var(--abu-aksen-emas);
+}
+
+[data-slot="button"][data-variant="destructive"]:not([data-size^="icon"]) {
+  --abu-lapisan: var(--abu-kabut-merah);
+  --abu-tepi: var(--abu-kabut-merah);
+}
+
+[data-slot="button"]:not([data-variant="link"]):not([data-variant="ghost"]):not([data-size^="icon"])::before,
+.kartu-abu::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0;
+  transform: translate3d(-8%, 6%, 0) scale(0.97);
+  background-image:
+    radial-gradient(62% 72% at 24% 76%, var(--abu-lapisan) 0%, transparent 70%),
+    radial-gradient(54% 64% at 64% 34%, var(--abu-lapisan) 0%, transparent 72%),
+    linear-gradient(122deg, transparent 14%, var(--abu-lapisan) 48%, transparent 82%);
+  transition:
+    opacity 580ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[data-slot="button"]:not([data-variant="link"]):not([data-variant="ghost"]):not([data-size^="icon"])::after,
+.kartu-abu::after {
+  content: "";
+  position: absolute;
+  inset: -35%;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0;
+  transform: translate3d(18%, -13%, 0) scale(1.1);
+  background-image:
+    radial-gradient(48% 58% at 44% 58%, var(--abu-lapisan) 0%, transparent 68%),
+    linear-gradient(118deg, transparent 22%, var(--abu-lapisan) 56%, transparent 86%);
+  transition:
+    opacity 640ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 660ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Efek Super Ringan: tombol ikon kecil, varian ghost, & tombol ikon bilah atas (.ikon-abu) */
+.ikon-abu {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+[data-slot="button"]:is([data-variant="ghost"], [data-size^="icon"]):not([data-variant="link"])::before,
+.ikon-abu::before {
+  content: "";
+  position: absolute;
+  inset: -15%;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0;
+  transform: scale(0.76);
+  background: radial-gradient(circle at center, var(--abu-pendar) 0%, transparent 72%);
+  transition:
+    opacity 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[data-slot="button"]:is([data-variant="ghost"], [data-size^="icon"]):not([data-variant="link"])::after {
+  display: none;
+}
+
+/* Efek Super Ringan: menu navigasi samping & kapsul profil atas (.nav-abu) */
+.nav-abu {
+  --abu-nav: var(--abu-kabut);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.nav-abu[aria-current="page"] {
+  --abu-nav: var(--abu-kabut-terang);
+}
+
+.nav-abu::before {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0;
+  transform: translate3d(-8%, 4%, 0) scale(0.98);
+  background-image:
+    radial-gradient(60% 75% at 22% 72%, var(--abu-nav) 0%, transparent 72%),
+    linear-gradient(120deg, transparent 18%, var(--abu-nav) 52%, transparent 84%);
+  transition:
+    opacity 400ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Kondisi 1 (Hover): khusus perangkat berkursor agar tidak nyangkut di HP */
+@media (hover: hover) and (pointer: fine) {
+  [data-slot="button"]:not([data-variant="link"]):not([data-variant="ghost"]):not([data-size^="icon"]):not(:disabled):not([aria-disabled="true"]):hover,
+  .kartu-abu:not(:disabled):not([aria-disabled="true"]):hover {
+    border-color: color-mix(in srgb, var(--abu-tepi) 78%, var(--border));
+    box-shadow: 0 6px 22px -10px var(--abu-tepi), 0 0 0 1px color-mix(in srgb, var(--abu-tepi) 40%, transparent);
+    transition:
+      color 180ms ease,
+      background-color 200ms ease,
+      border-color 260ms cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 180ms ease;
+  }
+
+  [data-slot="button"]:not([data-variant="link"]):not([data-variant="ghost"]):not([data-size^="icon"]):not(:disabled):not([aria-disabled="true"]):hover::before,
+  .kartu-abu:not(:disabled):not([aria-disabled="true"]):hover::before {
+    opacity: 0.9;
+    transform: translate3d(4%, -3%, 0) scale(1.03);
+    animation: abu-hanyut 3.6s ease-in-out 260ms infinite;
+    transition:
+      opacity 260ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  [data-slot="button"]:not([data-variant="link"]):not([data-variant="ghost"]):not([data-size^="icon"]):not(:disabled):not([aria-disabled="true"]):hover::after,
+  .kartu-abu:not(:disabled):not([aria-disabled="true"]):hover::after {
+    opacity: 0.65;
+    transform: translate3d(2%, -1%, 0) scale(1.01);
+    animation: abu-sapuan 4.4s ease-in-out 280ms infinite;
+    transition:
+      opacity 280ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  [data-slot="button"]:is([data-variant="ghost"], [data-size^="icon"]):not([data-variant="link"]):not(:disabled):not([aria-disabled="true"]):hover::before,
+  .ikon-abu:not(:disabled):not([aria-disabled="true"]):hover::before {
+    opacity: 1;
+    transform: scale(1.04);
+    transition:
+      opacity 220ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .nav-abu:not([aria-disabled="true"]):hover::before {
+    opacity: 0.85;
+    transform: translate3d(4%, -2%, 0) scale(1.02);
+    transition:
+      opacity 240ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .nav-abu[aria-current="page"]:hover::before {
+    opacity: 0.38;
+  }
+}
+
+/* Kondisi 2 & 3 (Tekan singkat ~100ms & Ditahan bernapas pelan ~2s) */
+[data-slot="button"]:not([data-variant="link"]):not([data-variant="ghost"]):not([data-size^="icon"]):not(:disabled):not([aria-disabled="true"]):not([aria-haspopup]):active {
+  transform: scale(0.985);
+  transition-duration: 100ms;
+}
+
+.kartu-abu:not(:disabled):not([aria-disabled="true"]):active {
+  transform: translateY(1px) scale(0.992);
+  transition-duration: 100ms;
+}
+
+[data-slot="button"]:not([data-variant="link"]):not([data-variant="ghost"]):not([data-size^="icon"]):not(:disabled):not([aria-disabled="true"]):active::before,
+.kartu-abu:not(:disabled):not([aria-disabled="true"]):active::before {
+  opacity: 0.94;
+  transform: translate3d(8%, -6%, 0) scale(1.08);
+  animation: abu-napas 2s ease-in-out 100ms infinite;
+  transition:
+    opacity 100ms ease-out,
+    transform 105ms ease-out;
+}
+
+[data-slot="button"]:not([data-variant="link"]):not([data-variant="ghost"]):not([data-size^="icon"]):not(:disabled):not([aria-disabled="true"]):active::after,
+.kartu-abu:not(:disabled):not([aria-disabled="true"]):active::after {
+  opacity: 0.82;
+  transform: translate3d(11%, -8%, 0) scale(1.1);
+  animation: abu-napas-ekor 2.1s ease-in-out 105ms infinite;
+  transition:
+    opacity 100ms ease-out,
+    transform 105ms ease-out;
+}
+
+[data-slot="button"]:is([data-variant="ghost"], [data-size^="icon"]):not([data-variant="link"]):not(:disabled):not([aria-disabled="true"]):active::before,
+.ikon-abu:not(:disabled):not([aria-disabled="true"]):active::before {
+  opacity: 0.96;
+  transform: scale(1.12);
+  animation: abu-pendar-napas 1.9s ease-in-out 100ms infinite;
+  transition:
+    opacity 100ms ease-out,
+    transform 100ms ease-out;
+}
+
+.nav-abu:not([aria-disabled="true"]):active::before {
+  opacity: 0.92;
+  transform: translate3d(8%, -4%, 0) scale(1.04);
+  transition:
+    opacity 100ms ease-out,
+    transform 105ms ease-out;
+}
+
+/* Tombol nonaktif bebas efek */
+[data-slot="button"]:is(:disabled, [aria-disabled="true"])::before,
+[data-slot="button"]:is(:disabled, [aria-disabled="true"])::after,
+.kartu-abu:is(:disabled, [aria-disabled="true"])::before,
+.kartu-abu:is(:disabled, [aria-disabled="true"])::after,
+.ikon-abu:is(:disabled, [aria-disabled="true"])::before {
+  display: none;
+}
+
+/* Hormati pengaturan aksesibilitas kurangi gerakan */
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="button"]::before,
+  [data-slot="button"]::after,
+  .kartu-abu::before,
+  .kartu-abu::after,
+  .nav-abu::before,
+  .nav-abu::after,
+  .ikon-abu::before {
+    animation: none !important;
+    transform: none !important;
+    transition: opacity 120ms ease !important;
+  }
+
+  [data-slot="button"],
+  .kartu-abu {
+    transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease !important;
+    transform: none !important;
+  }
+}
+
 /* Lembar cetak A4/Legal selalu putih bersih dengan teks hitam pekat di tema apa pun */
 .lembar-cetak {
   color-scheme: light;
@@ -491,6 +836,24 @@ html[data-tema="mossy-stone"] .hover\:bg-white\/60:hover {
   --color-slate-900: #0f172a;
 }
 
+.lembar-cetak [data-slot="button"],
+.lembar-cetak .kartu-abu {
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.lembar-cetak [data-slot="button"]::before,
+.lembar-cetak [data-slot="button"]::after,
+.lembar-cetak .kartu-abu::before,
+.lembar-cetak .kartu-abu::after,
+.lembar-cetak .nav-abu::before,
+.lembar-cetak .nav-abu::after,
+.lembar-cetak .ikon-abu::before {
+  display: none !important;
+  animation: none !important;
+  transition: none !important;
+}
+
 @media print {
   html, body {
     color-scheme: light !important;
@@ -498,6 +861,17 @@ html[data-tema="mossy-stone"] .hover\:bg-white\/60:hover {
     color: #000000 !important;
   }
   .latar-langit { display: none; }
+  [data-slot="button"]::before,
+  [data-slot="button"]::after,
+  .kartu-abu::before,
+  .kartu-abu::after,
+  .nav-abu::before,
+  .nav-abu::after,
+  .ikon-abu::before {
+    display: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 /* Editor badan surat: tampilan mendekati lembar surat (Times 12pt, rata kiri-kanan). */

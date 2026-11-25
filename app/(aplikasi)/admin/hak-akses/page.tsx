@@ -105,7 +105,7 @@ export default async function HalamanHakAksesPegawai() {
     .sort((a, b) => (a.adminUtama === b.adminUtama ? a.nama.localeCompare(b.nama, "id") : a.adminUtama ? -1 : 1));
 
   return (
-    <div className="grid gap-6">
+    <div className="grid min-w-0 grid-cols-1 gap-6">
       {/* Header Halaman */}
       <div>
         <Link

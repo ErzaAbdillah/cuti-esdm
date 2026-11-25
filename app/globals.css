@@ -349,6 +349,127 @@ html[data-tema="mossy-stone"] {
   --color-rose-50: #2a1018;
 }
 
+/*
+ * Tema "Notion Monokrom" — Putih kertas bersih & hitam arang minimalis.
+ * Background: #FBFBFA, Card: #FFFFFF, Sidebar: #F7F7F5, Foreground: #2F2E2A, Primary: #191919.
+ */
+html[data-tema="notion-monokrom"] {
+  color-scheme: light;
+
+  --brand: #2f2e2a;
+  --judul: #191919;
+  --emas: #2f2e2a;
+  --emas-foreground: #ffffff;
+  --merah: #c4554d;
+
+  --background: #fbfbfa;
+  --foreground: #2f2e2a;
+  --card: #ffffff;
+  --card-foreground: #2f2e2a;
+  --popover: #ffffff;
+  --popover-foreground: #2f2e2a;
+  --primary: #191919;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f1ef;
+  --secondary-foreground: #191919;
+  --muted: #f1f1ef;
+  --muted-foreground: #6b6a66;
+  --accent: #efefed;
+  --accent-foreground: #191919;
+  --destructive: #c4554d;
+  --border: #e5e5e2;
+  --input: #d3d3ce;
+  --ring: #2f2e2a;
+  --chart-1: #191919;
+  --chart-2: #55534e;
+  --chart-3: #8c8a85;
+  --chart-4: #c4554d;
+  --chart-5: #b8b7b2;
+  --sidebar: #f7f7f5;
+  --sidebar-foreground: #2f2e2a;
+  --sidebar-primary: #191919;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #efefed;
+  --sidebar-accent-foreground: #191919;
+  --sidebar-border: #e5e5e2;
+  --sidebar-ring: #2f2e2a;
+
+  /* Token kabut "abu terbawa angin" — kabut arang tipis & kilau putih halus untuk Notion Monokrom */
+  --abu-kabut: rgb(25 25 25 / 0.08);
+  --abu-kabut-terang: rgb(255 255 255 / 0.18);
+  --abu-kabut-emas: rgb(255 255 255 / 0.18);
+  --abu-aksen-emas: rgb(25 25 25 / 0.24);
+  --abu-kabut-merah: rgb(196 85 77 / 0.14);
+  --abu-aksen: rgb(25 25 25 / 0.18);
+  --abu-pendar: rgb(25 25 25 / 0.08);
+
+  /* Skala abu-abu arang hangat agar seluruh antarmuka bersih monokrom tanpa belang biru */
+  --color-slate-950: #191919;
+  --color-slate-900: #2f2e2a;
+  --color-slate-800: #37352f;
+  --color-slate-700: #55534e;
+  --color-slate-600: #6b6a66;
+  --color-slate-500: #787774;
+  --color-slate-400: #9b9a97;
+  --color-slate-300: #d3d3ce;
+  --color-slate-200: #e9e9e6;
+  --color-slate-100: #f1f1ef;
+  --color-slate-50: #f7f7f5;
+
+  --color-sky-950: #191919;
+  --color-sky-900: #2f2e2a;
+  --color-sky-800: #37352f;
+  --color-sky-700: #55534e;
+  --color-sky-600: #6b6a66;
+  --color-sky-500: #787774;
+  --color-sky-400: #9b9a97;
+  --color-sky-300: #d3d3ce;
+  --color-sky-200: #dfdfdc;
+  --color-sky-100: #ebebe8;
+  --color-sky-50: #f7f7f5;
+
+  /* Warna pastel pudar kalem ala Notion untuk lencana status cuti & kotak pesan */
+  --color-indigo-900: #4f3a6b;
+  --color-indigo-800: #5c447c;
+  --color-indigo-700: #6e5291;
+  --color-indigo-300: #cfc4e3;
+  --color-indigo-100: #f0ecf7;
+
+  --color-emerald-950: #163a28;
+  --color-emerald-900: #1f4d37;
+  --color-emerald-800: #2a6146;
+  --color-emerald-700: #377557;
+  --color-emerald-300: #b7d6c4;
+  --color-emerald-200: #d0e6d9;
+  --color-emerald-100: #e6f2eb;
+  --color-emerald-50: #f2f7f4;
+
+  --color-amber-950: #472e0a;
+  --color-amber-900: #593b10;
+  --color-amber-800: #6e4a16;
+  --color-amber-700: #855a1c;
+  --color-amber-300: #e2cfa9;
+  --color-amber-200: #ede0c4;
+  --color-amber-100: #f7eedb;
+  --color-amber-50: #fbf7ee;
+
+  --color-red-900: #732520;
+  --color-red-800: #8a2e28;
+  --color-red-700: #a83c35;
+  --color-red-300: #e5bbb8;
+  --color-red-200: #f1d2d0;
+  --color-red-100: #fbe6e4;
+  --color-red-50: #fdf3f2;
+
+  --color-rose-900: #752735;
+  --color-rose-800: #8c3242;
+  --color-rose-700: #a84254;
+  --color-rose-300: #e6bcc4;
+  --color-rose-200: #f1d4d9;
+  --color-rose-100: #fae7ea;
+  --color-rose-50: #fdf4f5;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -396,6 +517,11 @@ html[data-tema="mossy-stone"] .latar-langit {
   background-position: center;
 }
 
+html[data-tema="notion-monokrom"] .latar-langit {
+  background-color: #fbfbfa;
+  background-image: none;
+}
+
 /* Kartu kaca */
 .kaca {
   background-color: var(--card);
@@ -417,6 +543,50 @@ html[data-tema="mossy-stone"] .kaca {
 
 header > .kaca {
   background-color: color-mix(in srgb, var(--popover) 95%, transparent);
+}
+
+html[data-tema="notion-monokrom"] .kaca {
+  background-color: #ffffff;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-color: #e5e5e2;
+  box-shadow: 0 1px 2px rgb(25 25 25 / 0.04);
+}
+
+html[data-tema="notion-monokrom"] aside.kaca {
+  background-color: #f7f7f5;
+  border-color: #e5e5e2;
+  box-shadow: none;
+}
+
+html[data-tema="notion-monokrom"] header > .kaca {
+  background-color: #ffffff;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-color: #e5e5e2;
+  box-shadow: 0 2px 8px -2px rgb(25 25 25 / 0.06), 0 1px 2px rgb(25 25 25 / 0.04);
+}
+
+html[data-tema="notion-monokrom"] [data-slot="sheet-content"][data-side="left"] {
+  background-color: #f7f7f5;
+  border-color: #e5e5e2;
+}
+
+/* Penyesuaian khusus Notion Monokrom (selalu mengecualikan lembar cetak A4/Legal & editor surat) */
+html[data-tema="notion-monokrom"] .bg-sky-100.text-sky-900:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *),
+html[data-tema="notion-monokrom"] .bg-sky-100.text-sky-700:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *) {
+  background-color: #e7f3f8;
+  color: #2b5972;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html[data-tema="notion-monokrom"] .hover\:bg-white\/60:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *):hover {
+    background-color: rgb(25 25 25 / 0.06);
+  }
+
+  html[data-tema="notion-monokrom"] .hover\:bg-white:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *):hover {
+    background-color: #f1f1ef;
+  }
 }
 
 /* Penyesuaian permukaan putih pada input/tombol/laci di tema Cursor Dark (kecuali lembar cetak A4) */
@@ -834,6 +1004,15 @@ html[data-tema="mossy-stone"] .hover\:bg-white\/60:hover {
   --color-slate-700: #334155;
   --color-slate-800: #1e293b;
   --color-slate-900: #0f172a;
+}
+
+/* Bilah alat layar cetak (print:hidden) mengikuti warna monokrom saat Notion Monokrom aktif tanpa menyentuh isi kertas */
+html[data-tema="notion-monokrom"] .lembar-cetak .bilah-cetak {
+  --judul: #191919;
+  --primary: #191919;
+  --primary-foreground: #ffffff;
+  --ring: #2f2e2a;
+  --color-sky-100: #e5e5e2;
 }
 
 .lembar-cetak [data-slot="button"],

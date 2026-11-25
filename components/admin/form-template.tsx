@@ -105,8 +105,8 @@ export function FormTemplate({ awal, dasar, nomor, tataLetak }: Props) {
   }
 
   return (
-    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <div className="grid gap-4">
+    <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="grid min-w-0 grid-cols-1 gap-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="grid gap-1.5 sm:col-span-2">
             <Label htmlFor="nama">Nama template</Label>
@@ -173,7 +173,7 @@ export function FormTemplate({ awal, dasar, nomor, tataLetak }: Props) {
         <p className="text-xs text-slate-600">Perubahan berlaku untuk surat yang disiapkan setelah ini; draft dan surat yang sudah dicetak tidak berubah.</p>
       </div>
 
-      <div className="grid gap-2 xl:sticky xl:top-4">
+      <div className="grid min-w-0 grid-cols-1 gap-2 xl:sticky xl:top-4">
         <h2 className="text-sm font-semibold text-judul">Pratinjau dengan data contoh</h2>
         <PratinjauA4 label="Pratinjau template">
           <LembarSurat d={lembar} />

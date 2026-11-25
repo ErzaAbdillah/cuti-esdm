@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
+import { adalahTemaTerang, normalisasiTema } from "@/lib/tema"
 
 function bacaTemaSonner(): "light" | "dark" {
   if (typeof document === "undefined") return "dark"
-  return document.documentElement.dataset.tema === "langit-pagi" ? "light" : "dark"
+  return adalahTemaTerang(normalisasiTema(document.documentElement.dataset.tema)) ? "light" : "dark"
 }
 
 const Toaster = ({ ...props }: ToasterProps) => {

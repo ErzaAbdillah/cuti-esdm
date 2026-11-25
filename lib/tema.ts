@@ -1,6 +1,6 @@
 export const KUKI_TEMA = "tema";
 
-export type IdTema = "cursor-dark" | "langit-pagi" | "mossy-stone";
+export type IdTema = "cursor-dark" | "langit-pagi" | "mossy-stone" | "notion-monokrom";
 
 export interface InfoTema {
   id: IdTema;
@@ -44,13 +44,32 @@ export const DAFTAR_TEMA: readonly InfoTema[] = [
       accent: "#52A478",
     },
   },
+  {
+    id: "notion-monokrom",
+    nama: "Notion Monokrom",
+    keterangan: "Putih bersih & hitam arang minimalis",
+    warna: {
+      background: "#FBFBFA",
+      foreground: "#191919",
+      accent: "#787774",
+    },
+  },
 ] as const;
 
 export const TEMA_BAWAAN: IdTema = "cursor-dark";
 
 export function normalisasiTema(nilai: string | undefined | null): IdTema {
-  if (nilai === "langit-pagi" || nilai === "mossy-stone" || nilai === "cursor-dark") {
+  if (
+    nilai === "langit-pagi" ||
+    nilai === "mossy-stone" ||
+    nilai === "cursor-dark" ||
+    nilai === "notion-monokrom"
+  ) {
     return nilai;
   }
   return TEMA_BAWAAN;
+}
+
+export function adalahTemaTerang(id: IdTema): boolean {
+  return id === "langit-pagi" || id === "notion-monokrom";
 }

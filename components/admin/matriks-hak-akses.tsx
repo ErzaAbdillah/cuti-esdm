@@ -123,7 +123,7 @@ export function MatriksHakAkses({ awal, bolehKelola = true }: { awal: BarisHakAk
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid min-w-0 grid-cols-1 gap-4">
       {/* Kontrol Pencarian & Filter Cepat */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-md">
@@ -154,10 +154,10 @@ export function MatriksHakAkses({ awal, bolehKelola = true }: { awal: BarisHakAk
             type="button"
             onClick={() => setFilterAktif("semua")}
             className={cn(
-              "rounded-lg px-2.5 py-1.5 font-medium transition-colors",
+              "rounded-lg border px-2.5 py-1.5 font-medium transition-colors",
               filterAktif === "semua"
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "bg-white/80 text-slate-600 hover:bg-sky-100 hover:text-judul dark:bg-white/5 dark:text-slate-300",
+                ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                : "border-border bg-white/80 text-slate-600 hover:bg-sky-100 hover:text-judul dark:bg-white/5 dark:text-slate-300",
             )}
           >
             Semua ({baris.length})
@@ -166,10 +166,10 @@ export function MatriksHakAkses({ awal, bolehKelola = true }: { awal: BarisHakAk
             type="button"
             onClick={() => setFilterAktif("admin")}
             className={cn(
-              "rounded-lg px-2.5 py-1.5 font-medium transition-colors",
+              "rounded-lg border px-2.5 py-1.5 font-medium transition-colors",
               filterAktif === "admin"
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "bg-white/80 text-slate-600 hover:bg-sky-100 hover:text-judul dark:bg-white/5 dark:text-slate-300",
+                ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                : "border-border bg-white/80 text-slate-600 hover:bg-sky-100 hover:text-judul dark:bg-white/5 dark:text-slate-300",
             )}
           >
             Admin Utama ({jumlahAdmin})
@@ -178,10 +178,10 @@ export function MatriksHakAkses({ awal, bolehKelola = true }: { awal: BarisHakAk
             type="button"
             onClick={() => setFilterAktif("khusus")}
             className={cn(
-              "rounded-lg px-2.5 py-1.5 font-medium transition-colors",
+              "rounded-lg border px-2.5 py-1.5 font-medium transition-colors",
               filterAktif === "khusus"
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "bg-white/80 text-slate-600 hover:bg-sky-100 hover:text-judul dark:bg-white/5 dark:text-slate-300",
+                ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                : "border-border bg-white/80 text-slate-600 hover:bg-sky-100 hover:text-judul dark:bg-white/5 dark:text-slate-300",
             )}
           >
             Hak Khusus ({jumlahKhusus})
@@ -190,10 +190,10 @@ export function MatriksHakAkses({ awal, bolehKelola = true }: { awal: BarisHakAk
             type="button"
             onClick={() => setFilterAktif("biasa")}
             className={cn(
-              "rounded-lg px-2.5 py-1.5 font-medium transition-colors",
+              "rounded-lg border px-2.5 py-1.5 font-medium transition-colors",
               filterAktif === "biasa"
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "bg-white/80 text-slate-600 hover:bg-sky-100 hover:text-judul dark:bg-white/5 dark:text-slate-300",
+                ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                : "border-border bg-white/80 text-slate-600 hover:bg-sky-100 hover:text-judul dark:bg-white/5 dark:text-slate-300",
             )}
           >
             Pegawai Biasa ({jumlahBiasa})
@@ -213,9 +213,9 @@ export function MatriksHakAkses({ awal, bolehKelola = true }: { awal: BarisHakAk
       </div>
 
       {/* Tabel Matriks */}
-      <div className="kaca overflow-hidden rounded-2xl shadow-sm">
+      <div className="kaca min-w-0 overflow-hidden rounded-2xl shadow-sm">
         <div className="max-h-[640px] overflow-auto">
-          <table className="w-full min-w-[960px] text-sm">
+          <table className="w-full min-w-[780px] table-fixed text-sm">
             <thead className="sticky top-0 z-10 border-b border-sky-100 bg-sky-50/95 backdrop-blur-xs text-judul dark:border-slate-800 dark:bg-slate-900/95">
               <tr>
                 <th scope="col" className="px-4 py-3.5 text-left font-semibold">
@@ -231,7 +231,7 @@ export function MatriksHakAkses({ awal, bolehKelola = true }: { awal: BarisHakAk
                       key={h.kode}
                       scope="col"
                       title={h.deskripsi}
-                      className="w-36 px-2 py-3 text-center text-xs font-semibold leading-tight"
+                      className="w-26 px-1.5 py-3 text-center text-xs font-semibold leading-tight"
                     >
                       <div className="flex flex-col items-center gap-1">
                         <Ikon className="size-3.5 text-primary" />

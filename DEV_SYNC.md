@@ -39,12 +39,83 @@
   - Background Worker: `app/api/tugas/harian/route.ts` (Cron pembaruan status cuti selesai & kirim antrean email)
 
 ## Status Saat Ini
-- **Fase Aktif:** 2 Commit Siap Kirim di Branch Lokal `main` (`705016c` + pembaruan `DEV_SYNC.md`) — Menunggu Pemilik Proyek Klik **Push origin** di GitHub Desktop / Terminal, Lalu Migrasi Neon, Cek Env & Cron Vercel, & Verifikasi Akhir QA
-- **Fitur/Modul Aktif:** Penyimpanan Berkas Permanen (`dokumen_berkas`), Jadwal Harian Otomatis Vercel (Cron), & Paket Perbaikan Keamanan/Logika QA Gelombang 1–4 (`2026-11-25`)
+- **Fase Aktif:** Commit Tema Ke-4 **Notion Monokrom** Selesai (`typecheck`, `lint`, 138/138 `npm test`, `npm run build` 44 rute, & uji browser lulus 100%) — Paket Bagian I (`705016c` & `4f5f445`) Sudah di GitHub `main`, Siap Push Tema Baru & Verifikasi Akhir Produksi
+- **Fitur/Modul Aktif:** Penambahan & Polesan Tema Tampilan Ke-4 — **Notion Monokrom** (`notion-monokrom`) (`2026-11-26`)
 - **Penanggung Jawab Terakhir:** Coder
 
 ## 1. Cetak Biru & Skema Data (Diisi oleh Conversation 3 - Architect)
 *Rancangan alur sistem, struktur tabel/database, dan daftar file yang harus dibuat/dieksekusi oleh Coder:*
+
+### J. Tema Tampilan Ke-4: Notion Monokrom (`notion-monokrom`) (`2026-11-26`)
+1. **Ringkasan & Dampak bagi Pegawai/Admin:**
+   - Menambahkan pilihan tema ke-4 bernama **Notion Monokrom** (`id: "notion-monokrom"`, keterangan: *"Putih bersih & hitam arang minimalis"*) pada menu **Pilih Tema Tampilan** di pojok kanan atas aplikasi.
+   - Memberikan pilihan tampilan terang yang sangat tenang, datar, dan rapi seperti halaman catatan kertas putih bersih (tanpa motif awan biru atau kaca buram) dengan teks serta tombol hitam arang yang nyaman dibaca lama.
+   - Tema bawaan aplikasi (**Cursor Dark**) tidak diubah — pegawai bebas memilih dari 4 tema (**Cursor Dark**, **Langit Pagi**, **Mossy Stone**, dan **Notion Monokrom**) dan pilihannya tetap tersimpan saat keluar maupun membuka ulang aplikasi.
+   - Perubahan murni di sisi tampilan antarmuka (**tidak ada perubahan tabel database** maupun aturan cuti).
+
+2. **Palet Warna Lengkap Notion Monokrom (`app/globals.css` — `html[data-tema="notion-monokrom"]`):**
+   - **Skema & Permukaan Datar (Putih Kertas Bersih):**
+     - `color-scheme: light;`
+     - Latar halaman (`--background`) & `.latar-langit`: **`#FBFBFA`** polos datar (`background-image: none;`, tanpa motif awan/gradasi biru).
+     - Kartu & dialog (`--card`, `--popover`, `.kaca`): putih bersih solid **`#FFFFFF`** tanpa efek kaca buram (`backdrop-filter: none`), garis tepi abu-abu halus **`#E5E5E2`**, dan bayangan super tipis (`0 1px 2px rgb(25 25 25 / 0.04)`).
+     - Bilah menu samping desktop (`--sidebar`, `aside.kaca`): abu-abu kertas sangat lembut **`#F7F7F5`** dengan garis tepi **`#E5E5E2`** agar area menu terpisah halus dari isi halaman seperti di Notion.
+     - Bilah atas mengambang (`header > .kaca`): putih bersih hampir pekat (`rgb(255 255 255 / 0.96)` dengan `backdrop-filter: blur(10px)`) supaya tulisan halaman tidak membayang tembus saat digulir.
+   - **Teks, Garis, & Tombol Utama Monokrom (Kontras ≥ 4,5:1):**
+     - Judul (`--judul`): **`#191919`** (hitam arang pekat).
+     - Teks utama (`--foreground`, `--card-foreground`, `--popover-foreground`, `--brand`): **`#2F2E2A`** (hitam arang lembut, nyaman dibaca lama).
+     - Teks keterangan sekunder (`--muted-foreground`): **`#6B6A66`** (abu-abu hangat).
+     - Tombol utama & item menu aktif (`--primary` / `--sidebar-primary`): **`#191919`** dengan teks putih **`#FFFFFF`** (`--primary-foreground`).
+     - **Tombol Aksi Penting (`variant="penting"` / `--emas`) — Sesuai Keputusan Rapat Kantor:** Diredam menjadi hitam arang **`#2F2E2A`** dengan teks putih **`#FFFFFF`** (`--emas-foreground`) agar seluruh layar tetap monokrom tenang (tidak mencolok kuning).
+     - Tombol sekunder & latar permukaan lembut (`--secondary`, `--muted`): **`#F1F1EF`**; latar hover ringan (`--accent`): **`#EFEFED`**; garis tepi (`--border`): **`#E5E5E2`**; garis kotak input (`--input`): **`#D3D3CE`**; cincin fokus keyboard (`--ring`): **`#2F2E2A`**.
+     - Peringatan & tombol hapus/tolak (`--merah`, `--destructive`): merah bata kalem **`#C4554D`**.
+   - **Penetralan Sisa Warna Biru Langit (`sky-*`) & `slate-*`:**
+     - Skala `--color-slate-950` s.d. `--color-slate-50` diselaraskan ke abu-abu arang hangat (`#191919` s.d. `#F7F7F5`).
+     - Skala `--color-sky-50` (`#F7F7F5`), `--color-sky-100` (`#EBEBE8`), `--color-sky-200` (`#DFDFDC`), hingga `--color-sky-950` (`#191919`) dinetralkan ke abu-abu hangat agar garis pemisah tabel (`divide-sky-100`, `border-sky-100`), efek hover baris (`hover:bg-sky-50/70`), hover menu samping (`hover:bg-sky-100`), kotak ringkasan (`bg-sky-50`), dan tombol pilih file (`file:bg-sky-100`) tampil 100% bersih tanpa belang biru.
+   - **Lencana Status Cuti & Kotak Pesan (Pastel Pudar Kalem Ala Notion):**
+     - **Diajukan & Disetujui Atasan** *(aturan khusus `html[data-tema="notion-monokrom"] .bg-sky-100.text-sky-900:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *)` agar tetap berwarna pastel meski garis `sky-100` dinetralkan)*: latar biru pastel pudar **`#E7F3F8`**, teks **`#2B5972`**.
+     - **Diverifikasi Kepegawaian (`indigo-*`):** latar ungu pastel pudar **`#F0ECF7`** (`--color-indigo-100`), teks **`#4F3A6B`** (`--color-indigo-900`).
+     - **Disetujui, Surat Terbit, & Pesan Sukses (`emerald-*`):** latar hijau sage pastel pudar **`#E6F2EB`** (`--color-emerald-100`) / **`#F2F7F4`** (`--color-emerald-50`), teks **`#1F4D37`** (`--color-emerald-900`).
+     - **Catatan & Peringatan (`amber-*`):** latar krem pastel pudar **`#F7EEDB`** (`--color-amber-100`) / **`#FBF7EE`** (`--color-amber-50`), teks **`#593B10`** (`--color-amber-900`).
+     - **Ditolak & Pesan Error (`red-*` / `rose-*`):** latar merah muda pudar **`#FBE6E4`** (`--color-red-100`) / **`#FDF3F2`** (`--color-red-50`), teks **`#732520`** (`--color-red-900`).
+     - **Selesai & Dibatalkan (`slate-200`):** latar abu-abu kertas **`#E9E9E6`**, teks **`#37352F`** / **`#55534E`**.
+
+3. **Aturan Efek Kabut Tombol "Abu Terbawa Angin" untuk Notion Monokrom (`app/globals.css`):**
+   - Permukaan putih/terang (tombol `outline`, `secondary`, kartu klik `.kartu-abu`, menu samping `.nav-abu`): memakai kabut abu-abu arang tipis `--abu-kabut: rgb(25 25 25 / 0.08)` dan pendar tepi tipis `--abu-aksen: rgb(25 25 25 / 0.18)`.
+   - Tombol hitam arang (`default` & item menu aktif): memakai kabut putih tipis `--abu-kabut-terang: rgb(255 255 255 / 0.18)` agar teks putih tetap tajam.
+   - Tombol aksi penting (`penting`, yang kini berwarna hitam arang): memakai kabut putih tipis `--abu-kabut-emas: rgb(255 255 255 / 0.18)` dan pendar tepi arang `--abu-aksen-emas: rgb(25 25 25 / 0.24)` (bukan pendar kuning).
+   - Tombol hapus/tolak (`destructive`): memakai kabut merah bata lembut `--abu-kabut-merah: rgb(196 85 77 / 0.14)`.
+   - Tombol ikon kecil, `ghost`, & ikon bilah atas (`.ikon-abu`): memakai pendar abu-abu arang tipis `--abu-pendar: rgb(25 25 25 / 0.08)`.
+
+4. **Hal Wajib Dijaga (Checklist Hasil Rapat Kantor):**
+   - **Kotak Pesan Pop-up (*Toast* di `components/ui/sonner.tsx`):** Pastikan mode **`"light"`** aktif untuk **kedua tema terang** (`"langit-pagi"` **dan** `"notion-monokrom"`), bukan hanya `"langit-pagi"`. Gunakan helper `adalahTemaTerang()` dari `lib/tema.ts` supaya tidak mudah terlewat di kemudian hari.
+   - **Bilah Atas Browser HP & Efek Hover Bilah Atas Aplikasi:**
+     - Pada `lib/tema.ts`, daftarkan warna latar Notion Monokrom **`#FBFBFA`** (`background: "#FBFBFA"`, `foreground: "#191919"`, `accent: "#787774"`). Dengan begitu, baik `components/tata-letak/tombol-tema.tsx` (`terapkanKeDom`) maupun `app/layout.tsx` (`generateViewport`) otomatis menyetel `meta[name="theme-color"]` bilah atas browser HP menjadi putih kertas bersih **`#FBFBFA`**.
+     - Pada `app/globals.css`, tambahkan aturan `html[data-tema="notion-monokrom"] .hover\:bg-white\/60:hover { background-color: rgb(25 25 25 / 0.06); }` (serta `.hover\:bg-white:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *):hover { background-color: #f1f1ef; }`) agar tombol Pilih Tema, ikon Notifikasi, menu Akun di bilah atas, dan tombol berlatar putih tetap terasa jelas saat disentuh kursor di atas latar putih (tidak "hilang").
+   - **3 Bulatan Pratinjau Warna di Dropdown Menu (`components/tata-letak/tombol-tema.tsx`):**
+     - Gunakan 3 warna monokrom yang mudah dibedakan pada 3 bulatan kecil (**putih kertas `#FBFBFA`**, **hitam arang `#191919`**, **abu-abu batu `#787774`**) dan perkuat batas garis lingkarannya menjadi `ring-1 ring-foreground/30` agar bulatan putih tetap memiliki tepi tegas di atas menu putih maupun menu gelap.
+   - **Isolasi Mutlak Lembar Cetak A4/Legal & Editor Surat:**
+     - Jangan mengubah ukuran sudut (`--radius`), warna teks, atau gaya garis di dalam `.lembar-cetak`, `@media print`, maupun `.editor-surat`. Pastikan seluruh aturan tambahan `html[data-tema="notion-monokrom"]` yang menyasar kelas utilitas selalu mengecualikan `:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *)`, dan lembar cetak tetap putih murni `#FFFFFF`, teks hitam pekat `#000000`, serta bebas efek kabut tombol.
+
+5. **Daftar 5 File Target (untuk Coder):**
+   1. **`lib/tema.ts`** *(Ubah)*:
+      - Tambah `"notion-monokrom"` ke tipe `IdTema` dan daftarkan di `DAFTAR_TEMA` (`nama: "Notion Monokrom"`, `keterangan: "Putih bersih & hitam arang minimalis"`, `warna: { background: "#FBFBFA", foreground: "#191919", accent: "#787774" }`).
+      - Pertahankan `TEMA_BAWAAN = "cursor-dark"`, perbarui `normalisasiTema()` agar menerima `"notion-monokrom"`, dan ekspor helper `adalahTemaTerang(id: IdTema): boolean` (`id === "langit-pagi" || id === "notion-monokrom"`).
+   2. **`app/globals.css`** *(Ubah)*:
+      - Tambah blok lengkap `html[data-tema="notion-monokrom"]` (seluruh token warna dasar, `--emas` monokrom, token kabut `--abu-*`, skala warna netral `slate`/`sky` & pastel pudar `indigo`/`emerald`/`amber`/`red`/`rose`).
+      - Tambah aturan latar datar `.latar-langit`, kartu datar `.kaca` (termasuk `aside.kaca` & `header > .kaca`), lencana biru pastel `.bg-sky-100.text-sky-900`, serta efek hover `.hover\:bg-white\/60:hover` dan `.hover\:bg-white:hover` dengan pengecualian ketat terhadap `.lembar-cetak` dan `.editor-surat`.
+   3. **`components/tata-letak/tombol-tema.tsx`** *(Ubah)*:
+      - Pastikan `terapkanKeDom()` menyetel `meta[name="theme-color"]` memakai `info.warna.background` (`#FBFBFA`) untuk `notion-monokrom`.
+      - Perkuat batas garis 3 bulatan pratinjau warna di dropdown (`ring-1 ring-foreground/30`) agar bulatan putih tema Notion (dan tema lainnya) tampak tegas batasnya.
+   4. **`components/ui/sonner.tsx`** *(Ubah)*:
+      - Perbarui `bacaTemaSonner()` menggunakan `adalahTemaTerang(normalisasiTema(document.documentElement.dataset.tema))` agar kotak pesan pop-up tampil dalam mode terang (`"light"`) saat `notion-monokrom` maupun `langit-pagi` aktif.
+   5. **`tests/unit/tema.test.ts`** *(Ubah)*:
+      - Tambah pengujian unit untuk memverifikasi `DAFTAR_TEMA` berisi 4 tema termasuk `notion-monokrom` beserta palet warnanya, `TEMA_BAWAAN` tetap `"cursor-dark"`, `normalisasiTema("notion-monokrom")` lulus, dan `adalahTemaTerang()` mengembalikan hasil benar untuk ke-4 tema.
+
+6. **Skenario Pengecekan Wajib (Coder, UI/UX Stylist, & Debugger/QA):**
+   - Uji ganti tema bolak-balik di browser (**Cursor Dark → Notion Monokrom → Langit Pagi → Mossy Stone → Notion Monokrom**) di layar laptop (`1280×800`) dan HP (`390×844`): pastikan pilihan tersimpan setelah refresh & keluar ke `/login`.
+   - Cek visual di halaman `/beranda`, `/cuti/proses`, `/cuti/ajukan`, `/admin`, `/admin/hak-akses`, dan `/dokumen/organisasi`: permukaan putih datar rapi, tombol utama & tombol penting hitam arang dengan efek kabut putih tipis, tombol outline & kartu klik `.kartu-abu` berkabut abu-abu arang tipis, tombol bilah atas terlihat saat di-hover, 3 bulatan pratinjau Notion jelas tepinya, seluruh 8 status cuti terbedakan jelas dalam warna pastel pudar kalem, dan notifikasi pop-up (*toast*) tampil terang rapi.
+   - Cek halaman cetak (`/cetak/formulir/...` atau `/cetak/rekap-cuti`) dan editor surat (`/cuti/[id]/surat/...`) saat **Notion Monokrom** aktif: kertas tetap putih murni, teks hitam pekat, garis/sudut tidak berubah, dan bebas efek kabut tombol.
+   - Jalankan `npm run typecheck`, `npm run lint`, `npm test`, dan `npm run build` — pastikan lulus tanpa galat.
 
 ### I. Penyimpanan Berkas Permanen di Vercel, Jadwal Harian Otomatis, & Urutan Perbaikan Temuan QA (`2026-11-25`)
 
@@ -368,6 +439,16 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 - `app/(aplikasi)/admin/hak-akses/page.tsx`: Halaman Admin `/admin/hak-akses` untuk melihat dan mengelola matriks hak akses seluruh pegawai berakun sekaligus.
 - `tests/unit/hak-akses.test.ts`: Unit test Vitest untuk konstanta hak akses dan penyaringan menu navigasi `menuUntuk(peran, hakAkses)`.
 
+### File Diubah (Tema Tampilan Ke-4: Notion Monokrom — `2026-11-26`)
+- `lib/tema.ts`: Menambahkan `"notion-monokrom"` ke tipe `IdTema` dan `DAFTAR_TEMA` (*Notion Monokrom* — *"Putih bersih & hitam arang minimalis"*, palet `#FBFBFA` / `#191919` / `#787774`), mempertahankan `TEMA_BAWAAN = "cursor-dark"`, memperbarui `normalisasiTema()`, serta mengekspor helper `adalahTemaTerang(id)` (`"langit-pagi"` dan `"notion-monokrom"`).
+- `app/globals.css`:
+  - Menambahkan blok tema lengkap `html[data-tema="notion-monokrom"]` (`color-scheme: light`, permukaan putih kertas datar `#FBFBFA`/`#FFFFFF`, sidebar `#F7F7F5`, garis `#E5E5E2`, tombol utama & tombol penting `--emas` hitam arang teks putih, skala netral hangat `slate-*` & `sky-*`, warna pastel pudar kalem ala Notion untuk lencana status & kotak pesan, serta token efek kabut tombol "Abu Terbawa Angin").
+  - Menambahkan `.latar-langit` polos datar, kartu datar `.kaca` (beserta `aside.kaca` & `header > .kaca`), aturan lencana biru pastel `.bg-sky-100.text-sky-900`, serta efek hover `.hover\:bg-white\/60:hover` dan `.hover\:bg-white:hover` dengan pengecualian ketat terhadap `.lembar-cetak` dan `.editor-surat`.
+- `components/tata-letak/tombol-tema.tsx`: Memastikan `terapkanKeDom()` menyetel `meta[name="theme-color"]` memakai `#FBFBFA` (`info.warna.background`) saat `notion-monokrom` aktif dan memperkuat garis tepi 3 bulatan pratinjau warna di menu dropdown menjadi `ring-1 ring-foreground/30`.
+- `components/ui/sonner.tsx`: Memperbarui `bacaTemaSonner()` memakai `adalahTemaTerang(normalisasiTema(document.documentElement.dataset.tema))` agar kotak pesan pop-up tampil mode terang (`"light"`) pada `notion-monokrom` maupun `langit-pagi`.
+- `tests/unit/tema.test.ts`: Menambahkan pengujian unit untuk 4 tema (termasuk `notion-monokrom`), `normalisasiTema("notion-monokrom")`, dan `adalahTemaTerang()` di seluruh 4 tema.
+- **Verifikasi Lokal Coder (`2026-11-26`):** `npm run typecheck` OK, `npm run lint` OK (0 error/warning), `npm test` **138/138 lulus** (16 file uji), dan `npm run build` OK (44 rute).
+
 ### File Diubah (Penyimpanan Berkas Permanen, Jadwal Harian Vercel, & Perbaikan Audit QA Gelombang 1–4 — `2026-11-25`)
 - **Penyimpanan Berkas Permanen (Bagian I.1):**
   - `prisma/schema.prisma`: Menambahkan model `DokumenBerkas` (`dokumen_berkas`) relasi 1-ke-1 dengan `Dokumen` (`onDelete: Cascade`).
@@ -493,6 +574,25 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 
 ## 3. Catatan Polesan Visual (Diisi oleh Conversation 4 - UI/UX Stylist)
 *Daftar komponen UI, styling, responsivitas, atau animasi yang baru diperbarui:*
+- **Polesan & Verifikasi Browser Tema Ke-4 "Notion Monokrom" (`2026-11-26`):**
+  - `app/globals.css`:
+    - **Bilah profil atas solid putih saat digulir (`header > .kaca`):** Mengubah latar bilah atas pada Notion Monokrom menjadi putih solid `#FFFFFF` dengan bayangan super lembut (tanpa efek tembus pandang), sehingga teks halaman/formulir tidak lagi membayang tembus di belakang bilah atas saat layar digulir.
+    - **Laci menu samping HP serasi dengan sidebar laptop:** Menyetel warna laci menu kiri HP (`[data-slot="sheet-content"][data-side="left"]`) pada Notion Monokrom menjadi abu-abu kertas lembut `#F7F7F5` dengan garis tepi `#E5E5E2` agar seragam dengan bilah menu samping di laptop.
+    - **Keselarasan 5 kartu ikon hak akses:** Menambahkan pengecualian pastel biru pudar (`#E7F3F8` / `#2B5972`) pada `.bg-sky-100.text-sky-700` (dengan tetap mengecualikan `.lembar-cetak` dan `.editor-surat`), sehingga kartu ikon **Proses Cuti** di `/admin/hak-akses` dan tab Akun pegawai tampil serasi dengan 4 kartu pastel Notion lainnya tanpa membuat warna biru bocor ke bagian lain.
+    - **Efek hover ramah layar sentuh HP:** Membungkus aturan `.hover\:bg-white\/60:hover` dan `.hover\:bg-white:hover` milik Notion Monokrom ke dalam `@media (hover: hover) and (pointer: fine)` agar sentuhan jari di HP tidak meninggalkan warna abu-abu yang nyangkut.
+    - **Bilah alat layar cetak serasi monokrom (`.bilah-cetak`):** Menambahkan aturan khusus `html[data-tema="notion-monokrom"] .lembar-cetak .bilah-cetak` (hanya menyasar bilah tombol atas `print:hidden`) agar judul dan tombol **Cetak / Simpan PDF** tampil hitam arang `#191919` (tidak lagi biru Langit Pagi), sementara lembar kertas cetak di bawahnya tetap putih murni `#FFFFFF`, teks hitam pekat `#000000`, garis tajam, dan bebas efek kabut tombol.
+  - `components/cetak/tombol-cetak.tsx`:
+    - Menambahkan kelas `.bilah-cetak` pada bilah alat atas (`print:hidden`) agar pewarnaan bilah layar cetak terpisah bersih dari isi kertas dokumen.
+  - `components/admin/matriks-hak-akses.tsx` & `app/(aplikasi)/admin/hak-akses/page.tsx`:
+    - **Batas tegas tombol filter cepat:** Menambahkan garis tepi (`border border-border` saat nonaktif, `border border-primary` saat aktif) pada tombol filter *Semua*, *Admin Utama*, *Hak Khusus*, dan *Pegawai Biasa* supaya bentuk tombolnya terlihat tegas di atas latar kertas `#FBFBFA` maupun 3 tema lainnya.
+    - **Seluruh 5 kolom centang langsung terlihat di laptop (`1280×800`):** Merapikan tabel matriks menjadi `table-fixed min-w-[780px]` dengan lebar 5 kolom centang `w-26` (sebelumnya kolom nama pegawai melebar hingga ~991px sehingga mendorong kelima kolom centang keluar layar).
+    - **Menghilangkan gulir samping tingkat halaman di HP (`390×844`):** Menambahkan `grid-cols-1 min-w-0` pada wadah halaman dan tabel matriks sehingga di layar HP gulir menyamping hanya terjadi rapi di dalam kotak tabel, tanpa menggeser seluruh halaman.
+  - `components/admin/form-template.tsx`:
+    - Menambahkan `grid-cols-1` dan `min-w-0` pada pembungkus editor dan pratinjau kertas A4 di halaman **Ubah Template Surat** agar tampilan editor surat dan pratinjau A4 pas rapi di layar HP tanpa melebar ke samping.
+  - *Verifikasi:* `npm run typecheck`, `npm run lint` (0 error/warning), dan `npm test` (**138/138 lulus**) berjalan bersih. Pemeriksaan langsung di browser lokal (**Laptop `1280×800` & HP `390×844`**, **0 galat konsol**) memverifikasi:
+    - Dropdown **Pilih Tema Tampilan** (4 tema, 3 bulatan warna Notion bertepi tegas) & perpindahan bolak-balik **Cursor Dark ↔ Notion Monokrom ↔ Langit Pagi ↔ Mossy Stone** beserta penyimpanan cookie setelah *reload* dan *logout* ke `/login` (`meta[name="theme-color"]` = `#FBFBFA` pada Notion Monokrom).
+    - Halaman `/login`, `/login?google=gagal`, `/beranda` (admin & pegawai), `/cuti/proses`, `/cuti/ajukan`, `/admin`, `/admin/hak-akses` (termasuk notifikasi pop-up *toast* mode terang & pengecekan balik di tema *Cursor Dark*), `/dokumen/organisasi`, `/cetak/rekap-cuti`, serta editor surat `.editor-surat` + pratinjau A4 di `/admin/surat/template/[id]` — bebas gulir samping di HP dan kertas cetak tetap putih murni `#FFFFFF` dengan teks hitam `#000000`.
+    - *Catatan untuk Debugger/QA:* Database lokal saat pengecekan berisi `0` pengajuan cuti, sehingga pengecekan langsung 8 lencana status cuti pada baris nyata di `/cuti/proses`, `/cuti/[id]/surat/...`, dan `/cetak/formulir/[id]` (beserta `npm run build`) masih perlu diuji oleh **Debugger / QA** dengan membuat/menggunakan data pengajuan uji.
 - **Polesan Animasi Tombol "Abu Terbawa Angin" (Opsi A: Elegan Halus) (`2026-11-24`):**
   - `app/globals.css`:
     - **Menghilangkan loncatan gerakan saat transisi:** Menyelaraskan titik awal animasi gerak melayang (`abu-hanyut`, `abu-sapuan`) dan animasi bernapas saat ditahan (`abu-napas`, `abu-napas-ekor`, `abu-pendar-napas`) dengan posisi akhir transisi hover/klik, sehingga kabut meluncur mulus tanpa pernah mundur/melompat sesaat, lalu perlahan hanyut menjauh ke kanan-atas saat kursor pergi (~640 ms).
@@ -541,6 +641,13 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 - [ ] **[CATATAN] [DEV_SYNC.md bagian 1.C]**: Blueprint awal menyebut route `/cuti/rekap`, namun rekap terintegrasi pada `/cuti/saldo` dan `/cetak/rekap-cuti`.
 
 ## 5. Riwayat Selesai (Resolved)
+- [x] **[VERIFIKASI QA - Tema Ke-4 "Notion Monokrom", 8 Lencana Status Cuti, & Regresi 4 Tema] [2026-11-26]**:
+  - **Tes Otomatis & Build Produksi:** Audit seluruh 10 file perubahan + `npm run typecheck` OK, `npm run lint` OK (0 error/warning), `npm test` **138/138 lulus** (16 file test, termasuk 5 unit test `tests/unit/tema.test.ts`), dan `npm run build` **OK (44/44 rute)** siap rilis.
+  - **Uji Browser Lokal dengan 8 Data Pengajuan Cuti Uji (`1280×800` Laptop & `390×844` HP, 0 galat konsol, 0 gagal HTTP):**
+    - `/cuti/proses`: Seluruh **8 lencana status cuti** (*Diajukan*, *Disetujui Atasan*, *Diverifikasi Kepegawaian*, *Disetujui*, *Surat Terbit*, *Selesai*, *Ditolak*, *Dibatalkan*) tampil serasi dalam warna pastel kalem ala Notion dengan kontras tajam dan mudah dibedakan; bilah profil atas (`header > .kaca`) tampil putih solid `#FFFFFF` menutupi teks saat digulir; laci menu kiri HP tampil abu-abu kertas lembut tanpa gulir samping (`375,2 px <= 390 px`).
+    - `/cuti/[id]` (*Disetujui* & *Ditolak*), `/cuti/[id]/surat/SURAT_IZIN` (editor `.editor-surat`, blok & isian terkunci, pratinjau A4 `.lembar-cetak`), serta `/cetak/formulir/[id]`: Kertas formulir & surat terkunci putih murni `#FFFFFF` dengan teks hitam pekat `#000000`, bilah atas layar cetak (`.bilah-cetak`) tampil hitam arang `#191919` serasi Notion tanpa efek kabut tombol, dan layar HP `390×844` bebas melebar ke samping (`375,2 px <= 390 px`).
+    - **Regresi Lintas 4 Tema (`Notion Monokrom`, `Cursor Dark`, `Langit Pagi`, `Mossy Stone`):** Di `/admin/hak-akses` (`1280×800`), seluruh 5 kolom centang muat utuh di dalam tabel (`936 px <= 951,2 px`) di keempat tema, tombol filter punya garis tepi tegas, kartu ikon *Proses Cuti* tampil pastel biru serasi di Notion Monokrom, dan layar HP bebas gulir halaman; di `/cetak/rekap-cuti`, kertas cetak tetap putih bersih dengan teks hitam pekat & bebas efek kabut tombol di keempat tema (bilah cetak hitam arang khusus Notion Monokrom).
+  - **Pembersihan:** Seluruh 8 data pengajuan uji sementara (`[QA-TEMA-NOTION]`) telah dihapus bersih dari database Docker lokal dan server dev lokal telah dihentikan. Status: **Lulus 100% — Siap commit & push ke GitHub `main` bersama `705016c` & `4f5f445` untuk rilis ke Vercel**.
 - [x] **[VERIFIKASI QA - Cek Produksi Online & Sinkronisasi Git Pasca-Commit `705016c`] [2026-11-25]**:
   - **Temuan Kritis Sinkronisasi Rilis:** Pemeriksaan Git (`git status -sb` → `main...origin/main [ahead 1]` dan `git ls-remote origin refs/heads/main` → `b2cdbcb`) bersama pengecekan browser langsung (100% hanya baca) di `https://cuti-esdm.vercel.app` membuktikan bahwa **commit `705016c` belum terkirim (`push`) ke GitHub `main`**, sehingga website online **masih menayangkan versi lama `b2cdbcb`**.
   - **Bukti Langsung di Website Online (`https://cuti-esdm.vercel.app`, 0 galat konsol, 0 perubahan data):**

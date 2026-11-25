@@ -87,17 +87,17 @@ export function TombolTema({ className }: { className?: string }) {
               <div className="flex items-center gap-2.5">
                 <span className="flex items-center -space-x-1" aria-hidden>
                   <span
-                    className="size-4 rounded-full ring-1 ring-foreground/25"
+                    className="size-4 rounded-full ring-1 ring-foreground/30"
                     style={{ backgroundColor: t.warna.background }}
                     title={`Background ${t.warna.background}`}
                   />
                   <span
-                    className="size-4 rounded-full ring-1 ring-foreground/25"
+                    className="size-4 rounded-full ring-1 ring-foreground/30"
                     style={{ backgroundColor: t.warna.foreground }}
                     title={`Foreground ${t.warna.foreground}`}
                   />
                   <span
-                    className="size-4 rounded-full ring-1 ring-foreground/25"
+                    className="size-4 rounded-full ring-1 ring-foreground/30"
                     style={{ backgroundColor: t.warna.accent }}
                     title={`Accent ${t.warna.accent}`}
                   />

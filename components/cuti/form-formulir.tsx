@@ -379,7 +379,7 @@ export function FormFormulir({ id, jenis, awal, level, hariIni }: PropsFormFormu
         </p>
       </div>
 
-      <div className="grid min-w-0 grid-cols-1 gap-2 xl:sticky xl:top-4">
+      <div className="grid min-w-0 grid-cols-1 gap-2 xl:sticky xl:top-20">
         {nota && levelNota ? (
           <Tabs value={pratinjau} onValueChange={setPratinjau}>
             <TabsList className="bg-white/60">

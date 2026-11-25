@@ -17,7 +17,7 @@ import { keluar } from "@/server/aksi/auth";
 export function MenuPengguna({ nama, keterangan, fotoUrl }: { nama: string; keterangan: string; fotoUrl?: string | null }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger aria-label={`Menu akun ${nama}`} className="nav-abu flex items-center gap-2 rounded-xl px-1.5 py-1 text-left transition-colors hover:bg-white/60 focus-visible:outline-2 focus-visible:outline-ring">
+      <DropdownMenuTrigger aria-label={`Menu akun ${nama}`} className="nav-abu flex items-center gap-2 rounded-xl px-1 py-1 text-left transition-colors hover:bg-white/60 focus-visible:outline-2 focus-visible:outline-ring sm:px-1.5">
         <Avatar className="size-9">
           {fotoUrl && <AvatarImage key={fotoUrl} src={fotoUrl} alt={nama} />}
           <AvatarFallback className="bg-primary text-sm font-semibold text-primary-foreground">{inisialNama(nama)}</AvatarFallback>

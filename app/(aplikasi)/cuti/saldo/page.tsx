@@ -26,7 +26,7 @@ export default async function SaldoCuti({ searchParams }: PageProps<"/cuti/saldo
   const kosong = rekap.reduce((n, g) => n + g.baris.filter((b) => !b.saldo).length, 0);
 
   return (
-    <div className="grid gap-5">
+    <div className="grid min-w-0 grid-cols-1 gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-judul">Saldo cuti tahunan {tahun}</h1>

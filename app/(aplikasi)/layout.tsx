@@ -30,16 +30,19 @@ export default async function LayoutAplikasi({ children }: LayoutProps<"/">) {
       <div className="min-h-dvh lg:pl-66">
         <SidebarDesktop menu={menu} />
         <header className="sticky top-0 z-20 px-4 pt-3 sm:px-6">
-          <div className="kaca flex h-14 items-center gap-2 rounded-2xl px-2 sm:px-3">
+          <div className="kaca flex h-14 items-center gap-1 rounded-2xl px-1.5 sm:gap-2 sm:px-3">
             <MenuSeluler menu={menu} />
             <div className="min-w-0 flex-1 lg:hidden">
-              <p className="truncate text-sm font-bold text-judul">Layanan Cuti ESDM</p>
+              <p className="truncate text-sm font-bold text-judul">
+                <span className="sm:hidden">Cuti ESDM</span>
+                <span className="hidden sm:inline">Layanan Cuti ESDM</span>
+              </p>
             </div>
             <div className="hidden flex-1 lg:block" />
             <TombolTema />
             <Link
               href="/notifikasi"
-              className="ikon-abu relative flex size-10 items-center justify-center rounded-xl text-judul transition-colors hover:bg-white/60 focus-visible:outline-2 focus-visible:outline-ring"
+              className="ikon-abu relative flex size-9 items-center justify-center rounded-xl text-judul transition-colors hover:bg-white/60 focus-visible:outline-2 focus-visible:outline-ring sm:size-10"
               aria-label={belumDibaca > 0 ? `Notifikasi, ${belumDibaca} belum dibaca` : "Notifikasi"}
             >
               <BellIcon className="size-5" />

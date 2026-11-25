@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { connection } from "next/server";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { DAFTAR_TEMA, KUKI_TEMA, normalisasiTema } from "@/lib/tema";
+import { KUKI_TEMA, normalisasiTema, warnaBilahBrowser } from "@/lib/tema";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -23,9 +23,8 @@ export const metadata: Metadata = {
 export async function generateViewport(): Promise<Viewport> {
   const kuki = await cookies();
   const tema = normalisasiTema(kuki.get(KUKI_TEMA)?.value);
-  const info = DAFTAR_TEMA.find((t) => t.id === tema) ?? DAFTAR_TEMA[0];
   return {
-    themeColor: info.warna.background,
+    themeColor: warnaBilahBrowser(tema),
     width: "device-width",
     initialScale: 1,
   };

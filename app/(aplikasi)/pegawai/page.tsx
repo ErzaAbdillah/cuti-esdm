@@ -52,7 +52,7 @@ export default async function DaftarPegawai({ searchParams }: PageProps<"/pegawa
   const kepegawaian = punyaHakAkses(u, "KELOLA_PEGAWAI");
 
   return (
-    <div className="grid gap-5">
+    <div className="grid min-w-0 grid-cols-1 gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-judul">Data Pegawai</h1>

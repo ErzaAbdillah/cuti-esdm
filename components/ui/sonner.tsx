@@ -6,12 +6,12 @@ import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon
 import { adalahTemaTerang, normalisasiTema } from "@/lib/tema"
 
 function bacaTemaSonner(): "light" | "dark" {
-  if (typeof document === "undefined") return "dark"
+  if (typeof document === "undefined") return "light"
   return adalahTemaTerang(normalisasiTema(document.documentElement.dataset.tema)) ? "light" : "dark"
 }
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const [tema, setTema] = useState<"light" | "dark">("dark")
+  const [tema, setTema] = useState<"light" | "dark">("light")
 
   useEffect(() => {
     const sinkron = () => setTema(bacaTemaSonner())

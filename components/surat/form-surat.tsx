@@ -244,7 +244,7 @@ export function FormSurat(p: PropsFormSurat) {
         <p className="text-xs text-slate-600">Cetak atau unduh PDF mengunci versi ini beserta nomornya; penanda tangan mengikuti tanggal surat.</p>
       </div>
 
-      <div className="grid min-w-0 grid-cols-1 gap-2 xl:sticky xl:top-4">
+      <div className="grid min-w-0 grid-cols-1 gap-2 xl:sticky xl:top-20">
         <h2 className="text-sm font-semibold text-judul">Pratinjau A4</h2>
         <PratinjauA4 label="Pratinjau surat">
           <LembarSurat d={lembar} />

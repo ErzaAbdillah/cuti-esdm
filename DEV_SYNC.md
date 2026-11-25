@@ -39,12 +39,96 @@
   - Background Worker: `app/api/tugas/harian/route.ts` (Cron pembaruan status cuti selesai & kirim antrean email)
 
 ## Status Saat Ini
-- **Fase Aktif:** Selesai Dirilis & Terverifikasi Live di Produksi (`https://cuti-esdm.vercel.app`, Commit `705016c`, `4f5f445`, & `42ba5b5` Sinkron di GitHub `origin/main` & Vercel)
-- **Fitur/Modul Aktif:** Paket Keamanan/Penyimpanan `dokumen_berkas` + Cron (Bagian I) & Tema Ke-4 **Notion Monokrom** (Bagian J) — Lulus Verifikasi Produksi (`2026-11-26`)
-- **Penanggung Jawab Terakhir:** Debugger / QA
+- **Fase Aktif:** Commit Sistem 4 Tema Simetris (**Notion Light** Bawaan, **Notion Dark**, **Langit Pagi**, **Langit Malam**) & Sakelar **Siang / Malam** Dikirim ke GitHub (`main`) untuk Tayang Otomatis di Vercel — Siap Cek Pasca-Rilis oleh Debugger / QA (Opsional)
+- **Fitur/Modul Aktif:** Pembaruan Sistem Tema — **Notion Light (Bawaan)**, **Notion Dark**, **Langit Pagi / Langit Malam**, Penghapusan Cursor Dark & Mossy Stone, serta Sakelar **Siang / Malam** (`2026-11-26`)
+- **Penanggung Jawab Terakhir:** Coder
 
 ## 1. Cetak Biru & Skema Data (Diisi oleh Conversation 3 - Architect)
 *Rancangan alur sistem, struktur tabel/database, dan daftar file yang harus dibuat/dieksekusi oleh Coder:*
+
+### K. Pembaruan Sistem Tema: Notion Light (Bawaan), Notion Dark, Langit Pagi/Malam, & Sakelar Siang/Malam (`2026-11-26`)
+1. **Ringkasan & Dampak bagi Pegawai/Admin:**
+   - Merapikan pilihan tema aplikasi agar lebih sederhana, konsisten, dan mendukung pergantian **Siang ☀️ ↔ Malam 🌙** secara seragam di semua tema.
+   - **Tema bawaan baru (default):** **Notion Light** (`notion-light`, hasil perapian dari *Notion Monokrom* sebelumnya) menjadi tampilan utama saat pegawai pertama kali membuka aplikasi atau halaman login.
+   - **Penghapusan tema lama secara aman:** Tema **Cursor Dark** dan **Mossy Stone** dihapus dari daftar pilihan maupun kode warna CSS. Pegawai yang di browsernya masih tersimpan pilihan lama (`cursor-dark`, `mossy-stone`, atau nama lama `notion-monokrom`) akan **otomatis dialihkan mulus ke Notion Light** tanpa error.
+   - **2 Gaya Tema × 2 Mode (Siang & Malam) = 4 Tampilan Simetris:**
+     1. **Gaya Notion (Bawaan — Minimalis Datar):**
+        - Siang: **Notion Light** (`notion-light`) — *"Putih bersih & hitam arang minimalis"*
+        - Malam: **Notion Dark** (`notion-dark`) — *"Arang gelap minimalis nyaman mata"*
+     2. **Gaya Langit (Nuansa Khas ESDM Kalsel — Kaca Lembut):**
+        - Siang: **Langit Pagi** (`langit-pagi`) — *"Biru cerah bersih"*
+        - Malam: **Langit Malam** (`langit-malam`) — *"Biru malam tenang"*
+   - Perubahan murni di sisi tampilan antarmuka (**tidak ada perubahan tabel database** maupun aturan cuti).
+
+2. **Arsitektur Data & Mekanisme Ganti Siang / Malam (`lib/tema.ts` & `components/tata-letak/tombol-tema.tsx`):**
+   - **Tetap Menggunakan 1 Cookie (`tema`) & 1 Atribut `data-tema`:**
+     - Menyimpan langsung nilai `IdTema`: `"notion-light" | "notion-dark" | "langit-pagi" | "langit-malam"`, sehingga tidak mungkin terjadi ketidakcocokan antara cookie gaya dan cookie mode.
+     - Tambahkan tipe `GayaTema = "notion" | "langit"` dan `ModeTema = "siang" | "malam"`, serta field `gaya`, `mode`, dan `namaGaya` pada `InfoTema` di `lib/tema.ts`.
+     - `TEMA_BAWAAN = "notion-light"`.
+     - `normalisasiTema(nilai)`: hanya menerima 4 nilai sah di atas; semua nilai lama (`"cursor-dark"`, `"mossy-stone"`, `"notion-monokrom"`) atau nilai tidak dikenal otomatis dikembalikan ke `"notion-light"`.
+     - Tambahkan fungsi bantu terpusat di `lib/tema.ts`:
+       - `adalahTemaTerang(id)` → `true` untuk `"notion-light"` & `"langit-pagi"`, `false` untuk `"notion-dark"` & `"langit-malam"`.
+       - `gayaTema(id)` & `modeTema(id)` → mengambil gaya (`"notion"`/`"langit"`) dan mode (`"siang"`/`"malam"`).
+       - `temaDari(gaya, mode)` → membentuk `IdTema` dari pasangan gaya + mode.
+       - `balikModeTema(id)` → menukar langsung **Siang ↔ Malam** di dalam gaya yang sedang aktif (`notion-light ↔ notion-dark`, `langit-pagi ↔ langit-malam`).
+       - `gantiGayaTema(idSaatIni, gayaBaru)` → berpindah gaya tema sambil **mempertahankan mode Siang/Malam yang sedang aktif** (misal dari *Notion Dark* pindah ke *Langit* otomatis masuk *Langit Malam*, bukan tiba-tiba silau jadi terang).
+       - `warnaBilahBrowser(id)` → satu sumber kebenaran warna bilah atas browser HP (`meta[name="theme-color"]`) agar `app/layout.tsx` dan `tombol-tema.tsx` selalu identik: `#FBFBFA` (Notion Light), `#191919` (Notion Dark), `#F0F9FF` (Langit Pagi), `#0B1526` (Langit Malam).
+   - **Antarmuka Sakelar Siang/Malam & Menu Tema di Bilah Atas (`components/tata-letak/tombol-tema.tsx`):**
+     - Di dalam `TombolTema` (tanpa perlu mengubah struktur `app/(aplikasi)/layout.tsx`), tampilkan 2 tombol ikon kecil berdampingan rapat (`flex items-center gap-0.5`):
+       1. **Tombol Cepat 1-Klik Siang/Malam (`SunIcon` / `MoonIcon`):** memakai kelas `.ikon-abu size-10 rounded-xl` — 1 klik langsung menukar **Siang ↔ Malam** pada gaya aktif (menampilkan ikon **Bulan** saat mode Siang dengan label *"Ganti ke mode Malam"*, dan ikon **Matahari** saat mode Malam dengan label *"Ganti ke mode Siang"*).
+       2. **Tombol Menu Tema (`PaletteIcon`):** membuka dropdown **Tampilan Aplikasi** yang berisi:
+          - **Sakelar Segmen Mode:** dua tombol berdampingan **`☀️ Siang`** dan **`🌙 Malam`** (status aktif tersorot jelas).
+          - **Pemisah (`DropdownMenuSeparator`)**
+          - **Pilihan Gaya Tema (2 opsi bersih):** **Notion** (*Notion Light / Notion Dark* sesuai mode aktif) dan **Langit** (*Langit Pagi / Langit Malam* sesuai mode aktif), masing-masing menampilkan **3 bulatan pratinjau warna** sesuai mode aktif dengan cincin tepi tegas (`ring-1 ring-foreground/30`).
+
+3. **Palet Warna Lengkap 4 Tema & Struktur CSS Rapi (`app/globals.css`):**
+   - **Bersihkan CSS Lama:** Hapus seluruh blok `html[data-tema="cursor-dark"]` dan `html[data-tema="mossy-stone"]` (beserta aturan `.latar-langit`, `.kaca`, `.bg-white`, dan hover miliknya).
+   - **Struktur `:root` Anti-Tercemar:**
+     - `:root` diisi variabel semantik dasar **Notion Light** (`--background: #fbfbfa`, `--foreground: #2f2e2a`, `--judul: #191919`, `--primary: #191919`, `--card: #ffffff`, `--border: #e5e5e2`, `--radius: 0.875rem`, dsb.) agar fallback awal langsung tampil Notion Light tanpa kilatan biru — **tanpa** menimpa `--color-sky-*`/`--color-slate-*` di `:root` supaya `langit-pagi` tetap memakai warna Tailwind bawaan yang jernih.
+     - Masing-masing dari 4 tema didefinisikan rapi di bloknya sendiri:
+   - **1) `html[data-tema="notion-light"]` (Bawaan — hasil pindah dari `notion-monokrom`):**
+     - Mempertahankan seluruh palet dan polesan Notion Monokrom terang yang sudah teruji: latar datar `#FBFBFA`, kartu `#FFFFFF`, sidebar `#F7F7F5`, garis `#E5E5E2`, teks `#2F2E2A`/`#191919`, tombol utama & tombol penting hitam arang teks putih, lencana pastel pudar ala Notion (`.bg-sky-100.text-sky-900` `#E7F3F8`/`#2B5972`, ungu `#F0ECF7`, hijau `#E6F2EB`, krem `#F7EEDB`, merah `#FBE6E4`), kabut tombol arang tipis di putih & kabut putih tipis di tombol hitam, hover bilah atas `rgb(25 25 25 / 0.06)`.
+     - Pratinjau 3 bulatan: `background: "#FBFBFA"`, `foreground: "#191919"`, `accent: "#787774"`.
+   - **2) `html[data-tema="notion-dark"]` (Baru — Gelap Monokrom Khas Notion):**
+     - `color-scheme: dark;` — datar bersih tanpa kaca buram maupun motif awan.
+     - Permukaan: `--background: #191919`, `--sidebar: #202020`, `--card: #222222`, `--popover: #252525`, `--secondary: #2A2A2A`, `--muted: #262626`, `--accent: #2F2F2F`, `--border: #333333`, `--input: #3F3F3F`.
+     - Teks & tombol monokrom (kontras ≥ 4,5:1): `--judul: #F2F2F0`, `--foreground`/`--brand`: `#E6E6E3`, `--muted-foreground: #9B9A97`, `--primary`/`--sidebar-primary: #EBEBE8` dengan teks gelap `#191919`, tombol penting `--emas: #D6D5D0` dengan teks gelap `#191919` (tetap monokrom), `--merah`/`--destructive: #E06C65`, `--ring: #D6D5D0`.
+     - Kartu `.kaca`: `#222222` datar, garis `#333333`, bayangan halus; `aside.kaca` & laci HP: `#202020`; `header > .kaca`: `#222222`.
+     - Skala `slate` & `sky` dinetralkan ke arang hangat gelap (`#F5F5F3` s.d. `#1F1F1F`) agar tabel & garis pemisah bersih monokrom; lencana status cuti memakai pastel gelap kalem khas Notion Dark: biru `.bg-sky-100.text-sky-900` (`#1D2D3B` / teks `#A6D0EC`), ungu (`#2A2238` / `#C8B6E8`), hijau (`#1C2E25` / `#8EC9AA`), krem (`#332919` / `#E6C37A`), merah (`#382020` / `#F0A5A0`), abu-abu selesai (`#2E2E2E` / `#D4D4D0`).
+     - Permukaan `.bg-white` (input, tombol bingkai, kotak cari — **kecuali `.lembar-cetak` & `.editor-surat`**) diubah ke `#222222` (hover `#2F2F2F`), teks input/select `#E6E6E3`, `select option` `#222222`, `.hover\:bg-white\/60:hover` menjadi `rgb(255 255 255 / 0.08)`.
+     - Efek kabut tombol "Abu Terbawa Angin": permukaan gelap memakai kabut putih/perak tipis (`--abu-kabut: rgb(255 255 255 / 0.11)`, `--abu-aksen: rgb(255 255 255 / 0.22)`, `--abu-pendar: rgb(255 255 255 / 0.11)`), sedangkan **tombol utama & tombol penting** (yang berlatar terang `#EBEBE8`/`#D6D5D0`) memakai **kabut arang tipis** (`--abu-kabut-terang: rgb(25 25 25 / 0.12)`, `--abu-kabut-emas: rgb(25 25 25 / 0.12)`) agar tetap tampak lembut di atas tombol terang; tombol hapus memakai `--abu-kabut-merah: rgb(224 108 101 / 0.2)`.
+     - Pratinjau 3 bulatan: `background: "#191919"`, `foreground: "#E6E6E3"`, `accent: "#787774"`.
+   - **3) `html[data-tema="langit-pagi"]` (Dipertahankan — Pasangan Siang Gaya Langit):**
+     - Mempertahankan penuh tampilan Langit Pagi asli: latar motif awan + gradasi `#F0F9FF → #E0F2FE → #BAE6FD`, kartu kaca buram `rgb(255 255 255 / 0.78)`, tombol `#0369A1`, tombol penting emas Kalsel `#E8B923`, aksen `#0EA5E9`, kabut embun biru muda.
+     - Pratinjau 3 bulatan: `background: "#F0F9FF"`, `foreground: "#0F172A"`, `accent: "#0EA5E9"`.
+   - **4) `html[data-tema="langit-malam"]` (Baru — Pasangan Malam Gaya Langit):**
+     - `color-scheme: dark;` — langit malam biru dongker tenang serasi dengan karakter kaca buram Langit Pagi.
+     - Latar `.latar-langit`: gradasi `#0B1526 → #0F1E36 → #132847` dengan pendar lembut biru langit (`rgb(56 189 248 / 0.14)`).
+     - Permukaan: `--background: #0B1526`, `--card: rgb(16 30 52 / 0.84)`, `--popover: #101E34`, `--sidebar: rgb(13 25 44 / 0.9)`, `--secondary: #172B49`, `--muted: #142540`, `--accent: #1C3458`, `--border: #1F3556`, `--input: #2E4A73`.
+     - Teks & tombol (kontras tinggi): `--judul: #F0F9FF`, `--foreground: #E8F1FA`, `--muted-foreground: #93B0CE`, `--brand`/`--primary`/`--ring`: `#38BDF8` dengan `--primary-foreground: #082032`, tombol penting emas Kalsel `--emas: #F5C542` (`--emas-foreground: #1C1503`), `--merah`/`--destructive: #F87171`.
+     - Kartu `.kaca`: efek kaca gelap biru malam dengan garis tepi `rgb(125 211 252 / 0.18)`; seluruh `.bg-white`, `input`/`textarea`/`select`, `select option`, skala `slate`/`sky`/`indigo`/`emerald`/`amber`/`red`/`rose`, dan `.hover\:bg-white\/60:hover` (`rgb(125 211 252 / 0.14)`) disesuaikan untuk kontras tinggi di latar biru malam (mengecualikan `.lembar-cetak` & `.editor-surat`).
+     - Efek kabut tombol: embun biru langit lembut (`--abu-kabut: rgb(125 211 252 / 0.16)`, `--abu-kabut-terang: rgb(255 255 255 / 0.24)`, `--abu-kabut-emas: rgb(255 250 220 / 0.3)`, `--abu-aksen: rgb(56 189 248 / 0.34)`, `--abu-pendar: rgb(125 211 252 / 0.18)`).
+     - Pratinjau 3 bulatan: `background: "#0B1526"`, `foreground: "#E8F1FA"`, `accent: "#38BDF8"`.
+
+4. **Hal Wajib Dijaga (Anti-Bug & Isolasi):**
+   - **Pop-up Notifikasi (`components/ui/sonner.tsx`):** Ubah nilai awal `useState` dan fallback SSR `bacaTemaSonner()` dari `"dark"` menjadi **`"light"`** (karena bawaan sekarang **Notion Light**), serta tetap sinkron otomatis via `adalahTemaTerang(normalisasiTema(...))` (`"light"` untuk `notion-light` & `langit-pagi`, `"dark"` untuk `notion-dark` & `langit-malam`).
+   - **Isolasi Lembar Cetak A4/Legal & Editor Surat:** `.lembar-cetak`, `@media print`, dan `.editor-surat` tetap 100% putih murni `#FFFFFF`, teks hitam pekat `#000000`, tanpa efek kabut tombol di ke-4 tema (termasuk `notion-dark` & `langit-malam`). Perbarui selector `.lembar-cetak .bilah-cetak` dari `notion-monokrom` menjadi `notion-light` (dan pastikan tombol di `.bilah-cetak` tetap tegas terbaca di `notion-dark` & `langit-malam` tanpa menyentuh kertas cetaknya).
+   - **Tidak Ada Kedipan Warna (*No Flash*):** `app/layout.tsx` membaca `KUKI_TEMA` lewat `normalisasiTema()` di server dan langsung merender `<html data-tema={tema}>` + `themeColor: warnaBilahBrowser(tema)`.
+
+5. **Daftar 6 File Target (untuk Coder):**
+   1. **`lib/tema.ts`** *(Ubah)*: Definisikan 4 tema (`notion-light`, `notion-dark`, `langit-pagi`, `langit-malam`), `GayaTema`, `ModeTema`, `TEMA_BAWAAN = "notion-light"`, normalisasi tema lama (`cursor-dark`, `mossy-stone`, `notion-monokrom`) → `"notion-light"`, serta helper `adalahTemaTerang`, `gayaTema`, `modeTema`, `temaDari`, `balikModeTema`, `gantiGayaTema`, dan `warnaBilahBrowser`.
+   2. **`app/globals.css`** *(Ubah)*: Hapus blok `cursor-dark` & `mossy-stone`; ubah `:root` ke variabel dasar Notion Light; ganti `notion-monokrom` → `notion-light`; tambah blok lengkap `notion-dark`, `langit-pagi`, dan `langit-malam` (termasuk `.latar-langit`, `.kaca`, `.bg-white`, input/select, hover, lencana status, dan token kabut `--abu-*`) dengan pengecualian ketat terhadap `.lembar-cetak` dan `.editor-surat`.
+   3. **`components/tata-letak/tombol-tema.tsx`** *(Ubah)*: Tambahkan tombol cepat 1-klik **Siang/Malam** (`SunIcon`/`MoonIcon`) di sebelah ikon palet, serta perbarui isi dropdown menjadi sakelar **Siang / Malam** + pilihan 2 gaya (**Notion** & **Langit**) lengkap dengan 3 bulatan pratinjau warna yang mengikuti mode aktif, dan gunakan `warnaBilahBrowser(id)` untuk `meta[name="theme-color"]`.
+   4. **`components/ui/sonner.tsx`** *(Ubah)*: Ubah default state & fallback SSR menjadi `"light"` mengikuti tema bawaan baru `notion-light`, tetap memakai `adalahTemaTerang(normalisasiTema(...))`.
+   5. **`app/layout.tsx`** *(Ubah)*: Gunakan `warnaBilahBrowser(tema)` pada `generateViewport()` agar warna bilah atas browser HP identik dengan `tombol-tema.tsx` di semua 4 tema.
+   6. **`tests/unit/tema.test.ts`** *(Ubah)*: Perbarui seluruh pengujian unit untuk memverifikasi `TEMA_BAWAAN === "notion-light"`, daftar tepat 4 tema (`notion-light`, `notion-dark`, `langit-pagi`, `langit-malam`), penghapusan `cursor-dark` & `mossy-stone`, normalisasi nilai lama (`cursor-dark`, `mossy-stone`, `notion-monokrom`) → `"notion-light"`, serta pengujian `adalahTemaTerang`, `balikModeTema`, `gantiGayaTema`, `temaDari`, dan `warnaBilahBrowser`.
+
+6. **Skenario Pengecekan Wajib (Coder, UI/UX Stylist, & Debugger/QA):**
+   - Uji pengguna baru (tanpa cookie) & pengguna dengan cookie lama (`tema=cursor-dark`, `tema=mossy-stone`, `tema=notion-monokrom`): halaman `/login` dan `/beranda` otomatis terbuka dalam **Notion Light** tanpa error.
+   - Uji tombol cepat 1-klik **Siang ↔ Malam** di bilah atas: menukar **Notion Light ↔ Notion Dark** dan **Langit Pagi ↔ Langit Malam** secara instan; uji pindah gaya **Notion ↔ Langit** di dropdown saat mode Malam aktif tetap bertahan di mode Malam (**Notion Dark ↔ Langit Malam**).
+   - Cek tampilan di layar laptop (`1280×800`) dan HP (`390×844`) pada `/beranda`, `/cuti/ajukan`, `/cuti/proses`, `/pegawai`, `/admin/hak-akses`: pastikan form, dropdown `<select>`, tabel, lencana status cuti, notifikasi pop-up (*toast*), dan efek kabut tombol terbaca jernih di ke-4 tema (khususnya **Notion Dark** dan **Langit Malam**), serta bilah atas HP tidak berdesakan.
+   - Cek `/cetak/formulir/...` (atau `/cetak/rekap-cuti`) dan editor surat saat **Notion Dark** & **Langit Malam** aktif: kertas tetap putih bersih `#FFFFFF`, teks hitam pekat `#000000`, bebas efek kabut tombol.
+   - Jalankan `npm run typecheck`, `npm run lint`, `npm test`, dan `npm run build` — lulus bersih tanpa galat.
 
 ### J. Tema Tampilan Ke-4: Notion Monokrom (`notion-monokrom`) (`2026-11-26`)
 1. **Ringkasan & Dampak bagi Pegawai/Admin:**
@@ -439,6 +523,19 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 - `app/(aplikasi)/admin/hak-akses/page.tsx`: Halaman Admin `/admin/hak-akses` untuk melihat dan mengelola matriks hak akses seluruh pegawai berakun sekaligus.
 - `tests/unit/hak-akses.test.ts`: Unit test Vitest untuk konstanta hak akses dan penyaringan menu navigasi `menuUntuk(peran, hakAkses)`.
 
+### File Diubah (Pembaruan Sistem Tema: 4 Tema Simetris & Sakelar Siang/Malam — `2026-11-26`)
+- `lib/tema.ts`: Merapikan daftar tema menjadi 4 kombinasi simetris (`notion-light` sebagai `TEMA_BAWAAN`, `notion-dark`, `langit-pagi`, `langit-malam`), menghapus tema lama (`cursor-dark`, `mossy-stone`, `notion-monokrom`) dengan pengalihan otomatis aman ke `notion-light` lewat `normalisasiTema()`, serta menambahkan tipe `GayaTema` (`"notion" | "langit"`), `ModeTema` (`"siang" | "malam"`), dan fungsi bantu `adalahTemaTerang()`, `gayaTema()`, `modeTema()`, `temaDari()`, `balikModeTema()`, `gantiGayaTema()`, dan `warnaBilahBrowser()`.
+- `app/globals.css`:
+  - Menghapus seluruh blok warna dan aturan milik `cursor-dark` dan `mossy-stone`.
+  - Menyetel `:root` memakai variabel semantik dasar **Notion Light** (tanpa menimpa skala warna Tailwind `--color-sky-*` / `--color-slate-*` agar `langit-pagi` tetap jernih) serta latar bawaan polos tanpa kilatan biru.
+  - Mengubah `notion-monokrom` menjadi `notion-light`, dan menambahkan blok warna lengkap untuk `notion-dark`, `langit-pagi`, dan `langit-malam` (termasuk `.latar-langit`, `.kaca`, sidebar/laci HP, permukaan `.bg-white`, teks `input`/`textarea`/`select`/`option`, hover ramah layar sentuh, lencana status cuti, serta token kabut tombol `--abu-*` termasuk kabut arang tipis pada tombol terang di `notion-dark`).
+  - Mempertahankan isolasi mutlak `.lembar-cetak`, `@media print`, dan `.editor-surat` (putih murni `#FFFFFF`, teks hitam `#000000`, tanpa efek kabut tombol di ke-4 tema) serta memperbarui `.lembar-cetak .bilah-cetak` agar tombol cetak tetap tajam di `notion-light`, `notion-dark`, `langit-pagi`, dan `langit-malam`.
+- `components/tata-letak/tombol-tema.tsx`: Menambahkan tombol cepat 1-klik **Siang/Malam** (`MoonIcon`/`SunIcon`, `.ikon-abu size-10 rounded-xl`) di sebelah ikon palet, memperbarui isi menu dropdown **Tampilan Aplikasi** menjadi sakelar segmen **Siang / Malam** + 2 pilihan gaya (**Notion** & **Langit**) dengan 3 bulatan pratinjau warna yang mengikuti mode aktif (`ring-1 ring-foreground/30`), serta memakai `warnaBilahBrowser(id)` untuk memperbarui `meta[name="theme-color"]`.
+- `components/ui/sonner.tsx`: Mengubah nilai awal state dan fallback SSR `bacaTemaSonner()` menjadi `"light"` agar serasi dengan tema bawaan baru `notion-light`, tetap sinkron otomatis via `adalahTemaTerang(normalisasiTema(...))`.
+- `app/layout.tsx`: Menggunakan `warnaBilahBrowser(tema)` pada `generateViewport()` agar warna bilah atas browser HP selalu identik dengan `tombol-tema.tsx` di ke-4 tema.
+- `tests/unit/tema.test.ts`: Memperbarui seluruh pengujian unit (8 skenario) untuk memverifikasi 4 tema baru, `TEMA_BAWAAN === "notion-light"`, pengalihan otomatis nilai tema lama (`cursor-dark`, `mossy-stone`, `notion-monokrom`) → `"notion-light"`, serta seluruh helper (`adalahTemaTerang`, `gayaTema`, `modeTema`, `temaDari`, `balikModeTema`, `gantiGayaTema`, `warnaBilahBrowser`).
+- **Verifikasi Lokal Coder (`2026-11-26`):** Sisa referensi tema lama `0`, `npm run typecheck` OK, `npm run lint` OK (0 error/warning), `npm test` **141/141 lulus** (16 file uji), dan `npm run build` OK (44 rute).
+
 ### File Diubah (Tema Tampilan Ke-4: Notion Monokrom — `2026-11-26`)
 - `lib/tema.ts`: Menambahkan `"notion-monokrom"` ke tipe `IdTema` dan `DAFTAR_TEMA` (*Notion Monokrom* — *"Putih bersih & hitam arang minimalis"*, palet `#FBFBFA` / `#191919` / `#787774`), mempertahankan `TEMA_BAWAAN = "cursor-dark"`, memperbarui `normalisasiTema()`, serta mengekspor helper `adalahTemaTerang(id)` (`"langit-pagi"` dan `"notion-monokrom"`).
 - `app/globals.css`:
@@ -574,6 +671,21 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 
 ## 3. Catatan Polesan Visual (Diisi oleh Conversation 4 - UI/UX Stylist)
 *Daftar komponen UI, styling, responsivitas, atau animasi yang baru diperbarui:*
+- **Polesan & Verifikasi Browser Sistem 4 Tema Simetris (Notion Light/Dark & Langit Pagi/Malam) + Tombol Cepat Siang/Malam (`2026-11-26`):**
+  - `app/(aplikasi)/layout.tsx`, `components/tata-letak/tombol-tema.tsx`, & `components/tata-letak/menu-pengguna.tsx`:
+    - **Bilah atas HP lebih lega & judul tidak lagi terpotong:** Dengan hadirnya 2 tombol tema (ikon Bulan/Matahari + ikon Palet), sebelumnya judul bilah atas di HP `390×844` sempat terpotong menjadi `"Layanan C..."`. Kini judul khusus layar HP memakai **`Cuti ESDM`** (selaras dengan logo menu samping, tetap menampilkan **`Layanan Cuti ESDM`** di layar tablet), jarak antar ikon dirapikan (`gap-1 px-1.5 sm:gap-2 sm:px-3`), dan ukuran seluruh tombol ikon di HP diseragamkan (`size-9 sm:size-10`, avatar `px-1 sm:px-1.5`), sehingga judul **`Cuti ESDM`** tampil utuh lega tanpa berdesakan.
+  - `components/form/pilihan.tsx`:
+    - **Perataan tengah teks pilihan dropdown (`<select>`):** Menambahkan `content-center py-1.5 leading-normal` agar teks dan panah di dalam kotak dropdown (*Semua unit*, *Semua jabatan*, *Semua status*, *Cuti Tahunan*, *Aktif*, dsb.) duduk persis di tengah secara vertikal di keempat tema, baik di layar laptop maupun HP.
+  - `app/globals.css`:
+    - **Kedalaman kontras kotak isian di `Notion Dark`:** Menggelapkan sedikit permukaan kotak isian aktif (`input`/`textarea`/`select` ke `#1B1B1B`) dan membedakan kotak terkunci/read-only (`#262626`, seperti baris Tahun/Sisa cuti tahunan) terhadap permukaan kartu (`#222222`) agar setiap kolom form yang bisa diketik dan yang terkunci langsung mudah dibedakan mata.
+  - `components/cuti/form-formulir.tsx`, `components/surat/form-surat.tsx`, & `components/admin/form-template.tsx`:
+    - **Pratinjau kertas A4 tidak lagi tertutup bilah atas saat digulir:** Mengubah posisi tempel kolom pratinjau di layar lebar dari `xl:top-4` menjadi `xl:top-20` sehingga judul *"Pratinjau formulir (A4)"* dan bagian atas kertas surat selalu berhenti rapi tepat di bawah bilah profil atas saat pegawai menggulir form.
+  - `app/(aplikasi)/pegawai/page.tsx` & `app/(aplikasi)/cuti/saldo/page.tsx`:
+    - Menambahkan pengaman `min-w-0 grid-cols-1` pada pembungkus utama halaman bertabel lebar agar di layar HP sempit halaman tidak pernah ikut melebar ke samping.
+  - *Verifikasi:* `npm run typecheck`, `npm run lint` (0 error/warning), dan `npm test` (**141/141 lulus**) berjalan bersih. Pengecekan langsung di browser lokal (**Laptop `1280×800` & HP `390×844`**, **0 galat konsol**) memverifikasi:
+    - Tema bawaan `/login` otomatis terbuka dalam **Notion Light** (`#FBFBFA`), tombol cepat 1-klik **Siang ↔ Malam** langsung menukar **Notion Light ↔ Notion Dark** (`#191919`) dan **Langit Pagi** (`#F0F9FF`) **↔ Langit Malam** (`#0B1526`), serta pindah gaya **Notion ↔ Langit** di dropdown **Tampilan Aplikasi** saat mode Malam tetap bertahan di mode Malam.
+    - Halaman `/login`, `/login?google=gagal`, `/beranda` (admin & pegawai), `/cuti/ajukan` (termasuk pratinjau A4 langsung tampil & sticky rapi di bawah bilah atas, serta hover kabut arang tipis pada tombol terang di *Notion Dark*), `/cuti/proses`, `/pegawai`, `/admin/hak-akses` (termasuk pop-up *toast* mode gelap tajam terbaca), `/dokumen/organisasi`, `/cetak/rekap-cuti`, dan editor template surat (`/admin/surat/template/[id]`) — seluruh kertas cetak & kotak `.editor-surat` tetap putih murni `#FFFFFF` bertulisan hitam pekat `#000000` bebas efek kabut, laci menu HP `#202020` (*Notion Dark*) & `#0D192C` (*Langit Malam*) rapi, dan 0 gulir samping di layar HP.
+    - *Catatan untuk Debugger/QA:* Database lokal masih memiliki `0` pengajuan cuti, sehingga pengecekan langsung seluruh 8 lencana status cuti pada baris nyata di `/cuti/proses`, editor surat pengajuan `/cuti/[id]/surat/...`, `/cetak/formulir/[id]`, pengalihan cookie tema lama (`tema=cursor-dark` / `mossy-stone` / `notion-monokrom` → `notion-light`), serta `npm run build` siap diuji tuntas oleh **Debugger / QA**.
 - **Polesan & Verifikasi Browser Tema Ke-4 "Notion Monokrom" (`2026-11-26`):**
   - `app/globals.css`:
     - **Bilah profil atas solid putih saat digulir (`header > .kaca`):** Mengubah latar bilah atas pada Notion Monokrom menjadi putih solid `#FFFFFF` dengan bayangan super lembut (tanpa efek tembus pandang), sehingga teks halaman/formulir tidak lagi membayang tembus di belakang bilah atas saat layar digulir.
@@ -641,6 +753,14 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 - [ ] **[CATATAN] [DEV_SYNC.md bagian 1.C]**: Blueprint awal menyebut route `/cuti/rekap`, namun rekap terintegrasi pada `/cuti/saldo` dan `/cetak/rekap-cuti`.
 
 ## 5. Riwayat Selesai (Resolved)
+- [x] **[VERIFIKASI QA - Sistem 4 Tema Simetris (Notion Light/Dark & Langit Pagi/Malam), Sakelar Siang/Malam, & 8 Status Cuti] [2026-11-26]**:
+  - **Audit Kode, Penghapusan Tema Lama, & Build Produksi:** Pencarian kode (`git grep -i`) memastikan **0 sisa referensi** `cursor-dark`, `mossy-stone`, maupun `notion-monokrom` di seluruh kode aplikasi (hanya tersisa pengujian pengalihan resmi di `tests/unit/tema.test.ts`). Seluruh pemeriksaan otomatis lulus bersih: `npm run typecheck` OK, `npm run lint` OK (0 error/warning), `npm test` **141/141 lulus** (16 file test, termasuk 8 unit test `tests/unit/tema.test.ts` yang memverifikasi pengalihan `cursor-dark`, `mossy-stone`, `notion-monokrom`, & kosong → `notion-light`), serta `npm run build` **OK (44/44 rute)**.
+  - **Pengalihan Cookie Tema Lama & Pengunjung Baru Tanpa Kilatan Warna:** Audit alur server `app/layout.tsx` (`generateViewport` + `RootLayout`), `app/(aplikasi)/layout.tsx`, dan `PenyediaTema` bersama uji langsung `/login` membuktikan pengunjung baru maupun pemilik cookie tema lama langsung dirender sejak server pada `data-tema="notion-light"` (`meta[name="theme-color"]="#FBFBFA"`) tanpa error maupun kedipan warna.
+  - **Uji Browser Lokal 4 Tema Simetris & 8 Data Pengajuan Cuti Uji (`1280×800` / `1366×800` Laptop & `390×844` HP, 0 galat konsol, 0 gagal HTTP `>= 400`):**
+    - **Sakelar 1-Klik Siang/Malam & Bilah Atas HP:** Klik tombol Bulan/Matahari langsung menukar **Notion Light ↔ Notion Dark** (`#191919`) dan **Langit Pagi** (`#F0F9FF`) **↔ Langit Malam** (`#0B1526`); pindah gaya **Notion ↔ Langit** di dropdown *Tampilan Aplikasi* tetap mempertahankan mode Siang/Malam yang sedang aktif. Di HP `390×844`, judul **`Cuti ESDM`** tampil utuh tanpa terpotong bersama 5 kontrol header (`x=22,8..367,6 px`), serta laci menu HP (`#202020` di Notion Dark, `#0D192C` di Langit Malam) dan dropdown pas di dalam layar tanpa gulir samping.
+    - **8 Lencana Status Cuti & Dropdown `<select>` (`/cuti/proses` & `/cuti/[id]`):** Seluruh **8 lencana status cuti** (*Diajukan*, *Disetujui Atasan*, *Diverifikasi Kepegawaian*, *Disetujui*, *Surat Terbit*, *Selesai*, *Ditolak*, *Dibatalkan*) diuji pada ke-4 tema (khususnya **Notion Dark** & **Langit Malam**) — kontras tajam, lembut di mata, dan mudah dibedakan; teks pilihan `<select>` (*Semua status*) duduk rata tengah vertikal; layar HP bebas gulir halaman (`375,2 px <= 390 px` di `/cuti/proses`, `/pegawai`, `/cuti/saldo`, dan `/cuti/[id]`).
+    - **Editor Surat Pengajuan (`/cuti/[id]/surat/SURAT_IZIN`), Sticky A4 (`xl:top-20`), & Cetak Formulir (`/cetak/formulir/[id]`):** Kotak isian di *Notion Dark* kontras tegas terhadap kartu, `.editor-surat` (beserta `.blok-terkunci` & `.isian-terkunci`) dan kertas A4 `.lembar-cetak` terkunci putih murni `#FFFFFF` dengan teks hitam pekat `#000000` tanpa efek kabut tombol di *Notion Dark* maupun *Langit Malam* (bilah cetak hitam arang di Notion, biru di Langit), serta kolom pratinjau A4 berhenti rapi di bawah bilah atas saat layar digulir (`header bottom = 68 px`, `Pratinjau A4 y = 80 px`).
+  - **Pembersihan:** Seluruh 8 data pengajuan uji sementara (`[QA-TEMA-NOTION]`) telah dihapus bersih dari database Docker lokal dan server dev lokal telah dihentikan. Status: **Lulus 100% — Siap commit, push ke GitHub `main`, & rilis ke Vercel**.
 - [x] **[VERIFIKASI QA PASCA-RILIS PRODUKSI - Paket Bagian I (`705016c`, `4f5f445`) & Tema Ke-4 "Notion Monokrom" (`42ba5b5`)] [2026-11-26]**:
   - **Sinkronisasi GitHub & Deploy Vercel:** `git ls-remote origin refs/heads/main` terkonfirmasi menunjuk tepat ke commit terbaru **`42ba5b5`** (`main...origin/main` sinkron), dan website produksi `https://cuti-esdm.vercel.app` aktif menayangkan rilis penuh Bagian I + Bagian J.
   - **Uji Browser Langsung Produksi (100% Hanya Baca, Nol Perubahan Data, 0 Galat Konsol, 0 Gagal HTTP `>= 400`):**

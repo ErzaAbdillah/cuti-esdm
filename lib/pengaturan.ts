@@ -41,7 +41,14 @@ export const DEF_PENGATURAN: DefPengaturan[] = [
   { kunci: "surat.kode_instansi", kelompok: "Surat", label: "Kode instansi", deskripsi: "Bagian kode instansi pada nomor surat.", tipe: "teks", nilaiAwal: "DESDM" },
 
   // ── Dokumen ──
-  { kunci: "dokumen.maks_ukuran_mb", kelompok: "Dokumen", label: "Ukuran maks. unggahan (MB)", deskripsi: "", tipe: "angka", nilaiAwal: 10 },
+  {
+    kunci: "dokumen.maks_ukuran_mb",
+    kelompok: "Dokumen",
+    label: "Ukuran maks. unggahan (MB)",
+    deskripsi: "Batas ukuran per berkas (maks. 4 MB di server online Vercel; hingga 10 MB di server lokal/Docker).",
+    tipe: "angka",
+    nilaiAwal: 10,
+  },
 ];
 
 export const PETA_PENGATURAN = new Map(DEF_PENGATURAN.map((d) => [d.kunci, d]));

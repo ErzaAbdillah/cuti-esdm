@@ -2,9 +2,9 @@ import "server-only";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import type { LevelSurat, TahapPersetujuan } from "@/lib/generated/prisma/enums";
 import { hariIniWita } from "@/lib/tanggal";
-import { type PenggunaSaatIni, punyaHakAkses, punyaPeran } from "../auth/pengguna";
+import { type PenggunaSaatIni, punyaHakAkses } from "../auth/pengguna";
 import { db } from "../db";
-import { userDariPegawai, userDenganPeran } from "../notifikasi";
+import { userDariPegawai, userDenganHakAkses } from "../notifikasi";
 import { alurTahap } from "./cuti";
 import { pejabatBerlaku } from "./pejabat";
 
@@ -33,10 +33,10 @@ export async function bolehPutuskan(u: PenggunaSaatIni, p: PengajuanRingkas, tah
     case "ATASAN_LANGSUNG":
       return !!u.pegawai && u.pegawai.id === p.atasanLangsungId;
     case "KEPEGAWAIAN":
-      return punyaHakAkses(u, "PROSES_CUTI") || punyaPeran(u, "KEPEGAWAIAN");
+      return punyaHakAkses(u, "PROSES_CUTI");
     case "PEJABAT_BERWENANG":
-      // Pemegang hak PROSES_CUTI, Kepegawaian & Admin selalu boleh memutuskan langsung (alur ringkas kantor).
-      if (punyaHakAkses(u, "PROSES_CUTI") || punyaPeran(u, "KEPEGAWAIAN", "ADMIN")) return true;
+      // Pemegang hak PROSES_CUTI (dan Superadmin) selalu boleh memutuskan langsung (alur ringkas kantor).
+      if (punyaHakAkses(u, "PROSES_CUTI")) return true;
       if ((await modeTahap(p.levelSurat, tahap, tx)) === "EKSTERNAL") return false;
       return (await userPejabat(p.levelSurat, tx)) === u.userId;
   }
@@ -48,8 +48,7 @@ export async function penerimaTahap(p: PengajuanRingkas, tahap: TahapPersetujuan
     case "ATASAN_LANGSUNG":
       return [await userDariPegawai(p.atasanLangsungId, tx)].filter((x): x is string => !!x);
     case "KEPEGAWAIAN":
-      return userDenganPeran("KEPEGAWAIAN", tx);
     case "PEJABAT_BERWENANG":
-      return [...new Set([...(await userDenganPeran("KEPEGAWAIAN", tx)), ...(await userDenganPeran("ADMIN", tx))])];
+      return userDenganHakAkses("PROSES_CUTI", tx);
   }
 }

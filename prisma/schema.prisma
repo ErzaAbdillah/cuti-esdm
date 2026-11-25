@@ -822,7 +822,8 @@ model AksesFolder {
   @@map("akses_folder")
 }
 
-/// File disimpan di STORAGE_DIR/<nama_file_simpan> (UUID, di luar folder publik).
+/// Metadata dokumen. Isi berkas disimpan di tabel `dokumen_berkas` (mode default `db`, aman di Vercel)
+/// atau di STORAGE_DIR/<nama_file_simpan> (mode `disk`, di luar folder publik).
 model Dokumen {
   id               String                  @id @default(uuid()) @db.Uuid
   ruang            RuangDokumen
@@ -849,6 +850,7 @@ model Dokumen {
   pengajuanCuti PengajuanCuti?        @relation(fields: [pengajuanCutiId], references: [id])
   diunggahOleh  User                  @relation("DokumenDiunggah", fields: [diunggahOlehId], references: [id])
   dihapusOleh   User?                 @relation("DokumenDihapus", fields: [dihapusOlehId], references: [id])
+  berkas        DokumenBerkas?
   keterangan    KeteranganKehadiran[]
 
   @@index([pemilikPegawaiId])
@@ -856,6 +858,18 @@ model Dokumen {
   @@index([pengajuanCutiId])
   @@index([dihapusPada])
   @@map("dokumen")
+}
+
+/// Isi biner berkas dokumen (terpisah dari metadata agar halaman daftar tetap ringan).
+/// Sudah terenkripsi AES-256-GCM bila `dokumen.terenkripsi = true`.
+model DokumenBerkas {
+  dokumenId  String   @id @map("dokumen_id") @db.Uuid
+  data       Bytes
+  dibuatPada DateTime @default(now()) @map("dibuat_pada") @db.Timestamptz
+
+  dokumen Dokumen @relation(fields: [dokumenId], references: [id], onDelete: Cascade)
+
+  @@map("dokumen_berkas")
 }
 
 // ───────────────────── AUDIT, PENGATURAN, NOTIFIKASI ─────────────────────

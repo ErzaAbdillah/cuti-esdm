@@ -30,12 +30,12 @@ export async function dataBeranda(u: PenggunaSaatIni) {
       : [],
   ]);
 
-  // Antrean persetujuan: atasan, Kepegawaian, dan pejabat penyetuju (mis. Kepala Dinas).
+  // Antrean persetujuan: atasan, pemegang hak PROSES_CUTI, dan pejabat penyetuju (mis. Kepala Dinas).
   const antrean = (await antreanSaya(u)).length;
-  const menunggu = antrean > 0 || punyaHakAkses(u, "PROSES_CUTI") || punyaPeran(u, "ATASAN", "KEPEGAWAIAN") ? antrean : null;
+  const menunggu = antrean > 0 || punyaHakAkses(u, "PROSES_CUTI") || punyaPeran(u, "ATASAN") ? antrean : null;
 
-  // Kepegawaian: jumlah pegawai yang sedang menjalani cuti hari ini.
-  const sedangCuti = punyaHakAkses(u, "KELOLA_SALDO_CUTI", "PROSES_CUTI") || punyaPeran(u, "KEPEGAWAIAN")
+  // Pemegang hak Saldo/Proses Cuti: jumlah pegawai yang sedang menjalani cuti hari ini.
+  const sedangCuti = punyaHakAkses(u, "KELOLA_SALDO_CUTI", "PROSES_CUTI")
     ? await db.pengajuanCuti.count({ where: { status: { in: ["DISETUJUI", "SURAT_TERBIT"] }, tanggalMulai: { lte: hariIni }, tanggalSelesai: { gte: hariIni } } })
     : null;
 

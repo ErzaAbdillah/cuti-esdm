@@ -13,7 +13,9 @@ export interface UnitPohon {
 export function unitDaftarHadir(unitId: string, units: Map<string, UnitPohon>): string | null {
   let u = units.get(unitId);
   if (!u?.parentId) return null;
-  while (u.parentId) {
+  const dikunjungi = new Set<string>();
+  while (u.parentId && !dikunjungi.has(u.id)) {
+    dikunjungi.add(u.id);
     const induk = units.get(u.parentId);
     if (!induk?.parentId) return u.id;
     u = induk;

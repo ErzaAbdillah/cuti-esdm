@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { batasUkuranDokumenByte } from "@/lib/dokumen";
 import type { HasilForm } from "@/lib/validasi/auth";
 import { batalkanCuti, catatKeputusanEksternal, setujuiCuti, tolakCuti } from "@/server/aksi/cuti";
 
@@ -118,22 +119,47 @@ export function AksiPengajuan({ id, bolehSetujui, bolehTolak, bolehBatal }: { id
   );
 }
 
-export function FormKeputusanEksternal({ id, tujuan }: { id: string; tujuan: string }) {
+export function FormKeputusanEksternal({ id, tujuan, maksMb }: { id: string; tujuan: string; maksMb: number }) {
+  const [galatUkuran, setGalatUkuran] = useState<string | null>(null);
+  const maksByte = batasUkuranDokumenByte(maksMb);
   const [hasil, aksi, proses] = useActionState<HasilForm, FormData>(async (s, fd) => {
+    const berkas = fd.get("berkas");
+    if (berkas instanceof File && berkas.size > maksByte) {
+      const pesan = `Ukuran surat izin maksimal ${maksMb} MB. Perkecil atau kompres berkas terlebih dahulu.`;
+      setGalatUkuran(pesan);
+      toast.error(pesan);
+      return { galatField: { berkas: pesan } };
+    }
+    setGalatUkuran(null);
     const h = await catatKeputusanEksternal(id, s, fd);
     if (h.sukses) toast.success(h.sukses);
     else if (h.galat) toast.error(h.galat);
     return h;
   }, {});
   const g = hasil.galatField ?? {};
+  const galatBerkas = galatUkuran ?? g.berkas;
   return (
     <form action={aksi} className="grid gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-4">
       <p className="text-sm font-semibold text-amber-950">Catat keputusan {tujuan}</p>
       <Bidang label="Nomor surat izin" name="nomorSurat" galat={g.nomorSurat} placeholder="mis. 800.1.11.4/1234/BKD/2026" />
       <div className="grid gap-1.5">
-        <Label htmlFor={`berkas-${id}`}>Surat izin (PDF/JPG/PNG, maks. 10 MB)</Label>
-        <input id={`berkas-${id}`} type="file" name="berkas" accept=".pdf,.jpg,.jpeg,.png" className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-sky-100 file:px-3 file:py-2 file:font-semibold file:text-judul hover:file:bg-sky-200" />
-        {g.berkas && <p className="text-xs font-medium text-destructive">{g.berkas}</p>}
+        <Label htmlFor={`berkas-${id}`}>Surat izin (PDF/JPG/PNG, maks. {maksMb} MB)</Label>
+        <input
+          id={`berkas-${id}`}
+          type="file"
+          name="berkas"
+          accept=".pdf,.jpg,.jpeg,.png"
+          onChange={(e) => {
+            const f = e.currentTarget.files?.[0];
+            if (f && f.size > maksByte) {
+              setGalatUkuran(`Ukuran surat izin maksimal ${maksMb} MB. Perkecil atau kompres berkas terlebih dahulu.`);
+            } else {
+              setGalatUkuran(null);
+            }
+          }}
+          className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-sky-100 file:px-3 file:py-2 file:font-semibold file:text-judul hover:file:bg-sky-200"
+        />
+        {galatBerkas && <p className="text-xs font-medium text-destructive">{galatBerkas}</p>}
       </div>
       <Bidang label="Catatan (opsional)" name="catatan" />
       <Button type="submit" variant="penting" disabled={proses} className="justify-self-start">

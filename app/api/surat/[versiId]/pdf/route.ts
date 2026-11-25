@@ -10,6 +10,7 @@ import { logoUntukPdf } from "@/server/surat/data";
 export async function GET(req: Request, ctx: RouteContext<"/api/surat/[versiId]/pdf">) {
   const u = await penggunaSaatIni();
   if (!u) return new Response("Sesi berakhir. Silakan login kembali.", { status: 401 });
+  if (u.wajibGantiPassword) return new Response("Ganti password sementara terlebih dahulu di halaman Profil.", { status: 403 });
   const { versiId } = await ctx.params;
   if (!/^[0-9a-f-]{36}$/i.test(versiId)) return new Response("Tidak ditemukan.", { status: 404 });
   const d = await versiTerkunci(versiId);

@@ -5,14 +5,14 @@ import { LABEL_STATUS_KEPEGAWAIAN } from "@/lib/domain/pegawai";
 import { LABEL_LEVEL_SURAT } from "@/lib/label";
 import { formatTanggal, hariIniWita } from "@/lib/tanggal";
 import { catatAudit } from "@/server/audit";
-import { punyaHakAkses, punyaPeran, wajibLogin } from "@/server/auth/pengguna";
+import { punyaHakAkses, wajibLogin } from "@/server/auth/pengguna";
 import { bacaFilter, semuaPegawaiUntukEkspor } from "@/server/kueri/pegawai";
 
 export const metadata: Metadata = { title: "Cetak Data Pegawai" };
 
 export default async function CetakPegawai({ searchParams }: PageProps<"/cetak/pegawai">) {
   const u = await wajibLogin();
-  if (!punyaHakAkses(u, "KELOLA_PEGAWAI") && !punyaPeran(u, "KEPEGAWAIAN", "ADMIN")) {
+  if (!punyaHakAkses(u, "KELOLA_PEGAWAI")) {
     redirect("/akses-ditolak");
   }
   const f = bacaFilter(await searchParams);

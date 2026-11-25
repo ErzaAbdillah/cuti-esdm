@@ -96,10 +96,16 @@ export async function simpanSurat(masukan: z.input<typeof skema>): Promise<Hasil
       }
       if (m.niat === "simpan" || versi.dikunciPada) return { versi, baru: false, sama };
 
-      // Kunci: beri nomor, bekukan lembar, catat audit.
+      // Kunci: beri nomor secara terantre per tahun, bekukan lembar, catat audit.
       if (surat.nomorUrut == null && !ubahNomor && (await nomorOtomatis())) {
-        const maks = await tx.suratCuti.aggregate({ _max: { nomorUrut: true }, where: { tahun } });
-        surat = await tx.suratCuti.update({ where: { id: surat.id }, data: { nomorUrut: (maks._max.nomorUrut ?? 0) + 1, tahun } });
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`surat_nomor_${tahun}`}))`;
+        const segar = await tx.suratCuti.findUnique({ where: { id: surat.id } });
+        if (segar && segar.nomorUrut == null) {
+          const maks = await tx.suratCuti.aggregate({ _max: { nomorUrut: true }, where: { tahun } });
+          surat = await tx.suratCuti.update({ where: { id: surat.id }, data: { nomorUrut: (maks._max.nomorUrut ?? 0) + 1, tahun } });
+        } else if (segar) {
+          surat = segar;
+        }
       }
       const beku = await susunLembar({ template: t, pengajuan: p, isiHtml, isian, nomorUrut: surat.nomorUrut });
       versi = await tx.suratCutiVersi.update({

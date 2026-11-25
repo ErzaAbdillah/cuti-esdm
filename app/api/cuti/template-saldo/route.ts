@@ -1,14 +1,15 @@
 import type { NextRequest } from "next/server";
 import * as XLSX from "xlsx";
 import { hariIniWita } from "@/lib/tanggal";
-import { penggunaSaatIni, punyaHakAkses, punyaPeran } from "@/server/auth/pengguna";
+import { penggunaSaatIni, punyaHakAkses } from "@/server/auth/pengguna";
 import { rekapCutiTahunan } from "@/server/kueri/saldo";
 
 /** Template impor saldo, sudah berisi semua ASN aktif & saldo yang ada — edit lalu unggah kembali. */
 export async function GET(req: NextRequest) {
   const u = await penggunaSaatIni();
   if (!u) return new Response("Belum masuk", { status: 401 });
-  if (!punyaHakAkses(u, "KELOLA_SALDO_CUTI") && !punyaPeran(u, "KEPEGAWAIAN")) return new Response("Akses ditolak", { status: 403 });
+  if (u.wajibGantiPassword) return new Response("Ganti password sementara terlebih dahulu di halaman Profil.", { status: 403 });
+  if (!punyaHakAkses(u, "KELOLA_SALDO_CUTI")) return new Response("Akses ditolak", { status: 403 });
   const t = Number(req.nextUrl.searchParams.get("tahun"));
   const tahun = t >= 2020 && t <= 2100 ? t : hariIniWita().getUTCFullYear();
 

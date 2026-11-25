@@ -7,13 +7,13 @@ import { normalisasiNip } from "@/lib/domain/nip";
 import { saldoTahunBerikut } from "@/lib/domain/saldo-cuti";
 import type { HasilForm } from "@/lib/validasi/auth";
 import { catatAudit } from "../audit";
-import { punyaHakAkses, punyaPeran, wajibLogin } from "../auth/pengguna";
+import { punyaHakAkses, wajibLogin } from "../auth/pengguna";
 import { db } from "../db";
 import { semuaPengaturan } from "../pengaturan";
 
 async function wajibKepegawaian() {
   const u = await wajibLogin();
-  return punyaHakAkses(u, "KELOLA_SALDO_CUTI") || punyaPeran(u, "KEPEGAWAIAN") ? u : null;
+  return punyaHakAkses(u, "KELOLA_SALDO_CUTI") ? u : null;
 }
 
 const angka = (maks: number) => z.coerce.number().int("Harus bilangan bulat.").min(0, "Tidak boleh negatif.").max(maks);
@@ -96,7 +96,8 @@ export async function bukaTahunSaldo(tahunBaru: number): Promise<HasilForm> {
  */
 export async function imporSaldo(tahun: number, _: HasilForm, fd: FormData): Promise<HasilForm> {
   const u = await wajibKepegawaian();
-  if (!u) return { galat: "Hanya Kepegawaian." };
+  if (!u) return { galat: "Hanya pemegang hak Saldo & Rekap Cuti yang dapat mengimpor saldo." };
+  if (!Number.isInteger(tahun) || tahun < 2020 || tahun > 2100) return { galat: "Tahun saldo tidak valid (harus 2020–2100)." };
   const berkas = fd.get("berkas");
   if (!(berkas instanceof File) || berkas.size === 0) return { galat: "Pilih berkas .xlsx." };
   if (berkas.size > 5 * 1024 * 1024 || !berkas.name.toLowerCase().endsWith(".xlsx")) return { galat: "Hanya .xlsx maks. 5 MB." };
@@ -112,6 +113,7 @@ export async function imporSaldo(tahun: number, _: HasilForm, fd: FormData): Pro
 
   const galat: string[] = [];
   const data: { pegawaiId: string; sisaN2: number; sisaN1: number; hakTahunIni: number; terpakai: number }[] = [];
+  const nipTerlihat = new Map<string, number>();
   const bil = (v: unknown) => (v === "" || v == null ? 0 : Number(v));
   baris.forEach((r, i) => {
     const no = i + 2;
@@ -119,6 +121,11 @@ export async function imporSaldo(tahun: number, _: HasilForm, fd: FormData): Pro
     if (typeof nipMentah === "number") return galat.push(`Baris ${no}: NIP tersimpan sebagai angka — ubah format sel menjadi Teks.`);
     const nip = normalisasiNip(String(nipMentah ?? ""));
     if (!nip) return;
+    const barisPertama = nipTerlihat.get(nip);
+    if (barisPertama !== undefined) {
+      return galat.push(`Baris ${no}: NIP ${nip} ganda (sudah tercantum di baris ${barisPertama}).`);
+    }
+    nipTerlihat.set(nip, no);
     const pegawaiId = nipKe.get(nip);
     if (!pegawaiId) return galat.push(`Baris ${no}: NIP ${nip} tidak terdaftar.`);
     const v = { sisaN2: bil(r["Sisa N-2"]), sisaN1: bil(r["Sisa N-1"]), hakTahunIni: bil(r["Hak Tahun Ini"]), terpakai: bil(r["Terpakai"]) };

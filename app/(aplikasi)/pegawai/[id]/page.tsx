@@ -17,7 +17,7 @@ import { LABEL_LEVEL_SURAT, LABEL_STATUS_CUTI, WARNA_STATUS_CUTI } from "@/lib/l
 import { formatTanggal } from "@/lib/tanggal";
 import { cn } from "@/lib/utils";
 import { adalahSuperadmin, punyaHakAkses, wajibLogin } from "@/server/auth/pengguna";
-import { bolehLihatPegawai, detailPegawai } from "@/server/kueri/pegawai-detail";
+import { bolehLihatDataSensitif, bolehLihatPegawai, detailPegawai } from "@/server/kueri/pegawai-detail";
 
 export const metadata: Metadata = { title: "Detail Pegawai" };
 
@@ -110,7 +110,12 @@ export default async function HalamanDetailPegawai({ params, searchParams }: Pag
                   ["Email", p.email],
                 ]}
               />
-              <DataSensitif pegawaiId={p.id} samaran={p.samaran} milikSendiri={u.pegawai?.id === p.id} />
+              <DataSensitif
+                pegawaiId={p.id}
+                samaran={p.samaran}
+                milikSendiri={u.pegawai?.id === p.id}
+                bolehBuka={bolehLihatDataSensitif(u, p.id)}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -182,9 +187,11 @@ export default async function HalamanDetailPegawai({ params, searchParams }: Pag
           <Card>
             <CardContent className="text-sm text-slate-700">
               {p.jumlahDokumen} dokumen pribadi tersimpan.{" "}
-              <Link href={u.pegawai?.id === p.id ? "/dokumen" : `/dokumen?pegawai=${p.id}`} className="font-semibold text-primary hover:underline">
-                Buka ruang dokumen
-              </Link>
+              {(u.pegawai?.id === p.id || kepegawaian) && (
+                <Link href={u.pegawai?.id === p.id ? "/dokumen" : `/dokumen?pegawai=${p.id}`} className="font-semibold text-primary hover:underline">
+                  Buka ruang dokumen
+                </Link>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -204,6 +211,7 @@ export default async function HalamanDetailPegawai({ params, searchParams }: Pag
                   }
                   kodeAktivasiAktifSampai={p.kodeAktivasiAktifSampai?.toISOString() ?? null}
                   bolehKelolaAkun={adalahSuperadmin(u) || punyaHakAkses(u, "PENGATURAN_ADMIN")}
+                  bolehAturHakAkses={adalahSuperadmin(u)}
                   bolehBuatKode={staf}
                 />
               </CardContent>

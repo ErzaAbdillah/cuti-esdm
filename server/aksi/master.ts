@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { catatAudit } from "../audit";
-import { punyaHakAkses, punyaPeran, wajibLogin } from "../auth/pengguna";
+import { punyaHakAkses, wajibLogin } from "../auth/pengguna";
 import { db } from "../db";
 
 /**
@@ -14,7 +14,7 @@ import { db } from "../db";
  */
 async function wajibAdmin() {
   const u = await wajibLogin();
-  if (!punyaHakAkses(u, "PENGATURAN_ADMIN") && !punyaPeran(u, "ADMIN")) redirect("/akses-ditolak");
+  if (!punyaHakAkses(u, "PENGATURAN_ADMIN")) redirect("/akses-ditolak");
   return u;
 }
 
@@ -74,9 +74,26 @@ const skemaUnit = z.object({
 
 export async function simpanUnit(id: string | null, fd: FormData) {
   const u = await wajibAdmin();
+  if (id !== null && !z.uuid().safeParse(id).success) selesai("unit", { galat: "Unit kerja tidak valid." });
   const v = skemaUnit.safeParse(Object.fromEntries(fd));
   if (!v.success) selesai("unit", { galat: v.error.issues[0].message });
   if (id && v.data.parentId === id) selesai("unit", { galat: "Unit tidak boleh menjadi induk dirinya sendiri." });
+  if (v.data.parentId) {
+    const semua = await db.unitKerja.findMany({ select: { id: true, parentId: true } });
+    const peta = new Map(semua.map((x) => [x.id, x.parentId]));
+    if (!peta.has(v.data.parentId)) selesai("unit", { galat: "Unit induk tidak ditemukan." });
+    if (id) {
+      const dikunjungi = new Set<string>([id]);
+      let kursor: string | null = v.data.parentId;
+      while (kursor) {
+        if (dikunjungi.has(kursor)) {
+          selesai("unit", { galat: "Unit induk tidak boleh membentuk rantai melingkar dengan unit ini." });
+        }
+        dikunjungi.add(kursor);
+        kursor = peta.get(kursor) ?? null;
+      }
+    }
+  }
   const data = { kode: v.data.kode, nama: v.data.nama, singkatan: v.data.singkatan || null, jenis: v.data.jenis, parentId: v.data.parentId || null, aktif: id ? centang(fd, "aktif") : true };
   try {
     const hasil = id ? await db.unitKerja.update({ where: { id }, data }) : await db.unitKerja.create({ data });

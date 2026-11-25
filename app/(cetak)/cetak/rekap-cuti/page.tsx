@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { BilahCetak } from "@/components/cetak/tombol-cetak";
 import { hariIniWita } from "@/lib/tanggal";
-import { punyaHakAkses, punyaPeran, wajibLogin } from "@/server/auth/pengguna";
+import { punyaHakAkses, wajibLogin } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
 import { rekapCutiTahunan } from "@/server/kueri/saldo";
 
@@ -13,7 +13,7 @@ const angka = (n: number | null | undefined) => (n ? String(n) : "--");
 
 export default async function CetakRekapCuti({ searchParams }: PageProps<"/cetak/rekap-cuti">) {
   const u = await wajibLogin();
-  if (!punyaHakAkses(u, "KELOLA_SALDO_CUTI") && !punyaPeran(u, "KEPEGAWAIAN")) {
+  if (!punyaHakAkses(u, "KELOLA_SALDO_CUTI")) {
     redirect("/akses-ditolak");
   }
   const sp = await searchParams;

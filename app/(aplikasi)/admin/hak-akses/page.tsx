@@ -14,7 +14,7 @@ import { formatNip } from "@/lib/domain/nip";
 import { namaLengkap } from "@/lib/domain/pegawai";
 import { adalahAkunSuperadmin, DAFTAR_HAK_AKSES, HAK_AKSES_BAWAAN_KEPEGAWAIAN, type HakAkses, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
 import { cn } from "@/lib/utils";
-import { adalahSuperadmin, punyaHakAkses, wajibHakAkses } from "@/server/auth/pengguna";
+import { adalahSuperadmin, wajibHakAkses } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
 
 export const metadata: Metadata = { title: "Hak Akses Pegawai" };
@@ -57,7 +57,7 @@ const WARNA_KARTU: Record<HakAkses, { bgIkon: string; warnaIkon: string; ring: s
 
 export default async function HalamanHakAksesPegawai() {
   const pengguna = await wajibHakAkses("PENGATURAN_ADMIN");
-  const bolehKelola = adalahSuperadmin(pengguna) || punyaHakAkses(pengguna, "PENGATURAN_ADMIN");
+  const bolehKelola = adalahSuperadmin(pengguna);
 
   const daftarUser = await db.user.findMany({
     include: {

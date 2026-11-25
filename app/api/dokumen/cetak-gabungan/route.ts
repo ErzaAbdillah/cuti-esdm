@@ -16,6 +16,7 @@ export async function POST(req: Request) {
   if (!asalSah(req)) return teks("Permintaan ditolak.", 403);
   const u = await penggunaSaatIni();
   if (!u) return teks("Sesi berakhir. Silakan login kembali.", 401);
+  if (u.wajibGantiPassword) return teks("Ganti password sementara terlebih dahulu di halaman Profil.", 403);
   const v = skema.safeParse(await req.json().catch(() => null));
   if (!v.success) return teks(v.error.issues[0]?.message ?? "Permintaan tidak valid.", 400);
   const ids = [...new Set(v.data.ids)];

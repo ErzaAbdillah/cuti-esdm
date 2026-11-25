@@ -3,19 +3,20 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { Prisma } from "@/lib/generated/prisma/client";
+import { adalahAkunSuperadmin } from "@/lib/hak-akses";
 import { galatPerField, type HasilForm } from "@/lib/validasi/auth";
 import { skemaPegawai } from "@/lib/validasi/pegawai";
 import { catatAudit } from "../audit";
-import { type PenggunaSaatIni, punyaHakAkses, punyaPeran, wajibLogin } from "../auth/pengguna";
+import { type PenggunaSaatIni, punyaHakAkses, wajibLogin } from "../auth/pengguna";
 import { db } from "../db";
-import { bolehLihatPegawai } from "../kueri/pegawai-detail";
+import { bolehLihatDataSensitif } from "../kueri/pegawai-detail";
 import { atasanOtomatis } from "../kueri/struktur";
 import { bacaFormPegawai, periksaReferensi } from "../layanan/pegawai";
 
-/** Nilai asli NIK, alamat, HP — hanya untuk Kepegawaian, Admin, dan ybs. Dicatat di audit. */
+/** Nilai asli NIK, alamat, HP — hanya untuk pemilik sendiri, pemegang KELOLA_PEGAWAI, atau Superadmin. Dicatat di audit. */
 export async function bukaDataSensitif(pegawaiId: string) {
   const u = await wajibLogin();
-  if (!z.uuid().safeParse(pegawaiId).success || !bolehLihatPegawai(u, pegawaiId)) return null;
+  if (!z.uuid().safeParse(pegawaiId).success || !bolehLihatDataSensitif(u, pegawaiId)) return null;
   const p = await db.pegawai.findUnique({ where: { id: pegawaiId }, select: { nik: true, alamatDomisili: true, noHp: true } });
   if (!p) return null;
   if (u.pegawai?.id !== pegawaiId) {
@@ -36,7 +37,7 @@ function pesanUnik(e: unknown): Record<string, string> | null {
 }
 
 function bolehUbah(u: PenggunaSaatIni) {
-  return punyaHakAkses(u, "KELOLA_PEGAWAI") || punyaPeran(u, "KEPEGAWAIAN");
+  return punyaHakAkses(u, "KELOLA_PEGAWAI");
 }
 
 export async function simpanPegawai(pegawaiId: string | null, _: HasilForm, formData: FormData): Promise<HasilForm> {
@@ -62,6 +63,9 @@ export async function simpanPegawai(pegawaiId: string | null, _: HasilForm, form
 
   const sebelum = pegawaiId ? await db.pegawai.findUnique({ where: { id: pegawaiId }, include: { user: true } }) : null;
   if (pegawaiId && !sebelum) return gagal({}, "Pegawai tidak ditemukan.");
+  if (sebelum?.user && !d.aktif && adalahAkunSuperadmin(sebelum.user)) {
+    return gagal({ aktif: "Pegawai yang terhubung dengan akun Superadmin tidak dapat dinonaktifkan." }, "Akun Superadmin dilindungi dan tidak dapat dinonaktifkan.");
+  }
 
   const data = {
     ...d,
@@ -76,13 +80,13 @@ export async function simpanPegawai(pegawaiId: string | null, _: HasilForm, form
       const hasil = pegawaiId
         ? await tx.pegawai.update({ where: { id: pegawaiId }, data })
         : await tx.pegawai.create({ data });
-      // Login memakai NIP/ID: ikut berubah bila Kepegawaian mengoreksinya.
+      // Login memakai NIP/ID: ikut berubah bila Kepegawaian mengoreksinya (kecuali akun Superadmin).
       const loginBaru = hasil.nip ?? hasil.idNonAsn;
-      if (sebelum?.user && loginBaru && sebelum.user.loginId !== loginBaru) {
+      if (sebelum?.user && !adalahAkunSuperadmin(sebelum.user) && loginBaru && sebelum.user.loginId !== loginBaru) {
         await tx.user.update({ where: { id: sebelum.user.id }, data: { loginId: loginBaru } });
       }
-      // Bila pegawai dinonaktifkan, otomatis nonaktifkan akun login & hentikan seluruh sesinya.
-      if (sebelum?.user && !hasil.aktif && sebelum.user.aktif) {
+      // Bila pegawai dinonaktifkan, otomatis nonaktifkan akun login & hentikan seluruh sesinya (kecuali akun Superadmin).
+      if (sebelum?.user && !adalahAkunSuperadmin(sebelum.user) && !hasil.aktif && sebelum.user.aktif) {
         await tx.user.update({ where: { id: sebelum.user.id }, data: { aktif: false } });
         await tx.sesi.deleteMany({ where: { userId: sebelum.user.id } });
       }

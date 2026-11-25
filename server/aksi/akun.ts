@@ -4,10 +4,10 @@ import { randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { HakAkses, Peran } from "@/lib/generated/prisma/enums";
-import { adalahAkunSuperadmin, HAK_AKSES_BAWAAN_KEPEGAWAIAN, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
+import { adalahAkunSuperadmin, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
 import { hashPassword } from "@/lib/password";
 import { catatAudit } from "../audit";
-import { adalahSuperadmin, punyaHakAkses, punyaPeran, wajibLogin } from "../auth/pengguna";
+import { adalahSuperadmin, punyaHakAkses, wajibLogin } from "../auth/pengguna";
 import { hapusSesiLain } from "../auth/sesi";
 import { db } from "../db";
 
@@ -33,7 +33,7 @@ const idSchema = z.uuid();
 
 export async function buatKodeAktivasi(pegawaiId: string): Promise<HasilAkun> {
   const u = await wajibLogin();
-  if (!punyaPeran(u, "KEPEGAWAIAN", "ADMIN") && !punyaHakAkses(u, "KELOLA_PEGAWAI", "PENGATURAN_ADMIN")) {
+  if (!punyaHakAkses(u, "KELOLA_PEGAWAI", "PENGATURAN_ADMIN")) {
     return { galat: "Hanya Kepegawaian atau Admin." };
   }
   if (!idSchema.safeParse(pegawaiId).success) return { galat: "Data tidak valid." };
@@ -60,29 +60,49 @@ export async function buatKodeAktivasi(pegawaiId: string): Promise<HasilAkun> {
   return { rahasia: kode, pesan: "Berikan kode ini kepada pegawai. Berlaku 7 hari dan hanya ditampilkan sekali." };
 }
 
-async function wajibAdmin() {
+/** Pengelola akun operasional (reset password, buka kunci, aktif/nonaktif pegawai biasa): Superadmin atau pemegang PENGATURAN_ADMIN. */
+async function wajibPengelolaAkun() {
   const u = await wajibLogin();
-  return adalahSuperadmin(u) || punyaPeran(u, "ADMIN") ? u : null;
+  return adalahSuperadmin(u) || punyaHakAkses(u, "PENGATURAN_ADMIN") ? u : null;
+}
+
+/** Pengatur hak akses & peran: khusus Superadmin (eerza311 / admin). */
+async function wajibSuperadmin() {
+  const u = await wajibLogin();
+  return adalahSuperadmin(u) ? u : null;
 }
 
 function akunAdalahSuperadmin(target: { loginId: string; googleEmail?: string | null }): boolean {
   return adalahAkunSuperadmin(target);
 }
 
+function targetAdalahAdmin(target: {
+  loginId: string;
+  googleEmail?: string | null;
+  peran: { peran: Peran }[];
+  hakAkses?: { hakAkses: HakAkses }[];
+}): boolean {
+  return (
+    akunAdalahSuperadmin(target) ||
+    target.peran.some((p) => p.peran === "ADMIN") ||
+    Boolean(target.hakAkses?.some((h) => h.hakAkses === "PENGATURAN_ADMIN"))
+  );
+}
+
 async function ambilUser(userId: string) {
   if (!idSchema.safeParse(userId).success) return null;
-  return db.user.findUnique({ where: { id: userId }, include: { peran: true } });
+  return db.user.findUnique({ where: { id: userId }, include: { peran: true, hakAkses: true } });
 }
 
 export async function resetPassword(userId: string): Promise<HasilAkun> {
-  const u = await wajibAdmin();
+  const u = await wajibPengelolaAkun();
   if (!u) return { galat: "Hanya Admin yang bisa mereset password." };
   const target = await ambilUser(userId);
   if (!target) return { galat: "Akun tidak ditemukan." };
   if (akunAdalahSuperadmin(target) && !adalahSuperadmin(u)) {
     return { galat: "Password akun Superadmin dilindungi dan tidak dapat direset oleh pengguna lain." };
   }
-  if (target.peran.some((p) => p.peran === "ADMIN") && target.id !== u.userId && !adalahSuperadmin(u)) {
+  if (targetAdalahAdmin(target) && target.id !== u.userId && !adalahSuperadmin(u)) {
     return { galat: "Reset password akun Admin lain hanya dapat dilakukan oleh Superadmin." };
   }
 
@@ -98,12 +118,15 @@ export async function resetPassword(userId: string): Promise<HasilAkun> {
 }
 
 export async function bukaKunci(userId: string): Promise<HasilAkun> {
-  const u = await wajibAdmin();
+  const u = await wajibPengelolaAkun();
   if (!u) return { galat: "Hanya Admin yang bisa membuka kunci akun." };
   const target = await ambilUser(userId);
   if (!target) return { galat: "Akun tidak ditemukan." };
   if (akunAdalahSuperadmin(target) && !adalahSuperadmin(u)) {
     return { galat: "Aksi pada akun Superadmin hanya dapat dilakukan oleh Superadmin." };
+  }
+  if (targetAdalahAdmin(target) && target.id !== u.userId && !adalahSuperadmin(u)) {
+    return { galat: "Membuka kunci akun Admin lain hanya dapat dilakukan oleh Superadmin." };
   }
   await db.user.update({ where: { id: userId }, data: { gagalBerturut: 0, terkunciSampai: null } });
   await catatAudit({ userId: u.userId, aksi: "BUKA_KUNCI_AKUN", entitas: "users", entitasId: userId });
@@ -112,13 +135,19 @@ export async function bukaKunci(userId: string): Promise<HasilAkun> {
 }
 
 export async function aturAktifAkun(userId: string, aktif: boolean): Promise<HasilAkun> {
-  const u = await wajibAdmin();
+  const u = await wajibPengelolaAkun();
   if (!u) return { galat: "Hanya Admin yang bisa mengubah status akun." };
   if (userId === u.userId) return { galat: "Anda tidak bisa menonaktifkan akun sendiri." };
   const target = await ambilUser(userId);
   if (!target) return { galat: "Akun tidak ditemukan." };
   if (!aktif && akunAdalahSuperadmin(target)) {
     return { galat: "Akun Superadmin (Admin) bersifat mutlak dan tidak dapat dinonaktifkan." };
+  }
+  if (akunAdalahSuperadmin(target) && !adalahSuperadmin(u)) {
+    return { galat: "Status akun Superadmin hanya dapat diubah oleh Superadmin." };
+  }
+  if (targetAdalahAdmin(target) && !adalahSuperadmin(u)) {
+    return { galat: "Status akun Admin lain hanya dapat diubah oleh Superadmin." };
   }
   await db.user.update({ where: { id: userId }, data: { aktif } });
   if (!aktif) await hapusSesiLain(userId);
@@ -130,11 +159,11 @@ export async function aturAktifAkun(userId: string, aktif: boolean): Promise<Has
 const skemaPeran = z.array(z.enum(["ADMIN", "KEPEGAWAIAN"]));
 
 export async function aturPeran(userId: string, peran: Peran[]): Promise<HasilAkun> {
-  const u = await wajibAdmin();
-  if (!u) return { galat: "Hanya Admin yang bisa mengatur peran." };
+  const u = await wajibSuperadmin();
+  if (!u) return { galat: "Hanya Superadmin yang bisa mengatur peran." };
+  if (!idSchema.safeParse(userId).success) return { galat: "ID akun tidak valid." };
   const parsed = skemaPeran.safeParse(peran);
   if (!parsed.success) return { galat: "Peran tidak valid." };
-  if (userId === u.userId && !parsed.data.includes("ADMIN")) return { galat: "Anda tidak bisa mencabut peran Admin dari akun sendiri." };
   const target = await db.user.findUnique({ where: { id: userId }, include: { peran: true } });
   if (!target) return { galat: "Akun tidak ditemukan." };
   if (akunAdalahSuperadmin(target) && !parsed.data.includes("ADMIN")) {
@@ -164,8 +193,8 @@ const skemaHakAkses = z.array(
 );
 
 export async function aturHakAkses(userId: string, hakAkses: HakAkses[]): Promise<HasilAkun> {
-  const u = await wajibAdmin();
-  if (!u) return { galat: "Hanya Admin yang bisa mengatur hak akses." };
+  const u = await wajibSuperadmin();
+  if (!u) return { galat: "Hanya Superadmin yang bisa mengatur hak akses." };
   if (!idSchema.safeParse(userId).success) return { galat: "ID akun tidak valid." };
   const parsed = skemaHakAkses.safeParse(hakAkses);
   if (!parsed.success) return { galat: "Hak akses tidak valid." };
@@ -177,37 +206,23 @@ export async function aturHakAkses(userId: string, hakAkses: HakAkses[]): Promis
   if (akunAdalahSuperadmin(target)) {
     return { galat: "Hak akses Superadmin bersifat permanen dan tidak dapat dikurangi atau dicabut." };
   }
-  if (userId === u.userId && !adalahSuperadmin(u) && !unik.includes("PENGATURAN_ADMIN")) {
-    return { galat: "Anda tidak bisa mencabut hak akses Pengaturan Admin dari akun sendiri." };
-  }
 
   await db.$transaction(async (tx) => {
     await tx.userHakAkses.deleteMany({ where: { userId } });
     if (unik.length > 0) {
       await tx.userHakAkses.createMany({ data: unik.map((h) => ({ userId, hakAkses: h })) });
     }
-    // Selaraskan peran ADMIN / KEPEGAWAIAN dengan hak akses modular agar fallback tidak menimpa pilihan centang.
-    const peranBaru = new Set<Peran>(target.peran.map((p) => p.peran));
-    if (unik.includes("PENGATURAN_ADMIN")) {
-      peranBaru.add("ADMIN");
-    } else {
-      peranBaru.delete("ADMIN");
-    }
-    if (!HAK_AKSES_BAWAAN_KEPEGAWAIAN.some((h) => unik.includes(h))) {
-      peranBaru.delete("KEPEGAWAIAN");
-    }
+    // Bersihkan seluruh peran lama (ADMIN / KEPEGAWAIAN) agar hak akses murni mengikuti centang modular
+    // dan tidak pernah bocor atau kembali terinjeksi saat semua centang dikosongkan.
     await tx.userPeran.deleteMany({ where: { userId } });
-    if (peranBaru.size > 0) {
-      await tx.userPeran.createMany({ data: [...peranBaru].map((peran) => ({ userId, peran })) });
-    }
     await catatAudit(
       {
         userId: u.userId,
         aksi: "UBAH_HAK_AKSES",
         entitas: "users",
         entitasId: userId,
-        sebelum: { hakAkses: target.hakAkses.map((h) => h.hakAkses) },
-        sesudah: { hakAkses: unik },
+        sebelum: { hakAkses: target.hakAkses.map((h) => h.hakAkses), peran: target.peran.map((p) => p.peran) },
+        sesudah: { hakAkses: unik, peran: [] },
       },
       tx,
     );

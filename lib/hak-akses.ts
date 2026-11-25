@@ -69,3 +69,15 @@ export function adalahAkunSuperadmin(akun: { loginId: string; googleEmail?: stri
   const email = akun.googleEmail?.trim().toLowerCase();
   return login === "admin" || login === "eerza311" || email === "eerza311@gmail.com";
 }
+
+/** Inisial 2 huruf yang bersih dari tanda kurung/simbol untuk avatar tabel Matriks Hak Akses (mis. "eerza311 (Superadmin)" -> "ES"). */
+export function inisialMatriks(nama: string): string {
+  const kata = nama
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (kata.length === 0) return "P";
+  if (kata.length === 1) return kata[0].slice(0, 2).toUpperCase();
+  return (kata[0][0] + kata[1][0]).toUpperCase();
+}

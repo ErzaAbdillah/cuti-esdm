@@ -1,11 +1,12 @@
 import "server-only";
 import { PDFDocument } from "pdf-lib";
-import { bacaBerkas } from "./penyimpanan";
+import { bacaBerkas, GalatBerkasTidakDitemukan, GalatKonfigurasiBerkas } from "./penyimpanan";
 
 /** A4 dalam point PDF. */
 const A4 = { lebar: 595.28, tinggi: 841.89, tepi: 28.35 };
 
 export interface BerkasGabung {
+  id: string;
   namaTampilan: string;
   ekstensi: string;
   namaFileSimpan: string;
@@ -41,7 +42,18 @@ export async function gabungkanPdf(daftar: BerkasGabung[]): Promise<Uint8Array> 
   hasil.setProducer("Layanan Cuti ESDM Kalsel");
 
   for (const d of daftar) {
-    const isi = await bacaBerkas(d);
+    let isi: Buffer;
+    try {
+      isi = await bacaBerkas(d);
+    } catch (e) {
+      if (e instanceof GalatBerkasTidakDitemukan) {
+        throw new GalatGabung(`Berkas fisik "${d.namaTampilan}" tidak ditemukan di penyimpanan server. Hubungi Admin/Kepegawaian untuk mengunggah ulang.`);
+      }
+      if (e instanceof GalatKonfigurasiBerkas) {
+        throw new GalatGabung(e.message);
+      }
+      throw e;
+    }
     const ext = d.ekstensi.toLowerCase();
     if (ext === "jpg" || ext === "jpeg" || ext === "png") {
       const gambar = ext === "png" ? await hasil.embedPng(isi) : await hasil.embedJpg(isi);

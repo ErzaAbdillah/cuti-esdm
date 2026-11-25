@@ -2,37 +2,35 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { EKSTENSI_DOKUMEN, KATEGORI_PRIBADI } from "@/lib/dokumen";
+import { batasUkuranDokumenByte, EKSTENSI_DOKUMEN, KATEGORI_PRIBADI } from "@/lib/dokumen";
 import type { HasilForm } from "@/lib/validasi/auth";
 import { catatAudit } from "../audit";
-import { punyaHakAkses, punyaPeran, wajibLogin } from "../auth/pengguna";
+import { punyaHakAkses, wajibLogin } from "../auth/pengguna";
 import { db } from "../db";
-import { periksaBerkas, simpanBerkas } from "../dokumen/penyimpanan";
+import { GalatKonfigurasiBerkas, metadataBerkas, periksaBerkas, siapkanBerkas, simpanIsiBerkas } from "../dokumen/penyimpanan";
 import { bolehDokumenPribadi, bolehKelolaDokumen, hakFolder } from "../layanan/akses-dokumen";
-import { semuaPengaturan } from "../pengaturan";
+import { maksUkuranDokumenMb } from "../pengaturan";
 
 const uuid = z.uuid();
 const namaTampilan = z.string().trim().max(200, "Nama paling panjang 200 karakter.");
 const kategori = z.enum(KATEGORI_PRIBADI as [string, ...string[]]);
 
-async function maksByte(): Promise<number> {
-  const mb = (await semuaPengaturan()).get("dokumen.maks_ukuran_mb");
-  return (typeof mb === "number" && mb > 0 ? Math.min(mb, 10) : 10) * 1024 * 1024;
-}
-
 /** Baca & periksa berkas dari form (ekstensi, MIME, isi, ukuran). */
 async function bacaUnggahan(fd: FormData): Promise<{ ok: true; isi: Buffer; nama: string; ext: (typeof EKSTENSI_DOKUMEN)[number] } | { ok: false; galat: string }> {
   const berkas = fd.get("berkas");
   if (!(berkas instanceof File) || berkas.size === 0) return { ok: false, galat: "Pilih berkas yang akan diunggah." };
+  const maksMb = await maksUkuranDokumenMb();
+  const maksByte = batasUkuranDokumenByte(maksMb);
+  if (berkas.size > maksByte) return { ok: false, galat: `Ukuran berkas maksimal ${maksMb} MB.` };
   const isi = Buffer.from(await berkas.arrayBuffer());
-  const cek = periksaBerkas(berkas.name, isi, berkas.type, await maksByte(), EKSTENSI_DOKUMEN);
+  const cek = periksaBerkas(berkas.name, isi, berkas.type, maksByte, EKSTENSI_DOKUMEN);
   if (!cek.ok) return { ok: false, galat: cek.galat };
   return { ok: true, isi, nama: berkas.name.slice(0, 200), ext: cek.ext as (typeof EKSTENSI_DOKUMEN)[number] };
 }
 
 const tanpaEkstensi = (nama: string) => nama.replace(/\.[^.]+$/, "");
 
-/** Unggah dokumen pribadi (dienkripsi). `pegawaiId` kosong = milik sendiri; Kepegawaian/Admin boleh untuk pegawai lain. */
+/** Unggah dokumen pribadi (dienkripsi). `pegawaiId` kosong = milik sendiri; pemegang KELOLA_PEGAWAI boleh untuk pegawai lain. */
 export async function unggahDokumenPribadi(pegawaiId: string | null, _: HasilForm, fd: FormData): Promise<HasilForm> {
   const u = await wajibLogin();
   const pemilik = pegawaiId ?? u.pegawai?.id ?? null;
@@ -44,19 +42,33 @@ export async function unggahDokumenPribadi(pegawaiId: string | null, _: HasilFor
   const b = await bacaUnggahan(fd);
   if (!b.ok) return { galatField: { berkas: b.galat } };
 
-  const simpan = await simpanBerkas(b.isi, b.ext, true);
-  const d = await db.dokumen.create({
-    data: {
-      ruang: "PRIBADI",
-      pemilikPegawaiId: pemilik,
-      kategoriPribadi: k.data as (typeof KATEGORI_PRIBADI)[number],
-      namaTampilan: n.data || tanpaEkstensi(b.nama),
-      namaFileAsli: b.nama,
-      diunggahOlehId: u.userId,
-      ...simpan,
-    },
+  let siap;
+  try {
+    siap = siapkanBerkas(b.isi, b.ext, true);
+  } catch (e) {
+    if (e instanceof GalatKonfigurasiBerkas) return { galat: e.message };
+    throw e;
+  }
+
+  const d = await db.$transaction(async (tx) => {
+    const dibuat = await tx.dokumen.create({
+      data: {
+        ruang: "PRIBADI",
+        pemilikPegawaiId: pemilik,
+        kategoriPribadi: k.data as (typeof KATEGORI_PRIBADI)[number],
+        namaTampilan: n.data || tanpaEkstensi(b.nama),
+        namaFileAsli: b.nama,
+        diunggahOlehId: u.userId,
+        ...metadataBerkas(siap),
+      },
+    });
+    await simpanIsiBerkas(dibuat.id, siap, tx);
+    await catatAudit(
+      { userId: u.userId, aksi: "UNGGAH_DOKUMEN", entitas: "dokumen", entitasId: dibuat.id, sesudah: { ruang: dibuat.ruang, pemilikPegawaiId: pemilik, kategori: dibuat.kategoriPribadi, nama: dibuat.namaTampilan, ukuran: dibuat.ukuran } },
+      tx,
+    );
+    return dibuat;
   });
-  await catatAudit({ userId: u.userId, aksi: "UNGGAH_DOKUMEN", entitas: "dokumen", entitasId: d.id, sesudah: { ruang: d.ruang, pemilikPegawaiId: pemilik, kategori: d.kategoriPribadi, nama: d.namaTampilan, ukuran: d.ukuran } });
   revalidatePath("/dokumen");
   return { sukses: `"${d.namaTampilan}" diunggah.`, stempel: Date.now() };
 }
@@ -70,11 +82,15 @@ export async function unggahDokumenOrganisasi(folderId: string, _: HasilForm, fd
   const b = await bacaUnggahan(fd);
   if (!b.ok) return { galatField: { berkas: b.galat } };
 
-  const simpan = await simpanBerkas(b.isi, b.ext, false);
-  const d = await db.dokumen.create({
-    data: { ruang: "ORGANISASI", folderId, namaTampilan: n.data || tanpaEkstensi(b.nama), namaFileAsli: b.nama, diunggahOlehId: u.userId, ...simpan },
+  const siap = siapkanBerkas(b.isi, b.ext, false);
+  const d = await db.$transaction(async (tx) => {
+    const dibuat = await tx.dokumen.create({
+      data: { ruang: "ORGANISASI", folderId, namaTampilan: n.data || tanpaEkstensi(b.nama), namaFileAsli: b.nama, diunggahOlehId: u.userId, ...metadataBerkas(siap) },
+    });
+    await simpanIsiBerkas(dibuat.id, siap, tx);
+    await catatAudit({ userId: u.userId, aksi: "UNGGAH_DOKUMEN", entitas: "dokumen", entitasId: dibuat.id, sesudah: { ruang: dibuat.ruang, folderId, nama: dibuat.namaTampilan, ukuran: dibuat.ukuran } }, tx);
+    return dibuat;
   });
-  await catatAudit({ userId: u.userId, aksi: "UNGGAH_DOKUMEN", entitas: "dokumen", entitasId: d.id, sesudah: { ruang: d.ruang, folderId, nama: d.namaTampilan, ukuran: d.ukuran } });
   revalidatePath("/dokumen/organisasi");
   return { sukses: `"${d.namaTampilan}" diunggah.`, stempel: Date.now() };
 }
@@ -112,7 +128,7 @@ export async function hapusDokumen(id: string): Promise<HasilForm> {
 
 export async function pulihkanDokumen(id: string): Promise<void> {
   const u = await wajibLogin();
-  if ((!punyaHakAkses(u, "PENGATURAN_ADMIN") && !punyaPeran(u, "ADMIN")) || !uuid.safeParse(id).success) return;
+  if (!punyaHakAkses(u, "PENGATURAN_ADMIN") || !uuid.safeParse(id).success) return;
   const d = await db.dokumen.update({ where: { id }, data: { dihapusPada: null, dihapusOlehId: null } }).catch(() => null);
   if (d) await catatAudit({ userId: u.userId, aksi: "PULIHKAN_DOKUMEN", entitas: "dokumen", entitasId: id, sesudah: { nama: d.namaTampilan, ruang: d.ruang } });
   revalidatePath("/admin/dokumen-terhapus");

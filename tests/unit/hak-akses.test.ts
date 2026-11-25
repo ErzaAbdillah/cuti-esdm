@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adalahAkunSuperadmin, DAFTAR_HAK_AKSES, DESKRIPSI_HAK_AKSES, HAK_AKSES_BAWAAN_KEPEGAWAIAN, LABEL_HAK_AKSES, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
+import { adalahAkunSuperadmin, DAFTAR_HAK_AKSES, DESKRIPSI_HAK_AKSES, HAK_AKSES_BAWAAN_KEPEGAWAIAN, inisialMatriks, LABEL_HAK_AKSES, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
 import { menuUntuk } from "@/lib/menu";
 
 describe("hak akses pegawai (granular permissions)", () => {
@@ -23,7 +23,7 @@ describe("hak akses pegawai (granular permissions)", () => {
     ]);
   });
 
-  it("menyaring menu navigasi berdasarkan peran dan hakAkses aktif", () => {
+  it("menyaring menu navigasi secara ketat berdasarkan hakAkses modular & SUPERADMIN", () => {
     // Pegawai biasa tanpa hak akses tambahan
     const menuPegawai = menuUntuk(new Set(["PEGAWAI"]), new Set());
     const hrefPegawai = menuPegawai.flatMap((g) => g.item.map((b) => b.href));
@@ -46,18 +46,19 @@ describe("hak akses pegawai (granular permissions)", () => {
     expect(hrefGranular).not.toContain("/cuti/proses");
     expect(hrefGranular).not.toContain("/admin");
 
+    // Pegawai yang hanya diberi PENGATURAN_ADMIN (bahkan jika peran lama ADMIN masih terbawa) TIDAK melihat menu modul lain
+    const menuAdminTerbatas = menuUntuk(new Set(["PEGAWAI", "ADMIN"]), new Set(["PENGATURAN_ADMIN"]));
+    const hrefAdminTerbatas = menuAdminTerbatas.flatMap((g) => g.item.map((b) => b.href));
+    expect(hrefAdminTerbatas).toContain("/admin");
+    expect(hrefAdminTerbatas).not.toContain("/cuti/proses");
+    expect(hrefAdminTerbatas).not.toContain("/cuti/saldo");
+    expect(hrefAdminTerbatas).not.toContain("/pegawai");
+
     // Atasan tetap bisa membuka Proses Cuti walaupun tanpa hak akses PROSES_CUTI
     const menuAtasan = menuUntuk(new Set(["PEGAWAI", "ATASAN"]), new Set());
     expect(menuAtasan.flatMap((g) => g.item.map((b) => b.href))).toContain("/cuti/proses");
 
-    // Admin / Superadmin otomatis melihat menu Proses Cuti, Saldo & Rekap, Data Pegawai, dan Admin
-    const menuAdmin = menuUntuk(new Set(["PEGAWAI", "ADMIN"]), new Set());
-    const hrefAdmin = menuAdmin.flatMap((g) => g.item.map((b) => b.href));
-    expect(hrefAdmin).toContain("/cuti/proses");
-    expect(hrefAdmin).toContain("/cuti/saldo");
-    expect(hrefAdmin).toContain("/pegawai");
-    expect(hrefAdmin).toContain("/admin");
-
+    // Hanya Superadmin yang otomatis melihat semua menu modul
     const menuSuperadmin = menuUntuk(new Set(["SUPERADMIN"]), new Set());
     const hrefSuperadmin = menuSuperadmin.flatMap((g) => g.item.map((b) => b.href));
     expect(hrefSuperadmin).toContain("/cuti/proses");
@@ -70,12 +71,17 @@ describe("hak akses pegawai (granular permissions)", () => {
     expect(adalahAkunSuperadmin({ loginId: "198009182007011007", googleEmail: null })).toBe(false);
   });
 
+  it("menghasilkan inisial rapi tanpa tanda kurung untuk Matriks Hak Akses", () => {
+    expect(inisialMatriks("eerza311 (Superadmin)")).toBe("ES");
+    expect(inisialMatriks("Budi Santoso")).toBe("BS");
+    expect(inisialMatriks("Admin")).toBe("AD");
+    expect(inisialMatriks("  ()  ")).toBe("P");
+  });
+
   it("memverifikasi integritas daftar hak akses untuk UI dan backend", () => {
-    // Pastikan kode hak akses unik
     const setKode = new Set(DAFTAR_HAK_AKSES.map((h) => h.kode));
     expect(setKode.size).toBe(5);
 
-    // Semua hak bawaan kepegawaian harus ada di SEMUA_HAK_AKSES
     for (const h of HAK_AKSES_BAWAAN_KEPEGAWAIAN) {
       expect(SEMUA_HAK_AKSES).toContain(h);
     }

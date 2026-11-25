@@ -39,12 +39,149 @@
   - Background Worker: `app/api/tugas/harian/route.ts` (Cron pembaruan status cuti selesai & kirim antrean email)
 
 ## Status Saat Ini
-- **Fase Aktif:** Selesai & Dirilis ke Vercel (Terverifikasi Browser, Build, & Produksi)
-- **Fitur/Modul Aktif:** Animasi Tombol Interaktif "Abu Terbawa Angin" — Opsi A: Elegan Halus
+- **Fase Aktif:** Sudah Di-commit & Di-push ke GitHub (`main`) — Menunggu Migrasi Tabel `dokumen_berkas` ke Neon, Pengaturan Env/Cron Vercel, & Verifikasi Akhir Produksi oleh Debugger/QA
+- **Fitur/Modul Aktif:** Penyimpanan Berkas Permanen (`dokumen_berkas`), Jadwal Harian Otomatis Vercel (Cron), & Paket Perbaikan Keamanan/Logika QA Gelombang 1–4 (`2026-11-25`)
 - **Penanggung Jawab Terakhir:** Coder
 
 ## 1. Cetak Biru & Skema Data (Diisi oleh Conversation 3 - Architect)
 *Rancangan alur sistem, struktur tabel/database, dan daftar file yang harus dibuat/dieksekusi oleh Coder:*
+
+### I. Penyimpanan Berkas Permanen di Vercel, Jadwal Harian Otomatis, & Urutan Perbaikan Temuan QA (`2026-11-25`)
+
+#### Bagian I.1 — Solusi Penyimpanan Berkas Permanen di Vercel (Dokumen & Lampiran Surat Izin)
+1. **Latar Belakang & Dampak bagi Pegawai/Admin:**
+   - Saat ini, berkas yang diunggah di **Dokumen Saya**, **Dokumen Organisasi**, dan **Surat Izin Cuti Eksternal** masih disimpan ke folder lokal server (`./.data/berkas`). Di website online Vercel, folder seperti itu tidak bisa dipakai menyimpan file secara permanen (bisa gagal saat unggah atau hilang saat pembaruan aplikasi).
+   - Kabar baiknya, hasil pengecekan QA di website online menunjukkan folder dokumen saat ini masih berisi **0 berkas**, sehingga **belum ada dokumen pegawai yang hilang** — ini saat terbaik untuk memindahkan tempat penyimpanan sebelum pegawai mulai mengunggah berkas.
+   - Sebagai acuan, fitur **Foto Profil** sudah berhasil dan stabil di website online karena disimpan di tabel khusus di database Neon (`foto_profil`).
+
+2. **Perbandingan Dua Pilihan untuk Pemilik Proyek:**
+   - **Opsi 1 (Rekomendasi Utama Sekarang) — Simpan Terenkripsi di Tabel Database Terpisah (`dokumen_berkas` di Neon, seperti `foto_profil`):**
+     - **Cara kerja:** Isi berkas (yang sudah diacak/dienkripsi untuk dokumen pribadi & lampiran surat izin) disimpan di satu tabel khusus bernama `dokumen_berkas`, terpisah dari daftar judul dokumen agar halaman daftar tetap ringan dan cepat dibuka.
+     - **Kelebihan:** Langsung bisa dipakai hari ini tanpa daftar akun baru, tanpa kartu kredit/biaya tambahan, langsung berjalan sama persis di komputer lokal maupun website online Vercel, dan ikut tersalin otomatis saat database dicadangkan (*backup*).
+     - **Batasan yang perlu diketahui:**
+       - Kapasitas gratis database Neon adalah **512 MB** (cukup untuk sekitar **±300–500 berkas** PDF/foto ukuran rata-rata 1 MB untuk 93 pegawai pada tahap awal).
+       - Karena unggahan dikirim melewati server Vercel yang punya batas paket data **4,5 MB**, ukuran berkas unggahan di website online perlu dibatasi jujur maksimal **4 MB per berkas** agar pegawai tidak mendapat galat kasar dari Vercel.
+   - **Opsi 2 (Alternatif Jika Butuh Kapasitas Besar / File s.d. 10 MB Sejak Hari Pertama) — Simpan di Ruang Berkas Awan Privat (Cloudflare R2 / Vercel Blob):**
+     - **Cara kerja:** Isi berkas dititipkan ke layanan penyimpanan awan privat (bukan publik), sedangkan database Neon hanya menyimpan nama, kategori, dan alamat berkasnya.
+     - **Kelebihan:** Kapasitas jauh lebih lega (**Cloudflare R2 gratis hingga 10 GB**, muat ribuan file scan SK/KTP/KK/Peraturan) dan bisa menerima berkas hingga **10 MB** menggunakan jalur unggah langsung ke awan tanpa memakan ruang database Neon.
+     - **Batasan yang perlu diketahui:** Pemilik proyek perlu mendaftar akun layanan awan tambahan (Cloudflare R2 membutuhkan verifikasi metode pembayaran meski paket 10 GB-nya gratis; sedangkan Vercel Blob gratis terbatas sekitar 1 GB), lalu mengisi 4–5 kode kunci rahasia baru di pengaturan Vercel.
+   - **Strategi Arsitektur ("Aman Sekarang, Siap Tumbuh Nanti"):**
+     - **Architect merekomendasikan mengeksekusi Opsi 1 sekarang** dengan membuat pintu penyimpanan yang fleksibel (`PENYIMPANAN_DOKUMEN=db` sebagai bawaan, tetap mendukung `disk` untuk server kantor mandiri, dan kelak mudah ditambah `r2` jika suatu hari total berkas mendekati 300–400 MB tanpa mengubah halaman).
+     - *(Bila pemilik proyek sudah memiliki akun Cloudflare R2 / Vercel Blob dan wajib menerima scan sampai 10 MB sejak awal, cukup pilih Opsi 2 sebelum Coder memulai pengerjaan).*
+
+3. **Rancangan Detail Opsi 1 (Skema Database, Batas Ukuran, & Anti-Error Berkas Hilang):**
+   - **Perubahan Tabel Database (`prisma/schema.prisma` + file migrasi SQL baru):**
+     - Tambah model baru `DokumenBerkas` (`@@map("dokumen_berkas")`) yang terhubung 1-ke-1 dengan `Dokumen`:
+       - `dokumenId String @id @map("dokumen_id") @db.Uuid` (FK ke `dokumen.id`, `onDelete: Cascade`)
+       - `data Bytes` (isi berkas; sudah terenkripsi AES-256-GCM bila `dokumen.terenkripsi = true`)
+       - `dibuatPada DateTime @default(now()) @map("dibuat_pada") @db.Timestamptz`
+     - Tambahkan relasi opsional `berkas DokumenBerkas?` pada model `Dokumen`.
+     - **Simpan serentak (atomik):** Saat pegawai mengunggah berkas di mode `db`, baris `dokumen` dan isi `dokumen_berkas` wajib disimpan bersama dalam satu transaksi database agar tidak pernah ada judul dokumen tanpa isi filenya.
+     - **Tetap aman untuk "Pulihkan Dokumen":** Karena tombol hapus hanya menandai `dihapusPada` (*hapus lunak*), isi di `dokumen_berkas` tetap tersimpan utuh sehingga Admin tetap bisa memulihkan dokumen yang terhapus.
+   - **Batas Ukuran Unggahan yang Jujur & Konsisten:**
+     - Buat helper terpusat batas ukuran dokumen: di server Vercel (`VERCEL=1`) dengan mode penyimpanan database, batas unggahan maksimal otomatis dijaga di **4 MB** (`Math.min(nilaiPengaturan, 4)`), sedangkan di server lokal/Docker tetap bisa hingga **10 MB** sesuai pengaturan `dokumen.maks_ukuran_mb`.
+     - Perbarui tampilan teks batas ukuran di **Dokumen Saya**, **Dokumen Organisasi** (`components/dokumen/form-unggah.tsx`), dan **Surat Izin Eksternal** (`components/cuti/aksi-pengajuan.tsx` — yang saat ini masih tertulis tetap 10 MB), serta tambahkan pengecekan ukuran berkas langsung di browser sebelum tombol kirim bekerja agar pegawai langsung mendapat pesan ramah jika file terlalu besar.
+   - **Penanganan Berkas Tidak Ditemukan & Kunci Enkripsi (Anti Error Mentah 500):**
+     - Tambahkan kelas galat khusus `GalatBerkasTidakDitemukan` dan `GalatKonfigurasiBerkas` di `server/dokumen/penyimpanan.ts`.
+     - Urutan baca berkas (`bacaBerkas`): (1) baca dari tabel `dokumen_berkas` berdasarkan `dokumen.id`; (2) bila tidak ada di database (misal data lama di server lokal), coba baca dari folder `STORAGE_DIR` dengan menangkap error file hilang (`ENOENT`); (3) jika tetap tidak ada, lempar `GalatBerkasTidakDitemukan`.
+     - Di `app/api/dokumen/[id]/berkas/route.ts`: tangkap `GalatBerkasTidakDitemukan` lalu kembalikan status **404** dengan pesan ramah *"Berkas fisik dokumen tidak ditemukan di penyimpanan server. Hubungi Admin/Kepegawaian untuk mengunggah ulang."* (tanpa mencatat audit unduh palsu).
+     - Di `server/dokumen/gabung.ts` (`gabungkanPdf`): tangkap `GalatBerkasTidakDitemukan` lalu ubah menjadi `GalatGabung` agar cetak gabungan membalas pesan ramah **422** yang menyebut nama dokumen bermasalah.
+     - Di aksi unggah (`server/aksi/dokumen.ts`, `server/aksi/cuti.ts`): tangkap bila `BERKAS_KUNCI` belum dipasang dan tampilkan pesan ramah *"Kunci enkripsi dokumen belum dikonfigurasi di server. Hubungi Admin."* *(Pengingat rilis: pemilik proyek wajib memastikan `BERKAS_KUNCI` sepanjang 64 karakter hex sudah diisi di Environment Variables Vercel).*
+   - **Daftar File Target Bagian I.1:**
+     - `prisma/schema.prisma` & `prisma/migrations/<timestamp>_dokumen_berkas/migration.sql` *(Baru)*
+     - `server/dokumen/penyimpanan.ts` *(Ubah — pisah persiapan/enkripsi berkas, simpan/baca mode `db` & fallback `disk`, tambah kelas galat khusus)*
+     - `lib/dokumen.ts` & `lib/pengaturan.ts` *(Ubah — helper batas ukuran unggah 4 MB di Vercel / maks. 10 MB di lokal)*
+     - `server/aksi/dokumen.ts`, `server/aksi/cuti.ts` (`catatKeputusanEksternal`) *(Ubah — simpan `Dokumen` + `DokumenBerkas` dalam 1 transaksi, pakai batas ukuran konsisten, tangkap galat kunci)*
+     - `app/api/dokumen/[id]/berkas/route.ts` & `server/dokumen/gabung.ts` *(Ubah — teruskan `id` dokumen ke `bacaBerkas`, tangkap `GalatBerkasTidakDitemukan` menjadi respons ramah)*
+     - `app/(aplikasi)/dokumen/page.tsx`, `app/(aplikasi)/dokumen/organisasi/page.tsx`, `components/dokumen/form-unggah.tsx`, `components/cuti/aksi-pengajuan.tsx`, `app/(aplikasi)/cuti/[id]/page.tsx` *(Ubah — tampilkan batas MB aktual + cek ukuran di browser sebelum kirim)*
+
+---
+
+#### Bagian I.2 — Jadwal Harian Otomatis di Vercel (`vercel.json` Cron)
+1. **Latar Belakang & Dampak bagi Pegawai/Admin:**
+   - Di website online saat ini terdapat **6 pengajuan cuti** yang masa cutinya sudah lewat, tetapi statusnya masih bertahan di **Surat Terbit** dan belum otomatis berubah menjadi **Selesai** karena belum ada penjadwal harian otomatis di Vercel.
+2. **Alur Kerja & Hal Penting Khusus Vercel:**
+   - **Wajib Mendukung Permintaan `GET` dan `CRON_SECRET`:** Layanan penjadwal bawaan Vercel (*Vercel Cron*) selalu memanggil alamat tujuan memakai metode **`GET`** dengan kata sandi rahasia **`CRON_SECRET`** di header `Authorization: Bearer <CRON_SECRET>`. Saat ini `app/api/tugas/harian/route.ts` baru melayani `POST` dengan `TUGAS_TOKEN`, sehingga perlu ditambah handler `GET` (sambil tetap mempertahankan `POST` + `TUGAS_TOKEN` agar server lokal/Docker tetap berfungsi).
+   - **Jadwal Ramah Paket Gratis Vercel (Hobby):** Paket gratis Vercel mengizinkan maksimal **1 kali jalan per hari**. Jadwal terbaik untuk zona waktu Kalimantan Selatan (**WITA = UTC+8**) adalah **`0 17 * * *`** (= **setiap hari pukul 01:00 WITA**), tepat sesudah tengah malam berganti tanggal sehingga semua cuti yang berakhir kemarin langsung berstatus **Selesai** sebelum jam kerja pagi.
+   - **Cegah Riwayat Status Ganda (`server/layanan/cuti.ts`):** Perbaiki `selesaikanCutiLewat` agar memeriksa hasil `updateMany` terlebih dahulu dan **hanya** menulis catatan `riwayat_status_cuti` jika status benar-benar berubah (`r.count > 0`), sehingga aman walau jadwal terpicu dua kali bersamaan.
+   - **Langkah Aktivasi Saat Rilis ke Vercel:** Pemilik proyek menambahkan variabel lingkungan `CRON_SECRET` (acak minimal 32 karakter) di pengaturan **Vercel → Environment Variables** lalu melakukan deploy ulang. Setelah tayang, bisa langsung diklik tombol **Run** sekali di menu **Vercel → Settings → Cron Jobs** agar 6 pengajuan cuti lama langsung berubah menjadi **Selesai**.
+3. **Daftar File Target Bagian I.2:**
+   - `vercel.json` *(Baru — daftarkan cron `/api/tugas/harian` jadwal `"0 17 * * *"`)*
+   - `app/api/tugas/harian/route.ts` *(Ubah — dukung metode `GET` & `POST`, terima `CRON_SECRET` atau `TUGAS_TOKEN` dengan perbandingan aman)*
+   - `server/layanan/cuti.ts` *(Ubah — pastikan `selesaikanCutiLewat` hanya mencatat riwayat bila `updateMany` mengubah baris)*
+   - `.env.example` *(Ubah — tambahkan keterangan `CRON_SECRET=`)*
+
+---
+
+#### Bagian I.3 — Urutan Eksekusi Perbaikan Temuan Keamanan & Logika QA (4 Gelombang Terstruktur)
+Agar `Coder` bisa memperbaiki seluruh temuan di Bagian 4 tanpa merusak fitur yang sudah jalan, eksekusi dibagi menjadi **4 Gelombang** dari yang paling genting ke yang paling ringan:
+
+##### **Gelombang 1 (KRITIS) — Penutupan Kebocoran Hak Akses Modular vs Peran Lama & Proteksi Superadmin**
+- **Aturan Emas Baru (Satu Sumber Kebenaran):**
+  1. Hanya **Superadmin (`eerza311` / `admin`)** yang memiliki **Hak Akses Mutlak** dan berwenang mengubah kotak centang hak akses serta peran pegawai lain (`aturHakAkses` & `aturPeran` dikunci **khusus `adalahSuperadmin(u)`**).
+  2. Pegawai dengan centang **`PENGATURAN_ADMIN`** (non-Superadmin) hanya boleh membuka menu pengaturan sistem Admin serta membantu reset password / buka kunci / aktif-nonaktif **pegawai biasa** — **dilarang** mengubah hak akses sendiri/orang lain, **dilarang** menindak sesama Admin/Superadmin, dan **tidak otomatis** mendapat akses dokumen pribadi, saldo cuti, maupun proses cuti.
+  3. Di `aturHakAkses` (`server/aksi/akun.ts`): **hapus penambahan otomatis peran lama `ADMIN`**, dan bersihkan peran lama `ADMIN` & `KEPEGAWAIAN` dari tabel `user_peran` target saat centang disimpan agar tidak ada lagi peran lama yang bocor (sekaligus mencegah akun yang dikosongkan semua centangnya kembali mendapat hak bawaan lama).
+  4. Jadikan `punyaHakAkses(u, "...")` sebagai **satu-satunya acuan izin modul** (karena Superadmin otomatis lolos, dan akun lama yang belum pernah diatur tetap mendapat hak bawaan satu kali lewat `penggunaSaatIni()`). Hapus seluruh pengecekan `|| punyaPeran(u, "ADMIN")` dan `|| punyaPeran(u, "KEPEGAWAIAN")` yang masih tersisa di layanan/aksi/rute/menu (tetap pertahankan `punyaPeran(u, "ATASAN")` & `punyaPeran(u, "PEGAWAI")` untuk alur atasan langsung dan cuti/dokumen sendiri).
+  5. Pisahkan izin membuka data sensitif NIK/alamat/HP (`bukaDataSensitif` di `server/aksi/pegawai.ts`) agar **hanya pemilik sendiri atau pemegang `KELOLA_PEGAWAI`/Superadmin** yang dapat membukanya (pemegang `PENGATURAN_ADMIN` saja tidak otomatis melihat NIK/KTP/KK pegawai).
+  6. **Anti-Nonaktif Superadmin via Data Pegawai & Impor Excel:** Di `server/aksi/pegawai.ts` (`simpanPegawai`) dan `server/layanan/impor-pegawai.ts` (`simpanImporPegawai`), cegah penonaktifan akun login jika terhubung dengan akun Superadmin (`adalahAkunSuperadmin`).
+- **Daftar File Target Gelombang 1:**
+  - `server/aksi/akun.ts` *(kunci `aturHakAkses` & `aturPeran` khusus Superadmin; kunci `resetPassword`/`bukaKunci`/`aturAktifAkun` agar tidak bisa menindak sesama pemegang `PENGATURAN_ADMIN`/Admin; hapus injeksi peran `ADMIN` dan bersihkan peran lama saat simpan hak akses)*
+  - `lib/menu.ts` *(hapus `peran: ["ADMIN"]` pada menu `/cuti/proses`, `/cuti/saldo`, `/pegawai`, `/admin`; pertahankan `peran: ["ATASAN"]` pada `/cuti/proses`)*
+  - `server/layanan/akses-dokumen.ts`, `server/layanan/akses-cuti.ts`, `server/layanan/wewenang-cuti.ts` *(pakai `punyaHakAkses` penuh tanpa bypass peran lama `ADMIN`/`KEPEGAWAIAN`)*
+  - `server/aksi/cuti.ts`, `server/aksi/saldo.ts`, `server/aksi/pegawai.ts`, `server/aksi/admin.ts`, `server/aksi/master.ts`, `server/aksi/folder.ts`, `server/aksi/surat-admin.ts`, `server/aksi/dokumen.ts`, `server/layanan/impor-pegawai.ts`
+  - `server/kueri/beranda.ts`, `server/kueri/grup-pegawai.ts`, `server/kueri/lingkup-rekap.ts`, `server/kueri/pegawai-detail.ts`
+  - `app/(aplikasi)/cuti/[id]/page.tsx`, `app/(aplikasi)/cuti/[id]/formulir/page.tsx`, `app/(aplikasi)/dokumen/page.tsx`, `app/(aplikasi)/admin/hak-akses/page.tsx`, `app/(aplikasi)/pegawai/[id]/page.tsx` *(atur `bolehKelola = adalahSuperadmin(u)` pada matriks & panel hak akses)*
+  - `app/(cetak)/cetak/pegawai/page.tsx`, `app/(cetak)/cetak/rekap-cuti/page.tsx`, `app/api/cuti/template-saldo/route.ts`, `app/api/ekspor/rekap-cuti/route.ts`, `app/api/ekspor/pegawai/route.ts`, `app/api/pegawai/impor/route.ts`, `app/api/pegawai/template/route.ts`
+
+##### **Gelombang 2 (TINGGI) — Privasi `pratinjauCuti`, Anti-Bentrok Ubah vs Setujui, & Batas Rentang Tanggal**
+1. **Privasi `pratinjauCuti` (`server/aksi/cuti.ts`):** Saat parameter `kecualiId` dikirim, wajib pastikan pengajuan ditemukan dan pemanggil adalah pemilik pengajuan tersebut atau pemegang hak `PROSES_CUTI` (jika bukan, langsung kembalikan galat akses tanpa membocorkan sisa saldo maupun tanggal cuti rekan kerja).
+2. **Integritas Transaksi & Anti-Bentrok Cuti (`server/aksi/cuti.ts`, `server/layanan/cuti.ts`):**
+   - Validasi format UUID pada `id` di `simpanFormulir` sebelum menyentuh database.
+   - Pasang **kunci antrean per pegawai yang sama** (`pg_advisory_xact_lock(hashtext(pegawaiId))`) di dalam transaksi pada `simpanFormulir`, `setujuiCuti`, `tolakCuti`, `batalkanCuti`, dan `catatKeputusanEksternal` supaya aksi ubah formulir dan aksi persetujuan/penolakan/pembatalan tidak pernah saling salip.
+   - Pada mode ubah di `simpanFormulir`, gunakan `updateMany({ where: { id: lama.id, status: "DIAJUKAN" }, data })` di dalam transaksi; bila `count === 0`, batalkan transaksi dan kembalikan pesan ramah *"Formulir baru saja diproses dan tidak bisa diubah lagi. Muat ulang halaman."*
+   - Di `terapkanPersetujuan` (`server/layanan/cuti.ts`), periksa ulang kecukupan saldo (`saldoTersedia(saldo) < p.jumlahHari`) sebelum memotong saldo; jika kurang, lempar `"SALDO_KURANG"` dan tampilkan pesan ramah di `setujuiCuti` & `catatKeputusanEksternal`.
+   - Bungkus transaksi `tolakCuti` dan `batalkanCuti` dengan `try / catch` untuk menangkap `"BERUBAH"` menjadi pesan ramah *"Status pengajuan baru saja berubah. Muat ulang halaman."*
+3. **Batas Rentang Tanggal & Hitung Hari Kerja Ringan (`lib/domain/hari-kerja.ts`, `server/layanan/cuti.ts`):**
+   - Batasi tahun tanggal cuti yang wajar (`2000–2100`) dan batas maksimal selisih kalender (`1.100` hari / ~3 tahun untuk CLTN) di awal `validasiPengajuan` **sebelum** mengambil data libur dan menghitung hari kerja.
+   - Ubah `hitungHariKerja` agar menjumlahkan langsung memakai penghitung sederhana dalam satu putaran tanpa membuat daftar jutaan objek tanggal di memori server.
+
+##### **Gelombang 3 (SEDANG) — Notifikasi Hak Modular, Validasi Impor/Ekspor Saldo, Anti-Loop Unit, & Kunci Nomor Surat**
+1. **Notifikasi untuk Pemegang Centang `PROSES_CUTI` (`server/notifikasi.ts`, `server/layanan/wewenang-cuti.ts`, `server/aksi/cuti.ts`):**
+   - Tambah helper `userDenganHakAkses(hak, tx)` di `server/notifikasi.ts` yang mencakup seluruh akun aktif pemilik hak modular terkait + Superadmin (+ akun warisan yang belum punya baris `user_hak_akses`).
+   - Ganti `userDenganPeran(...)` pada `penerimaTahap` dan notifikasi pembatalan di `batalkanCuti` memakai `userDenganHakAkses("PROSES_CUTI", tx)`.
+2. **Validasi Impor Saldo & Nama Sheet Unik Ekspor Rekap (`server/aksi/saldo.ts`, `app/api/ekspor/rekap-cuti/route.ts`):**
+   - Tambahkan validasi rentang `tahun` (`2020–2100`) dan tolak seluruh file Excel bila ada **NIP ganda** dalam satu file impor saldo (sebutkan nomor kedua barisnya).
+   - Buat helper pembuat nama tab Excel unik (maks. 31 huruf, menambah akhiran ` (2)`, ` (3)`, dst. jika ada dua unit dengan awalan sama) pada `app/api/ekspor/rekap-cuti/route.ts`.
+3. **Cegah Induk Unit Melingkar & Antrean Nomor Surat (`server/aksi/master.ts`, `server/layanan/cuti.ts`, `server/aksi/surat.ts`):**
+   - Di `simpanUnit`: telusuri rantai induk ke atas dari `parentId` yang dipilih; tolak jika bertemu `id` unit yang sedang diubah.
+   - Di `snapshotIdentitas`: pasang himpunan `Set` unit yang sudah dikunjungi agar penelusuran induk tidak pernah berputar tanpa henti.
+   - Di `simpanSurat`: sebelum menghitung `max(nomorUrut) + 1` otomatis, pasang kunci antrean per tahun (`pg_advisory_xact_lock(hashtext('surat_nomor_' + tahun))`) agar dua petugas yang mencetak bersamaan selalu mendapat nomor berurutan tanpa error bentrok.
+
+##### **Gelombang 4 (RENDAH) — Konsistensi Password Sementara di API & Polesan Matriks Hak Akses + Warna Bilah HP**
+1. **Tolak Rute API Sensitif Saat `wajibGantiPassword` Aktif:**
+   - Di `app/api/auth/google/route.ts` (`mode=hubungkan`) & `app/api/auth/google/callback/route.ts` (`mode=hubungkan`): bila `u.wajibGantiPassword`, arahkan kembali ke `/profil?wajib=1`.
+   - Di rute API unduh/ekspor/impor/PDF (`app/api/dokumen/[id]/berkas/route.ts`, `app/api/dokumen/cetak-gabungan/route.ts`, `app/api/surat/[versiId]/pdf/route.ts`, `app/api/ekspor/pegawai/route.ts`, `app/api/ekspor/rekap-cuti/route.ts`, `app/api/cuti/template-saldo/route.ts`, `app/api/pegawai/impor/route.ts`, `app/api/pegawai/template/route.ts`): kembalikan **HTTP 403** (*"Ganti password sementara terlebih dahulu di halaman Profil."*) bila `u.wajibGantiPassword === true`. *(Biarkan `/api/profil/foto/[userId]` tetap terbuka agar avatar profil tampil normal saat pegawai mengganti password).*
+2. **Perapian Matriks Hak Akses (`components/admin/matriks-hak-akses.tsx`, `app/(aplikasi)/admin/hak-akses/page.tsx`):**
+   - Saat centang `PENGATURAN_ADMIN` dilepas/dipasang, langsung perbarui properti `adalahAdmin` pada state baris sehingga lencana **Admin** dan angka filter langsung berubah seketika tanpa muat ulang.
+   - Bersihkan simbol/tanda kurung pada `dapatkanInisial()` agar nama `eerza311 (Superadmin)` tampil rapi **`ES`** (bukan `E(`).
+3. **Opsional — Warna Bilah Browser HP Mengikuti Tema (`app/layout.tsx`):**
+   - Ganti ekspor statis `viewport` menjadi fungsi `generateViewport()` yang membaca cookie tema (`KUKI_TEMA`) dan menyesuaikan `themeColor` dengan warna latar tema aktif dari `DAFTAR_TEMA` (`#0E0E10`, `#F0F9FF`, atau `#161E1A`).
+
+#### Bagian I.4 — Skenario Pengecekan Wajib (untuk Coder & Debugger/QA)
+1. **Penyimpanan Berkas:** Unggah PDF & foto di **Dokumen Saya** (terenkripsi), **Dokumen Organisasi**, dan **Surat Izin Eksternal** → pastikan berkas tersimpan di tabel `dokumen_berkas`, bisa dibuka/diunduh & dicetak gabungan, hapus-pulihkan tetap bisa dibuka, file melebihi batas (4 MB di Vercel) ditolak rapi, dan bila isi berkas dihapus paksa dari DB, endpoint membalas **404 ramah** (bukan crash 500).
+2. **Jadwal Harian Otomatis:** Panggil `GET /api/tugas/harian` dengan `Bearer <CRON_SECRET>` dan `POST /api/tugas/harian` dengan `Bearer <TUGAS_TOKEN>` → pastikan keduanya mengembalikan `ok: true`, status cuti *Surat Terbit* yang tanggalnya sudah lewat berubah menjadi *Selesai*, dan pemanggilan ulang tidak membuat riwayat status ganda; token salah selalu ditolak `401`.
+3. **Keamanan Hak Akses Modular:**
+   - Beri akun tes **hanya** `PENGATURAN_ADMIN` → pastikan ia **tidak** bisa membuka dokumen pribadi pegawai lain, **tidak** bisa menyetujui/mengubah cuti orang lain, **tidak** bisa mengakses `/cuti/saldo` atau `/pegawai`, **tidak** bisa mencentang hak akses sendiri, dan **tidak** bisa menonaktifkan/mereset akun Superadmin atau sesama Admin.
+   - Cabut `KELOLA_SALDO_CUTI` & `PROSES_CUTI` dari akun yang dulu ber-peran `KEPEGAWAIAN` → pastikan ia langsung tertolak saat mencoba ubah saldo atau setujui cuti.
+4. **Privasi, Anti-Bentrok, & Rentang Tanggal:**
+   - Pegawai A memanggil `pratinjauCuti` dengan `kecualiId` milik Pegawai B → ditolak tanpa membocorkan saldo/tanggal Pegawai B.
+   - Masukkan tanggal selesai tahun `9026` → langsung ditolak cepat (< 50 ms) tanpa membebani memori.
+   - Ubah formulir vs Setujui bersamaan / tolak ganda / batal ganda / saldo kurang saat disetujui → semua mengembalikan pesan ramah tanpa saldo minus atau galat mentah.
+5. **Notifikasi, Impor/Ekspor, Unit, Nomor Surat, Password Sementara, & Matriks:**
+   - Pemegang centang `PROSES_CUTI` (tanpa peran lama) menerima notifikasi saat pengajuan masuk & saat dibatalkan.
+   - Impor saldo dengan NIP ganda atau tahun tidak valid ditolak bersih; ekspor rekap dengan 2 nama unit awalan kembar tetap sukses.
+   - Simpan unit induk melingkar ditolak; cetak surat bersamaan tidak bentrok `P2002`; akun `wajibGantiPassword` ditolak saat mengakses API berkas/ekspor/tautkan Google; lencana **Admin** langsung berubah dan inisial `eerza311 (Superadmin)` tampil **`ES`**.
+   - Jalankan `npm run typecheck`, `npm run lint`, `npm test` (tambahkan unit test untuk skenario baru), dan `npm run build` sebelum rilis.
 
 ### H. Animasi Tombol Interaktif "Abu Terbawa Angin" (Opsi A: Elegan Halus)
 1. **Ringkasan & Dampak bagi Pegawai/Admin:**
@@ -213,6 +350,11 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 *Daftar file yang baru dibuat/diubah dan ringkasan logika backend/sistemnya:*
 
 ### File Baru
+- `prisma/migrations/20261125130000_dokumen_berkas/migration.sql`: Migrasi SQL resmi tabel baru `dokumen_berkas` (`dokumen_id` UUID PK/FK cascade ke `dokumen`, kolom `data` BYTEA, `dibuat_pada` TIMESTAMPTZ) — sudah diuji & diterapkan pada database dev lokal Docker (**belum** dijalankan ke database produksi Neon).
+- `vercel.json`: Jadwal harian otomatis Vercel Cron ke `/api/tugas/harian` pada `"0 17 * * *"` (= pukul **01:00 WITA** setiap hari, sesuai batas gratis Vercel Hobby).
+- `lib/excel.ts`: Helper `buatNamaSheetUnik()` untuk menjamin nama tab Excel hasil ekspor rekap maksimal 31 karakter, bersih dari simbol terlarang, dan tidak pernah bentrok jika ada 2 unit kerja berawalan sama.
+- `tests/unit/dokumen-cron.test.ts`: Unit test Vitest untuk penyimpanan berkas permanen `dokumen_berkas` (enkripsi AES-256-GCM, batas 4 MB Vercel vs 10 MB lokal, galat `BERKAS_KUNCI`, respons 404 ramah tanpa audit palsu, respons 403 saat `wajibGantiPassword`, cetak gabungan `GalatGabung`) dan endpoint cron `GET` (`CRON_SECRET`) / `POST` (`TUGAS_TOKEN`) / `401`.
+- `tests/unit/keamanan-cuti-qa.test.ts`: Unit test Vitest untuk isolasi ketat hak akses modular Gelombang 1, privasi `pratinjauCuti`, validasi UUID, `SALDO_KURANG`, penanganan `BERUBAH` di `tolakCuti`/`batalkanCuti`, pencegahan riwayat ganda `selesaikanCutiLewat`, impor saldo NIP ganda & tahun tak valid, nama sheet Excel unik, dan pencegahan induk unit melingkar (`simpanUnit` & `unitDaftarHadir`).
 - `components/auth/form-putuskan-google.tsx`: Form khusus untuk memutus tautan Google di halaman Profil dengan syarat wajib sudah punya password dan memasukkan konfirmasi password, supaya pegawai tidak terkunci sendiri.
 - `tests/unit/auth-keamanan.test.ts`: Pengujian unit keamanan alur Daftar dengan Google, Lupa Password Google, Pembuatan Password Awal, Putuskan Google, anti-penimpaan Google / pengikatan sesi OAuth, dan anti-reset password Superadmin memakai akun dummy (`pegawai.google.dummy@gmail.com` / `pegawai.aktivasi.dummy@gmail.com`).
 - `scripts/impor-saldo-2026.ts`: Skrip CLI untuk membaca `data-impor/saldo-cuti-2026.csv` (91 baris pegawai), mencocokkan pegawai berdasarkan NIP tanpa spasi (dengan fallback nama), menghitung `sisaN1` dan `sisaN2` (maks 6 hari/tahun sesuai PP 11/2017 dari `totalSisaBerlaku - sisa2026`), melakukan `upsert` ke tabel `saldo_cuti` tahun `2026`, dan mencatat entri `mutasi_saldo_cuti` (`jenis: "SALDO_AWAL"`, `jumlah: hakTahunIni + sisaN1 + sisaN2 - terpakai`).
@@ -225,6 +367,36 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 - `components/admin/matriks-hak-akses.tsx`: Komponen client tabel matriks interaktif daftar pegawai berakun dengan 5 kolom checkbox centang instan (optimistic state + panggilan server action `aturHakAkses` + notifikasi toast Sonner + pencarian nama/NIP/login).
 - `app/(aplikasi)/admin/hak-akses/page.tsx`: Halaman Admin `/admin/hak-akses` untuk melihat dan mengelola matriks hak akses seluruh pegawai berakun sekaligus.
 - `tests/unit/hak-akses.test.ts`: Unit test Vitest untuk konstanta hak akses dan penyaringan menu navigasi `menuUntuk(peran, hakAkses)`.
+
+### File Diubah (Penyimpanan Berkas Permanen, Jadwal Harian Vercel, & Perbaikan Audit QA Gelombang 1–4 — `2026-11-25`)
+- **Penyimpanan Berkas Permanen (Bagian I.1):**
+  - `prisma/schema.prisma`: Menambahkan model `DokumenBerkas` (`dokumen_berkas`) relasi 1-ke-1 dengan `Dokumen` (`onDelete: Cascade`).
+  - `server/dokumen/penyimpanan.ts`: Menambah mode penyimpanan `PENYIMPANAN_DOKUMEN` (`db` bawaan, `disk` opsional), memisahkan `siapkanBerkas()` (validasi kunci + hash + enkripsi AES-256-GCM) dari `simpanIsiBerkas()` agar penulisan metadata & isi berkas atomik dalam 1 transaksi, urutan baca `dokumen_berkas` → fallback `STORAGE_DIR`, serta kelas galat `GalatBerkasTidakDitemukan` & `GalatKonfigurasiBerkas`.
+  - `lib/dokumen.ts`, `lib/pengaturan.ts`, & `server/pengaturan.ts`: Menambah helper `batasUkuranDokumenMb()` & `maksUkuranDokumenMb()` yang menjaga batas unggah jujur maks. **4 MB di Vercel** (`VERCEL=1`) dan hingga **10 MB di lokal/Docker**.
+  - `server/aksi/dokumen.ts` & `server/aksi/cuti.ts` (`catatKeputusanEksternal`): Menyimpan metadata `Dokumen` dan isi `DokumenBerkas` serentak dalam 1 transaksi, memakai batas ukuran dinamis, dan menangani `GalatKonfigurasiBerkas` dengan pesan ramah.
+  - `app/api/dokumen/[id]/berkas/route.ts` & `server/dokumen/gabung.ts`: Meneruskan `id` dokumen ke `bacaBerkas()`, menangkap `GalatBerkasTidakDitemukan` menjadi HTTP **404** ramah (tanpa mencatat audit unduh palsu) atau `GalatGabung` (**422**) saat cetak gabungan.
+  - `components/dokumen/form-unggah.tsx`, `components/cuti/aksi-pengajuan.tsx`, `app/(aplikasi)/dokumen/page.tsx`, `app/(aplikasi)/dokumen/organisasi/page.tsx`, & `app/(aplikasi)/cuti/[id]/page.tsx`: Menampilkan batas MB aktual sesuai lingkungan dan mengecek ukuran berkas langsung di browser sebelum diunggah.
+- **Jadwal Harian Otomatis (Bagian I.2):**
+  - `app/api/tugas/harian/route.ts` & `.env.example`: Mendukung metode `GET` (`CRON_SECRET`) untuk Vercel Cron sekaligus `POST` (`TUGAS_TOKEN`) untuk Docker/lokal dengan perbandingan aman `timingSafeEqual`, serta mendokumentasikan `PENYIMPANAN_DOKUMEN` dan `CRON_SECRET`.
+  - `server/layanan/cuti.ts`: Memperbaiki `selesaikanCutiLewat()` menjadi transaksi interaktif yang memeriksa `updateMany.count > 0` terlebih dahulu agar tidak pernah menulis riwayat status ganda.
+- **Perbaikan Keamanan & Logika Gelombang 1 (Hak Akses Modular & Anti-Nonaktif Superadmin):**
+  - `server/aksi/akun.ts`: Mengunci `aturHakAkses()` & `aturPeran()` khusus Superadmin (`adalahSuperadmin`), membersihkan peran lama `ADMIN` & `KEPEGAWAIAN` di `user_peran` setiap kali hak akses disimpan, dan membatasi `resetPassword()`/`bukaKunci()`/`aturAktifAkun()` agar pemegang `PENGATURAN_ADMIN` hanya bisa membantu akun pegawai biasa (tidak bisa menindak Superadmin atau sesama Admin).
+  - `lib/menu.ts`, `server/layanan/akses-dokumen.ts`, `server/layanan/akses-cuti.ts`, `server/layanan/wewenang-cuti.ts`, `server/aksi/admin.ts`, `server/aksi/cuti.ts`, `server/aksi/dokumen.ts`, `server/aksi/folder.ts`, `server/aksi/impor-pegawai.ts`, `server/aksi/master.ts`, `server/aksi/pegawai.ts`, `server/aksi/saldo.ts`, `server/aksi/surat-admin.ts`, `server/kueri/beranda.ts`, `server/kueri/grup-pegawai.ts`, `server/kueri/lingkup-rekap.ts`, `server/kueri/pegawai-detail.ts`, halaman terkait & rute cetak/API: Menjadikan `punyaHakAkses()` satu-satunya acuan izin modul (menghapus seluruh sisa bypass peran lama `ADMIN`/`KEPEGAWAIAN`), memisahkan `bolehLihatDataSensitif()` khusus pemilik & `KELOLA_PEGAWAI`/Superadmin, mengunci mode edit hak akses khusus Superadmin di `app/(aplikasi)/admin/hak-akses/page.tsx` & `app/(aplikasi)/pegawai/[id]/page.tsx` (`components/pegawai/akun-pegawai.tsx`, `components/pegawai/data-sensitif.tsx`), serta mencegah penonaktifan akun Superadmin via `simpanPegawai()` & `simpanImporPegawai()` (`server/layanan/impor-pegawai.ts`).
+- **Perbaikan Gelombang 2 (Privasi, Integritas Transaksi, & Rentang Tanggal):**
+  - `server/aksi/cuti.ts` & `server/layanan/cuti.ts`: Menutup kebocoran `pratinjauCuti` dengan cek kepemilikan `kecualiId`, validasi UUID `id` di `simpanFormulir`, memasang kunci antrean `pg_advisory_xact_lock(hashtext(pegawaiId))` di `simpanFormulir`/`setujuiCuti`/`tolakCuti`/`batalkanCuti`/`catatKeputusanEksternal`, memakai `updateMany` bersyarat `status: "DIAJUKAN"` saat ubah formulir, cek ulang `saldoTersedia(saldo) < p.jumlahHari` (`SALDO_KURANG`) di `terapkanPersetujuan`, serta menangkap `"BERUBAH"` menjadi pesan ramah di `tolakCuti` & `batalkanCuti`.
+  - `lib/domain/hari-kerja.ts` & `server/layanan/cuti.ts`: Menambah `cekRentangTanggalCuti()` (tahun `2000–2100`, maks. `1.100` hari kalender) sebelum query libur dan mengubah `hitungHariKerja()` ke putaran `O(1)` memori tanpa alokasi array tanggal.
+- **Perbaikan Gelombang 3 (Notifikasi, Impor/Ekspor Saldo, Unit, & Nomor Surat):**
+  - `server/notifikasi.ts`, `server/layanan/wewenang-cuti.ts`, & `server/aksi/cuti.ts`: Menambah `userDenganHakAkses()` dan memakainya pada notifikasi tahap proses & pembatalan cuti agar pemegang centang `PROSES_CUTI` selalu menerima pemberitahuan.
+  - `server/aksi/saldo.ts` & `app/api/ekspor/rekap-cuti/route.ts`: Menambah validasi tahun (`2020–2100`) & tolak NIP ganda (menyebut kedua nomor baris) pada `imporSaldo`, serta memakai `buatNamaSheetUnik()` pada ekspor rekap.
+  - `server/aksi/master.ts`, `server/layanan/cuti.ts`, `lib/domain/daftar-hadir.ts`, & `server/aksi/surat.ts`: Mencegah rantai induk unit melingkar di `simpanUnit()`, menambah proteksi `Set` anti-loop di `snapshotIdentitas()` & `unitDaftarHadir()`, serta memasang kunci antrean per tahun `surat_nomor_<tahun>` saat penomoran surat otomatis di `simpanSurat()`.
+- **Perbaikan Gelombang 4 (API `wajibGantiPassword`, Matriks Hak Akses, & `generateViewport`):**
+  - `app/api/auth/google/route.ts`, `app/api/auth/google/callback/route.ts`, `app/api/dokumen/[id]/berkas/route.ts`, `app/api/dokumen/cetak-gabungan/route.ts`, `app/api/surat/[versiId]/pdf/route.ts`, `app/api/ekspor/pegawai/route.ts`, `app/api/ekspor/rekap-cuti/route.ts`, `app/api/cuti/template-saldo/route.ts`, `app/api/pegawai/impor/route.ts`, & `app/api/pegawai/template/route.ts`: Menolak akses saat `u.wajibGantiPassword === true` (redirect `/profil?wajib=1` untuk tautkan Google, HTTP `403` ramah untuk API berkas/ekspor/impor/PDF; foto profil tetap terbuka agar avatar tampil).
+  - `lib/hak-akses.ts` & `components/admin/matriks-hak-akses.tsx`: Menambah `inisialMatriks()` (menghasilkan `ES` untuk `eerza311 (Superadmin)`) dan memperbarui state `adalahAdmin` seketika saat centang `PENGATURAN_ADMIN` berubah.
+  - `app/layout.tsx`: Mengubah `viewport` statis menjadi `generateViewport()` dinamis yang membaca cookie tema untuk menyelaraskan `themeColor` bilah browser HP sejak halaman Login.
+- **Polesan Pasca-QA (`2026-11-25`):**
+  - `app/(aplikasi)/pegawai/page.tsx`: Membungkus seluruh deret tombol aksi kanan atas (**Ekspor Excel**, **Ekspor + data pribadi**, **Cetak / PDF**, **Impor Excel**, dan **Tambah pegawai**) di dalam `{kepegawaian && (...)}` agar tidak tampil sebagai tombol buntu bagi akun yang hanya memiliki centang `PENGATURAN_ADMIN`.
+  - `server/dokumen/penyimpanan.ts` & `tests/unit/dokumen-cron.test.ts`: Membungkus proses dekripsi (`dc.final()`) di `dekripsiJikaPerlu()` dengan `try / catch` yang melempar `GalatKonfigurasiBerkas` berpesan ramah (*"Berkas terenkripsi tidak dapat dibuka karena kunci enkripsi server tidak cocok atau berkas rusak. Hubungi Admin."*, membalas HTTP **503** ramah tanpa audit palsu), serta menambahkan unit test verifikasi kunci tidak cocok.
+- **Verifikasi Akhir Coder (`2026-11-25`):** `npx prisma migrate deploy` (lokal Docker `localhost:5432`, 8/8 migrasi OK), `npx prisma generate` OK, `npm run typecheck` OK, `npm run lint` OK (0 error/warning), `npm test` **136/136 lulus** (16 file test), dan `npm run build` OK (44 rute). Siap commit, push ke GitHub, migrasi Neon, dan deploy ke Vercel.
 
 ### File Diubah (Animasi Tombol Interaktif "Abu Terbawa Angin" — Opsi A: Elegan Halus)
 - `app/globals.css`:
@@ -364,12 +536,46 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 
 ## 4. Antrean Bug & Evaluasi QA (Diisi oleh Conversation 2 - Debugger)
 *Daftar error logika, masalah tampilan, atau perbaikan yang dibutuhkan:*
-- [ ] **[RENDAH - Opsional] [app/layout.tsx:23-27 (`viewport.themeColor`)]**: Warna bilah alamat browser HP (`themeColor`) masih disetel statis `#0E0E10` di sisi server. Saat pegawai membuka halaman `/login` dengan pilihan tema **Langit Pagi** atau **Mossy Stone** (sebelum masuk ke aplikasi), bilah atas browser HP tetap memakai warna gelap `#0E0E10` sampai berganti di dalam aplikasi. Tidak mengganggu fungsi maupun keterbacaan isi halaman.
-- [ ] **[CATATAN DESAIN] [server/auth/pengguna.ts:~38-45 vs app/(aplikasi)/admin/hak-akses/page.tsx:34]**: Peran legacy `KEPEGAWAIAN` saat ini otomatis menginjeksi 3 hak akses (`KELOLA_SALDO_CUTI`, `PROSES_CUTI`, `KELOLA_PEGAWAI`) jika baris `user_hak_akses` kosong. Bila kelak ingin mencabut hak dari pegawai yang masih memiliki peran legacy tersebut, Admin disarankan menghapus peran `KEPEGAWAIAN` akun tersebut atau mengeksekusi migrasi data peran ke hak akses modular.
-- [ ] **[CATATAN DESAIN] [server/layanan/akses-dokumen.ts:63]**: Evaluasi berkelanjutan untuk menyelaraskan fungsi akses dokumen lama dengan hak akses `KELOLA_PEGAWAI` vs peran legacy.
-- [ ] **[CATATAN] [DEV_SYNC.md bagian 1.C]**: Blueprint menyebut route `/cuti/rekap`, namun rekap terintegrasi pada `/cuti/saldo` dan `/cetak/rekap-cuti`.
+- [ ] **[CATATAN DESAIN] [server/auth/pengguna.ts:~38-45 vs app/(aplikasi)/admin/hak-akses/page.tsx:34]**: Peran legacy `KEPEGAWAIAN` saat ini otomatis menginjeksi 3 hak akses (`KELOLA_SALDO_CUTI`, `PROSES_CUTI`, `KELOLA_PEGAWAI`) hanya jika baris `user_hak_akses` kosong; begitu Superadmin menyimpan centang di `/admin/hak-akses`, peran lama otomatis dibersihkan.
+- [ ] **[CATATAN] [DEV_SYNC.md bagian 1.C]**: Blueprint awal menyebut route `/cuti/rekap`, namun rekap terintegrasi pada `/cuti/saldo` dan `/cetak/rekap-cuti`.
 
 ## 5. Riwayat Selesai (Resolved)
+- [x] **[VERIFIKASI QA - Polesan Akhir & Cek Status Rilis Produksi] [2026-11-25]**:
+  - Kedua polesan akhir (`app/(aplikasi)/pegawai/page.tsx` dan `server/dokumen/penyimpanan.ts`) telah diperiksa langsung pada kode lokal dan **136/136 unit test** lulus bersih.
+  - Pengecekan langsung (100% hanya baca) pada `https://cuti-esdm.vercel.app` & `git log` mengonfirmasi bahwa **perubahan terbaru ini belum di-commit, belum di-push ke GitHub, belum dimigrasikan ke Neon, dan belum di-deploy ke Vercel** (website online masih menjalankan versi lama `b2cdbcb`: inisial Superadmin masih `E(`, 6 cuti lama masih *Surat Terbit*, dan belum ada error konsol).
+  - *Temuan praktis tambahan:* Di menu **Dokumen Organisasi** produksi saat ini tertulis batas **`maks. 1 MB`** (berarti pengaturan `dokumen.maks_ukuran_mb` di Neon sedang bernilai `1`). Setelah rilis baru tayang, bila ingin pegawai bisa mengunggah hingga **4 MB**, cukup ubah angka batas dokumen di **Admin → Pengaturan** menjadi `4`.
+- [x] **[SEDANG - UX Tombol Buntu] [app/(aplikasi)/pegawai/page.tsx:61-91] [2026-11-25]**: Seluruh tombol aksi kanan atas (**Ekspor Excel**, **Ekspor + data pribadi**, **Cetak / PDF**, **Impor Excel**, dan **Tambah pegawai**) kini dibungkus `{kepegawaian && (...)}` sehingga tidak lagi tampil sebagai tombol buntu bagi akun yang hanya memegang hak `PENGATURAN_ADMIN`.
+- [x] **[RENDAH - Penanganan Kunci Enkripsi Tidak Cocok] [server/dokumen/penyimpanan.ts:157-170, tests/unit/dokumen-cron.test.ts] [2026-11-25]**: Proses dekripsi `dekripsiJikaPerlu()` kini membungkus `dc.final()` dengan `try / catch` dan melempar `GalatKonfigurasiBerkas` berpesan ramah (HTTP 503 ramah tanpa audit palsu), lengkap dengan unit test lulus (**136/136** unit test & `npm run build` 44 rute OK).
+- [x] **[VERIFIKASI QA - Cetak Biru I: Penyimpanan `dokumen_berkas`, Vercel Cron, & Perbaikan Keamanan/Logika Gelombang 1–4] [2026-11-25]**:
+  - **Tes Otomatis & Migrasi Lokal:** `prisma migrate status` (8/8 migrasi sinkron di Docker lokal `localhost:5432`), `npm run typecheck` OK, `npm run lint` OK (0 error/warning), `npm test` **135/135 lulus** (16 file test).
+  - **Uji Integrasi Database PostgreSQL Nyata (5 Skenario):**
+    - Unggah dokumen pribadi terenkripsi AES-256-GCM ke tabel `dokumen_berkas` (`303 B` asli → `331 B` terenkripsi di DB, dekripsi kembali persis sama), hapus lunak & pulihkan tetap utuh, dan `gabungkanPdf` menghasilkan PDF gabungan valid.
+    - Simulasi hapus paksa baris `dokumen_berkas` → `GalatBerkasTidakDitemukan` & `GalatGabung` menyebut nama dokumen.
+    - Endpoint `/api/tugas/harian` menerima `GET` (`Bearer CRON_SECRET`), `POST` (`Bearer TUGAS_TOKEN`), menolak token salah `401`, mengubah status cuti lewat `SURAT_TERBIT → SELESAI`, dan pemanggilan ulang tidak menambah riwayat status ganda (`cutiSelesai: 0`, 1 baris riwayat).
+    - `userDenganHakAkses("PROSES_CUTI")` menyertakan akun pemegang centang `PROSES_CUTI` tanpa peran lama dan mengecualikannya setelah dicabut.
+    - Rentang tanggal tahun `9026` ditolak cepat dalam **0,11 ms**.
+  - **Uji Browser Lokal Nyata (`1280×800` Laptop & `390×844` HP — 13 Skenario):**
+    - Superadmin (`admin`): lencana **Admin** & angka filter `Admin Utama` di `/admin/hak-akses` langsung berubah seketika tanpa muat ulang; unggah PDF & PNG di `/dokumen/organisasi` tampil & terbuka HTTP `200`, hapus lunak → pulihkan di `/admin/dokumen-terhapus` → kembali terbuka HTTP `200`.
+    - Akun hanya `PENGATURAN_ADMIN` (`Akbar, S.Kom.`): menu samping menyembunyikan *Saldo & Rekap Cuti* dan *Data Pegawai*; `/cuti/saldo` & `/dokumen?pegawai=...` diarahkan ke `/akses-ditolak`; `/admin/hak-akses` tampil *Mode lihat saja* dengan seluruh centang terkunci; `/api/ekspor/pegawai` membalas `403 Akses ditolak`; unggah dokumen pribadi `KTP` ke `dokumen_berkas` (terenkripsi `331 B`) sukses & terbuka HTTP `200`.
+    - Simulasi berkas fisik hilang di browser: `GET /api/dokumen/.../berkas` membalas **404 ramah** (*"Berkas fisik dokumen tidak ditemukan..."*), dan tombol **Cetak gabungan** membalas **422 ramah** menyebut `"QA Org Foto"` lengkap dengan notifikasi toast.
+    - Layar HP `390×844` (`/beranda`, `/dokumen`, `/admin/hak-akses`): **nol gulir samping** dan **nol galat konsol**; pindah tema ke **Langit Pagi** mengubah `<meta name="theme-color">` di `/login` dari `#0E0E10` menjadi `#F0F9FF`.
+  - **Status Kesiapan Rilis:** Seluruh 12 temuan utama (KRITIS s.d. RENDAH) telah terverifikasi tuntas. Tinggal 2 polesan kecil di Bagian 4 (tombol buntu di `/pegawai` untuk akun `PENGATURAN_ADMIN` & `try/catch` dekripsi kunci tidak cocok) sebelum migrasi Neon & deploy Vercel.
+- [x] **[KRITIS - Penyimpanan Berkas di Vercel] [prisma/migrations/20261125130000_dokumen_berkas/migration.sql, server/dokumen/penyimpanan.ts, server/dokumen/gabung.ts, server/aksi/dokumen.ts, server/aksi/cuti.ts, app/api/dokumen/[id]/berkas/route.ts, components/dokumen/form-unggah.tsx, components/cuti/aksi-pengajuan.tsx]**: Berkas dokumen pribadi (terenkripsi AES-256-GCM), dokumen organisasi, & lampiran surat izin kini tersimpan atomik di tabel database `dokumen_berkas` (mode bawaan `db`, tetap mendukung `disk`), batas jujur maks. 4 MB di Vercel + cek di browser, serta respon 404/422 ramah bila berkas fisik tidak ditemukan.
+- [x] **[KRITIS - Keamanan Hak Akses] [server/aksi/akun.ts, lib/menu.ts, server/layanan/akses-dokumen.ts, server/layanan/akses-cuti.ts, server/layanan/wewenang-cuti.ts, server/aksi/*, server/kueri/*, app/**]**: Pengaturan hak akses & peran dikunci khusus Superadmin, peran lama `ADMIN`/`KEPEGAWAIAN` dibersihkan saat centang disimpan, seluruh izin modul memakai `punyaHakAkses()` tanpa bypass peran lama, data sensitif dipisahkan khusus pemilik & `KELOLA_PEGAWAI`, dan akun Superadmin dilindungi dari penonaktifan via form/impor pegawai.
+- [x] **[TINGGI - Privasi Data Cuti] [server/aksi/cuti.ts (`pratinjauCuti`)]**: Penambahan cek kepemilikan `kecualiId` mencegah pegawai mengintip sisa saldo atau tanggal cuti rekan kerja.
+- [x] **[TINGGI - Logika & Integritas Cuti] [server/aksi/cuti.ts, server/layanan/cuti.ts]**: Validasi UUID `id`, kunci antrean transaksi per pegawai di seluruh aksi cuti, `updateMany` bersyarat `status: "DIAJUKAN"`, cek ulang kecukupan saldo `SALDO_KURANG` saat disetujui, serta penanganan pesan ramah `"BERUBAH"` di `tolakCuti` & `batalkanCuti`.
+- [x] **[TINGGI - Stabilitas Layanan] [lib/domain/hari-kerja.ts, server/layanan/cuti.ts]**: Validasi rentang tanggal (`2000–2100`, maks. `1.100` hari kalender) sebelum query libur dan perhitungan hari kerja `O(1)` memori tanpa menumpuk array jutaan tanggal.
+- [x] **[SEDANG - Jadwal Otomatis Status Cuti "Selesai" di Vercel] [vercel.json, app/api/tugas/harian/route.ts, server/layanan/cuti.ts]**: Penambahan jadwal Vercel Cron harian `"0 17 * * *"` (01:00 WITA), dukungan `GET` (`CRON_SECRET`) & `POST` (`TUGAS_TOKEN`), dan anti-riwayat ganda pada `selesaikanCutiLewat`.
+- [x] **[SEDANG - Notifikasi Hak Modular] [server/notifikasi.ts, server/layanan/wewenang-cuti.ts, server/aksi/cuti.ts]**: Helper `userDenganHakAkses("PROSES_CUTI")` memastikan pemegang centang Proses Cuti (tanpa peran lama) menerima notifikasi lonceng & email.
+- [x] **[SEDANG - Impor & Ekspor Saldo Cuti] [server/aksi/saldo.ts, lib/excel.ts, app/api/ekspor/rekap-cuti/route.ts]**: Validasi tahun `2020–2100`, tolak baris NIP ganda di impor saldo, dan `buatNamaSheetUnik()` mencegah bentrok nama tab Excel > 31 karakter.
+- [x] **[SEDANG - Struktur Unit & Nomor Surat] [server/aksi/master.ts, server/layanan/cuti.ts, lib/domain/daftar-hadir.ts, server/aksi/surat.ts]**: Pencegahan induk unit melingkar, proteksi `Set` anti-loop, dan kunci antrean penomoran surat otomatis per tahun.
+- [x] **[RENDAH - Konsistensi Keamanan Password Sementara] [app/api/auth/google/*, app/api/dokumen/*, app/api/ekspor/*, app/api/cuti/template-saldo/*, app/api/pegawai/*, app/api/surat/*]**: Menolak tautkan Google (`/profil?wajib=1`) dan rute API sensitif (`403`) bila `wajibGantiPassword` masih aktif.
+- [x] **[RENDAH - Tampilan Lencana & Inisial Matriks Hak Akses] [lib/hak-akses.ts, components/admin/matriks-hak-akses.tsx]**: State `adalahAdmin` langsung diperbarui seketika tanpa muat ulang dan inisial `eerza311 (Superadmin)` tampil rapi **`ES`** (bukan `E(`).
+- [x] **[RENDAH - Opsional] [app/layout.tsx (`generateViewport`)]**: Warna bilah alamat browser HP (`themeColor`) kini dinamis mengikuti cookie tema aktif (`#0E0E10`, `#F0F9FF`, `#161E1A`) sejak halaman `/login`.
+- [x] **[VERIFIKASI QA - Data Produksi Online & Pengecekan Otomatis Lokal] [2026-11-25]**:
+  - Verifikasi langsung (100% hanya baca, nol perubahan data) pada `https://cuti-esdm.vercel.app` dengan akun Superadmin `admin`: seluruh 6 halaman utama (`/beranda`, `/pegawai`, `/cuti/saldo`, `/cuti/proses`, `/dokumen/organisasi`, `/admin/hak-akses`) terbuka normal tanpa galat konsol maupun galat tampilan.
+  - Data produksi Neon terkonfirmasi utuh: **93 pegawai aktif**, seluruh ASN sudah memiliki **saldo cuti 2026** (nol peringatan saldo kosong) di seluruh unit, **12 pengajuan cuti** utuh (1 antrean aktif, 6 *Surat Terbit*, 4 *Disetujui*, 1 *Dibatalkan*), **4 folder Dokumen Organisasi** siap pakai (saat ini masih 0 dokumen sehingga belum ada berkas yang hilang), serta **6 akun aktif** termasuk `eerza311 (Superadmin)` dengan **foto profil** tampil normal di pojok kanan atas.
+  - Lingkungan kerja lokal (`node_modules`, Prisma Client, `.env` dev lokal yang 100% terpisah dari Neon, container Docker PostgreSQL 17 `cuti-esdm-dev-db-1`, 7 migrasi tabel, serta data contoh fiktif: 106 pegawai, 90 akun, 102 saldo cuti, 4 folder dokumen) sudah siap pakai 100%; pengecekan otomatis lulus bersih: `npm run typecheck` OK, `npm run lint` OK (0 error/warning), dan `npm test` **115/115 lulus**.
 - [x] **[VERIFIKASI QA - Animasi Tombol "Abu Terbawa Angin" & Build Produksi] [2026-11-24]**:
   - Uji browser (`1280×800` laptop & `390×844` HP) pada halaman `/beranda`, `/admin` (9 kartu `.kartu-abu`), `/dokumen/organisasi` (4 kartu folder `.kartu-abu`), `/cuti/saldo` (ikon edit kecil + Dialog Ubah Saldo), dan detail pegawai tab **Akun** (varian `default`, `penting` emas, `outline`, `destructive`, `ghost`, dan tombol nonaktif `disabled`).
   - Seluruh 4 kondisi animasi (hover masuk halus, klik singkat, tekan tahan bernapas, dan memudar lambat saat kursor pergi) terverifikasi rapi di ketiga tema (**Cursor Dark**, **Mossy Stone**, **Langit Pagi**), teks putih tombol utama di **Langit Pagi** tetap tajam saat di-hover, dan tombol `penting` memancarkan pendar emas hangat.

@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { adalahAkunSuperadmin } from "@/lib/hak-akses";
 import { type DataPegawai, skemaPegawai } from "@/lib/validasi/pegawai";
 import { catatAudit } from "../audit";
 import { db } from "../db";
@@ -53,9 +54,13 @@ export async function simpanImporPegawai(kiriman: unknown, userId: string | null
 
       for (const { data: d, nipAtasan } of bersih) {
         const ada = d.nip
-          ? await tx.pegawai.findUnique({ where: { nip: d.nip } })
-          : await tx.pegawai.findFirst({ where: { idNonAsn: { equals: d.idNonAsn!, mode: "insensitive" } } });
+          ? await tx.pegawai.findUnique({ where: { nip: d.nip }, include: { user: { select: { id: true, loginId: true, googleEmail: true, aktif: true } } } })
+          : await tx.pegawai.findFirst({
+              where: { idNonAsn: { equals: d.idNonAsn!, mode: "insensitive" } },
+              include: { user: { select: { id: true, loginId: true, googleEmail: true, aktif: true } } },
+            });
 
+        const terhubungSuperadmin = Boolean(ada?.user && adalahAkunSuperadmin(ada.user));
         const isi: Partial<DataPegawai> = {};
         for (const [kunci, nilai] of Object.entries(d) as [keyof DataPegawai, unknown][]) {
           if (kunci === "atasanLangsungId" || kunci === "levelSuratOverride") continue;
@@ -63,11 +68,15 @@ export async function simpanImporPegawai(kiriman: unknown, userId: string | null
             (isi as Record<string, unknown>)[kunci] = nilai;
           }
         }
+        // Proteksi anti-nonaktif Superadmin: jangan pernah menonaktifkan pegawai/akun Superadmin lewat impor Excel.
+        if (terhubungSuperadmin && isi.aktif === false) {
+          isi.aktif = true;
+        }
 
         const p = ada
           ? await tx.pegawai.update({ where: { id: ada.id }, data: isi })
           : await tx.pegawai.create({ data: { ...(isi as DataPegawai), atasanLangsungId: null, levelSuratOverride: null } });
-        if (ada && !p.aktif) {
+        if (ada && !p.aktif && !terhubungSuperadmin) {
           await tx.user.updateMany({ where: { pegawaiId: p.id, aktif: true }, data: { aktif: false } });
           await tx.sesi.deleteMany({ where: { user: { pegawaiId: p.id } } });
         }

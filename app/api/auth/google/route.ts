@@ -9,5 +9,6 @@ export async function GET(req: Request) {
   const mode = diminta && MODE_GOOGLE.includes(diminta) ? diminta : "masuk";
   const u = mode === "hubungkan" ? await penggunaSaatIni() : null;
   if (mode === "hubungkan" && !u) redirect("/login");
+  if (mode === "hubungkan" && u?.wajibGantiPassword) redirect("/profil?wajib=1");
   redirect(await mulaiGoogle(mode, u ? { userId: u.userId, sesiId: u.sesiId } : undefined));
 }

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { batasUkuranDokumenByte } from "@/lib/dokumen";
 import { bisaDibatalkan, bisaDitolak, STATUS_DISETUJUI, STATUS_SETELAH_TAHAP } from "@/lib/domain/alur-cuti";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import type { StatusCuti } from "@/lib/generated/prisma/enums";
@@ -10,12 +11,13 @@ import { LABEL_STATUS_CUTI } from "@/lib/label";
 import { formatTanggal, hariIniWita } from "@/lib/tanggal";
 import type { HasilForm } from "@/lib/validasi/auth";
 import { catatAudit } from "../audit";
-import { punyaHakAkses, punyaPeran, wajibLogin } from "../auth/pengguna";
+import { punyaHakAkses, wajibLogin } from "../auth/pengguna";
 import { db } from "../db";
-import { periksaBerkas, simpanBerkas } from "../dokumen/penyimpanan";
-import { kirimNotifikasi, userDariPegawai, userDenganPeran } from "../notifikasi";
+import { GalatKonfigurasiBerkas, metadataBerkas, periksaBerkas, siapkanBerkas, simpanIsiBerkas } from "../dokumen/penyimpanan";
+import { kirimNotifikasi, userDariPegawai, userDenganHakAkses } from "../notifikasi";
 import { batalkanPersetujuan, levelSuratPegawai, snapshotIdentitas, tahapPengajuan, terapkanPersetujuan, validasiPengajuan } from "../layanan/cuti";
 import { bolehPutuskan, modeTahap, penerimaTahap } from "../layanan/wewenang-cuti";
+import { maksUkuranDokumenMb } from "../pengaturan";
 
 const tanggal = (s: string) => new Date(`${s}T00:00:00Z`);
 const isoDate = z.iso.date("Tanggal tidak valid.");
@@ -25,8 +27,15 @@ export async function pratinjauCuti(input: { jenisCutiId: string; tanggalMulai: 
   const u = await wajibLogin();
   const p = z.object({ jenisCutiId: z.uuid(), tanggalMulai: isoDate, tanggalSelesai: isoDate, kecualiId: z.uuid().nullable().optional() }).safeParse(input);
   if (!p.success) return { galat: null };
-  const lama = p.data.kecualiId ? await db.pengajuanCuti.findUnique({ where: { id: p.data.kecualiId }, select: { pegawaiId: true } }) : null;
-  const pegawaiId = lama?.pegawaiId ?? u.pegawai?.id;
+  let pegawaiId = u.pegawai?.id ?? null;
+  if (p.data.kecualiId) {
+    const lama = await db.pengajuanCuti.findUnique({ where: { id: p.data.kecualiId }, select: { pegawaiId: true } });
+    if (!lama) return { galat: "Pengajuan tidak ditemukan." };
+    if (u.pegawai?.id !== lama.pegawaiId && !punyaHakAkses(u, "PROSES_CUTI")) {
+      return { galat: "Anda tidak berhak mengakses pengajuan ini." };
+    }
+    pegawaiId = lama.pegawaiId;
+  }
   if (!pegawaiId) return { galat: "Akun tidak terhubung dengan data pegawai." };
   const h = await validasiPengajuan({ pegawaiId, jenisCutiId: p.data.jenisCutiId, mulai: tanggal(p.data.tanggalMulai), selesai: tanggal(p.data.tanggalSelesai), kecualiId: p.data.kecualiId ?? undefined });
   if (h.ok) return { jumlahHari: h.jumlahHari, satuan: h.satuan, sisaSetelah: h.sisaSetelah };
@@ -90,6 +99,7 @@ async function beritahuTahap(p: { id: string; pegawaiId: string; atasanLangsungI
  */
 export async function simpanFormulir(id: string | null, masukan: MasukanFormulir): Promise<{ galat?: string; id?: string }> {
   const u = await wajibLogin();
+  if (id !== null && !z.uuid().safeParse(id).success) return { galat: "Pengajuan tidak ditemukan." };
   const v = skemaFormulir.safeParse(masukan);
   if (!v.success) return { galat: v.error.issues[0]?.message ?? "Isian formulir tidak valid." };
   const d = v.data;
@@ -99,14 +109,14 @@ export async function simpanFormulir(id: string | null, masukan: MasukanFormulir
 
   const lama = id ? await db.pengajuanCuti.findUnique({ where: { id } }) : null;
   if (id && !lama) return { galat: "Pengajuan tidak ditemukan." };
-  if (lama && !(u.pegawai?.id === lama.pegawaiId || punyaHakAkses(u, "PROSES_CUTI") || punyaPeran(u, "KEPEGAWAIAN", "ADMIN"))) return { galat: "Anda tidak berhak mengubah formulir ini." };
+  if (lama && !(u.pegawai?.id === lama.pegawaiId || punyaHakAkses(u, "PROSES_CUTI"))) return { galat: "Anda tidak berhak mengubah formulir ini." };
   if (lama && lama.status !== "DIAJUKAN") return { galat: "Formulir sudah diproses Kepegawaian dan tidak bisa diubah lagi." };
   const pegawaiId = lama?.pegawaiId ?? u.pegawai?.id;
   if (!pegawaiId) return { galat: "Akun ini tidak terhubung dengan data pegawai." };
 
   try {
     const hasilId = await db.$transaction(async (tx) => {
-      // Kunci per pegawai: dua pengajuan bersamaan tidak boleh sama-sama lolos cek saldo/bentrok.
+      // Kunci antrean per pegawai: pengajuan, ubah formulir, dan persetujuan tidak boleh saling salip.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${pegawaiId}))`;
       const cek = await validasiPengajuan({ pegawaiId, jenisCutiId: d.jenisCutiId, mulai, selesai, kecualiId: lama?.id }, tx);
       if (!cek.ok) throw new GalatValidasi(cek.galat);
@@ -149,7 +159,8 @@ export async function simpanFormulir(id: string | null, masukan: MasukanFormulir
         formulir: notaDinas && perluNotaDinas(levelSurat) ? { ...isian, notaDinas } : isian,
       };
       if (lama) {
-        await tx.pengajuanCuti.update({ where: { id: lama.id }, data });
+        const r = await tx.pengajuanCuti.updateMany({ where: { id: lama.id, status: "DIAJUKAN" }, data });
+        if (r.count === 0) throw new Error("BERUBAH_FORMULIR");
         await catatAudit({ userId: u.userId, aksi: "UBAH_FORMULIR_CUTI", entitas: "pengajuan_cuti", entitasId: lama.id, sesudah: { ...data, formulir: undefined } }, tx);
         return lama.id;
       }
@@ -165,6 +176,9 @@ export async function simpanFormulir(id: string | null, masukan: MasukanFormulir
     return { id: hasilId };
   } catch (e) {
     if (e instanceof GalatValidasi) return { galat: Object.values(e.galat)[0] ?? "Periksa kembali isian formulir." };
+    if (e instanceof Error && e.message === "BERUBAH_FORMULIR") {
+      return { galat: "Formulir baru saja diproses dan tidak bisa diubah lagi. Muat ulang halaman." };
+    }
     throw e;
   }
 }
@@ -199,6 +213,7 @@ export async function setujuiCuti(id: string, catatan: string): Promise<HasilFor
   const ke = STATUS_SETELAH_TAHAP[tahap];
   try {
     await db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${p.pegawaiId}))`;
       const r = await tx.pengajuanCuti.updateMany({ where: { id, status: p.status }, data: { status: ke } });
       if (r.count === 0) throw new Error("BERUBAH");
       await tx.riwayatStatusCuti.create({ data: { pengajuanId: id, dariStatus: p.status, keStatus: ke, olehUserId: u.userId, catatan: catatan.trim().slice(0, 500) || null } });
@@ -210,6 +225,7 @@ export async function setujuiCuti(id: string, catatan: string): Promise<HasilFor
   } catch (e) {
     if (e instanceof Error && e.message === "BERUBAH") return { galat: "Status pengajuan baru saja berubah. Muat ulang halaman." };
     if (e instanceof Error && e.message === "SALDO_TIDAK_ADA") return { galat: "Saldo cuti tahunan pegawai belum diatur." };
+    if (e instanceof Error && e.message === "SALDO_KURANG") return { galat: "Saldo cuti tahunan pegawai tidak mencukupi untuk menyetujui pengajuan ini." };
     throw e;
   }
   selesaiAksi(id);
@@ -223,16 +239,22 @@ export async function tolakCuti(id: string, alasan: string): Promise<HasilForm> 
   if (alasan.trim().length < 5) return { galat: "Alasan penolakan wajib diisi (min. 5 karakter)." };
   if (!bisaDitolak(p.status)) return { galat: "Pengajuan yang sudah diputuskan pejabat tidak bisa ditolak." };
   const tahap = await tahapPengajuan(p);
-  const boleh = (tahap && (await bolehPutuskan(u, p, tahap))) || ((punyaHakAkses(u, "PROSES_CUTI") || punyaPeran(u, "KEPEGAWAIAN")) && u.pegawai?.id !== p.pegawaiId);
+  const boleh = (tahap && (await bolehPutuskan(u, p, tahap))) || (punyaHakAkses(u, "PROSES_CUTI") && u.pegawai?.id !== p.pegawaiId);
   if (!boleh) return { galat: "Anda tidak berwenang menolak pengajuan ini." };
 
-  await db.$transaction(async (tx) => {
-    const r = await tx.pengajuanCuti.updateMany({ where: { id, status: p.status }, data: { status: "DITOLAK" } });
-    if (r.count === 0) throw new Error("BERUBAH");
-    await tx.riwayatStatusCuti.create({ data: { pengajuanId: id, dariStatus: p.status, keStatus: "DITOLAK", olehUserId: u.userId, catatan: alasan.trim().slice(0, 500) } });
-    await catatAudit({ userId: u.userId, aksi: "TOLAK_CUTI", entitas: "pengajuan_cuti", entitasId: id, sebelum: { status: p.status }, sesudah: { status: "DITOLAK", alasan } }, tx);
-    await kirimNotifikasi([await userDariPegawai(p.pegawaiId, tx)], { judul: "Cuti ditolak", isi: `${p.jenisCuti.nama} ${formatTanggal(p.tanggalMulai)} ditolak: ${alasan.trim()}`, tautan: `/cuti/${id}` }, tx);
-  });
+  try {
+    await db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${p.pegawaiId}))`;
+      const r = await tx.pengajuanCuti.updateMany({ where: { id, status: p.status }, data: { status: "DITOLAK" } });
+      if (r.count === 0) throw new Error("BERUBAH");
+      await tx.riwayatStatusCuti.create({ data: { pengajuanId: id, dariStatus: p.status, keStatus: "DITOLAK", olehUserId: u.userId, catatan: alasan.trim().slice(0, 500) } });
+      await catatAudit({ userId: u.userId, aksi: "TOLAK_CUTI", entitas: "pengajuan_cuti", entitasId: id, sebelum: { status: p.status }, sesudah: { status: "DITOLAK", alasan } }, tx);
+      await kirimNotifikasi([await userDariPegawai(p.pegawaiId, tx)], { judul: "Cuti ditolak", isi: `${p.jenisCuti.nama} ${formatTanggal(p.tanggalMulai)} ditolak: ${alasan.trim()}`, tautan: `/cuti/${id}` }, tx);
+    });
+  } catch (e) {
+    if (e instanceof Error && e.message === "BERUBAH") return { galat: "Status pengajuan baru saja berubah. Muat ulang halaman." };
+    throw e;
+  }
   selesaiAksi(id);
   return { sukses: "Pengajuan ditolak." };
 }
@@ -244,45 +266,73 @@ export async function batalkanCuti(id: string, alasan: string): Promise<HasilFor
   if (u.pegawai?.id !== p.pegawaiId) return { galat: "Hanya pemohon yang bisa membatalkan pengajuannya." };
   if (!bisaDibatalkan(p.status, p.tanggalMulai, hariIniWita())) return { galat: "Cuti hanya bisa dibatalkan sebelum tanggal mulai." };
 
-  await db.$transaction(async (tx) => {
-    const r = await tx.pengajuanCuti.updateMany({ where: { id, status: p.status }, data: { status: "DIBATALKAN" } });
-    if (r.count === 0) throw new Error("BERUBAH");
-    if (STATUS_DISETUJUI.includes(p.status)) await batalkanPersetujuan(id, u.userId, tx);
-    await tx.riwayatStatusCuti.create({ data: { pengajuanId: id, dariStatus: p.status, keStatus: "DIBATALKAN", olehUserId: u.userId, catatan: alasan.trim().slice(0, 500) || null } });
-    await catatAudit({ userId: u.userId, aksi: "BATALKAN_CUTI", entitas: "pengajuan_cuti", entitasId: id, sebelum: { status: p.status }, sesudah: { status: "DIBATALKAN" } }, tx);
-    const pihak = [await userDariPegawai(p.atasanLangsungId, tx), ...(STATUS_DISETUJUI.includes(p.status) || p.status === "DIVERIFIKASI" ? await userDenganPeran("KEPEGAWAIAN", tx) : [])];
-    await kirimNotifikasi(pihak, { judul: "Cuti dibatalkan pemohon", isi: `${p.jenisCuti.nama} ${formatTanggal(p.tanggalMulai)} dibatalkan oleh pemohon.`, tautan: `/cuti/${id}` }, tx);
-  });
+  try {
+    await db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${p.pegawaiId}))`;
+      const r = await tx.pengajuanCuti.updateMany({ where: { id, status: p.status }, data: { status: "DIBATALKAN" } });
+      if (r.count === 0) throw new Error("BERUBAH");
+      if (STATUS_DISETUJUI.includes(p.status)) await batalkanPersetujuan(id, u.userId, tx);
+      await tx.riwayatStatusCuti.create({ data: { pengajuanId: id, dariStatus: p.status, keStatus: "DIBATALKAN", olehUserId: u.userId, catatan: alasan.trim().slice(0, 500) || null } });
+      await catatAudit({ userId: u.userId, aksi: "BATALKAN_CUTI", entitas: "pengajuan_cuti", entitasId: id, sebelum: { status: p.status }, sesudah: { status: "DIBATALKAN" } }, tx);
+      const pihak = [await userDariPegawai(p.atasanLangsungId, tx), ...(STATUS_DISETUJUI.includes(p.status) || p.status === "DIVERIFIKASI" ? await userDenganHakAkses("PROSES_CUTI", tx) : [])];
+      await kirimNotifikasi(pihak, { judul: "Cuti dibatalkan pemohon", isi: `${p.jenisCuti.nama} ${formatTanggal(p.tanggalMulai)} dibatalkan oleh pemohon.`, tautan: `/cuti/${id}` }, tx);
+    });
+  } catch (e) {
+    if (e instanceof Error && e.message === "BERUBAH") return { galat: "Status pengajuan baru saja berubah. Muat ulang halaman." };
+    throw e;
+  }
   selesaiAksi(id);
   return { sukses: "Pengajuan dibatalkan." };
 }
 
-/** Eselon II–IV: Kepegawaian mencatat keputusan Gubernur/BKD beserta surat izinnya. */
+/** Eselon II–IV: pemegang hak PROSES_CUTI mencatat keputusan Gubernur/BKD beserta surat izinnya. */
 export async function catatKeputusanEksternal(id: string, _: HasilForm, fd: FormData): Promise<HasilForm> {
   const u = await wajibLogin();
   const p = await ambil(id);
   if (!p) return { galat: "Pengajuan tidak ditemukan." };
   const tahap = await tahapPengajuan(p);
   if (tahap !== "PEJABAT_BERWENANG" || (await modeTahap(p.levelSurat, tahap)) !== "EKSTERNAL") return { galat: "Pengajuan ini tidak menunggu keputusan eksternal." };
-  if (!(await bolehPutuskan(u, p, tahap))) return { galat: "Hanya Kepegawaian yang mencatat keputusan eksternal." };
+  if (!(await bolehPutuskan(u, p, tahap))) return { galat: "Hanya pemegang hak Proses Cuti yang mencatat keputusan eksternal." };
 
   const nomor = String(fd.get("nomorSurat") ?? "").trim();
   const catatan = String(fd.get("catatan") ?? "").trim();
   if (nomor.length < 3) return { galatField: { nomorSurat: "Isi nomor surat izin dari BKD/Gubernur." } };
   const berkas = fd.get("berkas");
   if (!(berkas instanceof File) || berkas.size === 0) return { galatField: { berkas: "Unggah surat izin (PDF/JPG/PNG)." } };
+  const maksMb = await maksUkuranDokumenMb();
+  const maksByte = batasUkuranDokumenByte(maksMb);
+  if (berkas.size > maksByte) return { galatField: { berkas: `Ukuran berkas maksimal ${maksMb} MB.` } };
   const isi = Buffer.from(await berkas.arrayBuffer());
-  const cek = periksaBerkas(berkas.name, isi, berkas.type, undefined, ["pdf", "jpg", "jpeg", "png"]);
+  const cek = periksaBerkas(berkas.name, isi, berkas.type, maksByte, ["pdf", "jpg", "jpeg", "png"]);
   if (!cek.ok) return { galatField: { berkas: cek.galat } };
-  const simpan = await simpanBerkas(isi, cek.ext, true);
+
+  let siap;
+  try {
+    siap = siapkanBerkas(isi, cek.ext, true);
+  } catch (e) {
+    if (e instanceof GalatKonfigurasiBerkas) return { galat: e.message };
+    throw e;
+  }
 
   try {
     await db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${p.pegawaiId}))`;
       const r = await tx.pengajuanCuti.updateMany({ where: { id, status: p.status }, data: { status: "SURAT_TERBIT" } });
       if (r.count === 0) throw new Error("BERUBAH");
-      await tx.dokumen.create({ data: { ruang: "LAMPIRAN_CUTI", pemilikPegawaiId: p.pegawaiId, pengajuanCutiId: id, namaTampilan: `Surat izin cuti ${nomor}`.slice(0, 200), namaFileAsli: berkas.name.slice(0, 200), diunggahOlehId: u.userId, ...simpan } });
       await tx.riwayatStatusCuti.create({ data: { pengajuanId: id, dariStatus: p.status, keStatus: "DISETUJUI", olehUserId: u.userId, catatan: `Keputusan eksternal no. ${nomor}${catatan ? ` — ${catatan}` : ""}` } });
       await terapkanPersetujuan(id, u.userId, tx);
+      const dok = await tx.dokumen.create({
+        data: {
+          ruang: "LAMPIRAN_CUTI",
+          pemilikPegawaiId: p.pegawaiId,
+          pengajuanCutiId: id,
+          namaTampilan: `Surat izin cuti ${nomor}`.slice(0, 200),
+          namaFileAsli: berkas.name.slice(0, 200),
+          diunggahOlehId: u.userId,
+          ...metadataBerkas(siap),
+        },
+      });
+      await simpanIsiBerkas(dok.id, siap, tx);
       await tx.riwayatStatusCuti.create({ data: { pengajuanId: id, dariStatus: "DISETUJUI", keStatus: "SURAT_TERBIT", olehUserId: u.userId, catatan: "Surat izin diunggah" } });
       await catatAudit({ userId: u.userId, aksi: "SETUJUI_CUTI", entitas: "pengajuan_cuti", entitasId: id, sebelum: { status: p.status }, sesudah: { status: "SURAT_TERBIT", nomorSurat: nomor, eksternal: true } }, tx);
       await kirimNotifikasi([await userDariPegawai(p.pegawaiId, tx)], { judul: "Cuti disetujui", isi: `${p.jenisCuti.nama} ${formatTanggal(p.tanggalMulai)} disetujui (surat izin no. ${nomor}).`, tautan: `/cuti/${id}` }, tx);
@@ -290,9 +340,9 @@ export async function catatKeputusanEksternal(id: string, _: HasilForm, fd: Form
   } catch (e) {
     if (e instanceof Error && e.message === "BERUBAH") return { galat: "Status pengajuan baru saja berubah. Muat ulang halaman." };
     if (e instanceof Error && e.message === "SALDO_TIDAK_ADA") return { galat: "Saldo cuti tahunan pegawai belum diatur." };
+    if (e instanceof Error && e.message === "SALDO_KURANG") return { galat: "Saldo cuti tahunan pegawai tidak mencukupi untuk menyetujui pengajuan ini." };
     throw e;
   }
   selesaiAksi(id);
   return { sukses: "Keputusan dicatat; surat izin tersimpan dan status Surat Terbit." };
 }
-

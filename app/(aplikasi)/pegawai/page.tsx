@@ -58,37 +58,35 @@ export default async function DaftarPegawai({ searchParams }: PageProps<"/pegawa
           <h1 className="text-2xl font-bold tracking-tight text-judul">Data Pegawai</h1>
           <p className="text-sm text-slate-700">{total} pegawai sesuai filter</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" className="bg-white/70">
-            <a href={`/api/ekspor/pegawai${qsEkspor}`}>
-              <FileSpreadsheetIcon data-icon="inline-start" /> Ekspor Excel
-            </a>
-          </Button>
-          {kepegawaian && (
+        {kepegawaian && (
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline" className="bg-white/70">
+              <a href={`/api/ekspor/pegawai${qsEkspor}`}>
+                <FileSpreadsheetIcon data-icon="inline-start" /> Ekspor Excel
+              </a>
+            </Button>
             <Button asChild variant="outline" className="bg-white/70">
               <a href={`/api/ekspor/pegawai${qsEkspor}${qsEkspor ? "&" : "?"}pribadi=1`} title="Termasuk NIK, alamat, dan nomor HP. Tercatat di audit log.">
                 <FileSpreadsheetIcon data-icon="inline-start" /> Ekspor + data pribadi
               </a>
             </Button>
-          )}
-          <Button asChild variant="outline" className="bg-white/70">
-            <a href={`/cetak/pegawai${qsEkspor}`} target="_blank" rel="noopener">
-              <PrinterIcon data-icon="inline-start" /> Cetak / PDF
-            </a>
-          </Button>
-          <Button asChild variant="outline" className="bg-white/70">
-            <Link href="/pegawai/impor">
-              <UploadIcon data-icon="inline-start" /> Impor Excel
-            </Link>
-          </Button>
-          {kepegawaian && (
+            <Button asChild variant="outline" className="bg-white/70">
+              <a href={`/cetak/pegawai${qsEkspor}`} target="_blank" rel="noopener">
+                <PrinterIcon data-icon="inline-start" /> Cetak / PDF
+              </a>
+            </Button>
+            <Button asChild variant="outline" className="bg-white/70">
+              <Link href="/pegawai/impor">
+                <UploadIcon data-icon="inline-start" /> Impor Excel
+              </Link>
+            </Button>
             <Button asChild>
               <Link href="/pegawai/baru">
                 <UserPlusIcon data-icon="inline-start" /> Tambah pegawai
               </Link>
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <Card>

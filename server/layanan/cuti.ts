@@ -1,6 +1,6 @@
 import "server-only";
 import { STATUS_DIPROSES, STATUS_DISETUJUI, tahapMenunggu } from "@/lib/domain/alur-cuti";
-import { hitungHariKalender, hitungHariKerja } from "@/lib/domain/hari-kerja";
+import { cekRentangTanggalCuti, hitungHariKalender, hitungHariKerja } from "@/lib/domain/hari-kerja";
 import { tentukanLevelSurat } from "@/lib/domain/level-surat";
 import { formatNip } from "@/lib/domain/nip";
 import { namaLengkap, pangkatTampil, sebutanStatus } from "@/lib/domain/pegawai";
@@ -64,7 +64,8 @@ export async function validasiPengajuan(m: MasukanPengajuan, tx: Prisma.Transact
   if (!aturan?.berlaku) return { ok: false, galat: { jenisCutiId: `${jenis.nama} tidak berlaku untuk status kepegawaian Anda.` } };
   if (jenis.kode === "MELAHIRKAN" && pegawai.jenisKelamin === "L") return { ok: false, galat: { jenisCutiId: "Cuti Melahirkan hanya untuk pegawai perempuan." } };
 
-  if (m.selesai < m.mulai) return { ok: false, galat: { tanggalSelesai: "Tanggal selesai sebelum tanggal mulai." } };
+  const galatRentang = cekRentangTanggalCuti(m.mulai, m.selesai);
+  if (galatRentang) return { ok: false, galat: { tanggalSelesai: galatRentang } };
   const hariIni = hariIniWita();
   if (m.mulai < hariIni && !jenis.bolehTanggalLampau) {
     return { ok: false, galat: { tanggalMulai: `Tanggal mulai tidak boleh di masa lalu untuk ${jenis.nama}.` } };
@@ -122,11 +123,15 @@ export async function snapshotIdentitas(pegawaiId: string, tx: Prisma.Transactio
     where: { id: pegawaiId },
     include: { jabatan: true, pangkatGolongan: true, unitKerja: true, atasanLangsung: { include: { jabatan: true } } },
   });
-  // Kepala unit tingkat-1 (Bidang/Sekretariat/UPTD) untuk tembusan surat.
+  // Kepala unit tingkat-1 (Bidang/Sekretariat/UPTD) untuk tembusan surat (tahan terhadap data induk melingkar).
   const units = await tx.unitKerja.findMany({ select: { id: true, parentId: true } });
   const peta = new Map(units.map((u) => [u.id, u]));
+  const dikunjungi = new Set<string>();
   let u = peta.get(p.unitKerjaId);
-  while (u?.parentId && peta.get(u.parentId)?.parentId) u = peta.get(u.parentId);
+  while (u && !dikunjungi.has(u.id) && u.parentId && peta.get(u.parentId)?.parentId) {
+    dikunjungi.add(u.id);
+    u = peta.get(u.parentId);
+  }
   const kepalaUnit = u ? await tx.jabatan.findFirst({ where: { memimpinUnitId: u.id } }) : null;
 
   return {
@@ -149,12 +154,13 @@ export async function tahapPengajuan(p: { status: Parameters<typeof tahapMenungg
   return tahapMenunggu(p.status, await tahapanUntuk(p.levelSurat, tx), !!p.atasanLangsungId);
 }
 
-/** Saat disetujui pejabat: potong saldo cuti tahunan. */
+/** Saat disetujui pejabat: cek ulang kecukupan lalu potong saldo cuti tahunan. */
 export async function terapkanPersetujuan(pengajuanId: string, olehUserId: string, tx: Prisma.TransactionClient) {
   const p = await tx.pengajuanCuti.findUniqueOrThrow({ where: { id: pengajuanId }, include: { jenisCuti: true } });
   if (p.jenisCuti.potongSaldoTahunan) {
     const saldo = await tx.saldoCuti.findUnique({ where: { pegawaiId_tahun: { pegawaiId: p.pegawaiId, tahun: p.tahunSaldo ?? p.tanggalMulai.getUTCFullYear() } } });
     if (!saldo) throw new Error("SALDO_TIDAK_ADA");
+    if (saldoTersedia(saldo) < p.jumlahHari) throw new Error("SALDO_KURANG");
     await tx.saldoCuti.update({ where: { id: saldo.id }, data: { terpakai: { increment: p.jumlahHari } } });
     await tx.mutasiSaldoCuti.create({ data: { saldoId: saldo.id, pengajuanId, jenis: "PEMOTONGAN", jumlah: -p.jumlahHari, olehUserId, catatan: `${p.jenisCuti.nama} disetujui` } });
   }
@@ -163,13 +169,19 @@ export async function terapkanPersetujuan(pengajuanId: string, olehUserId: strin
 /** Tugas terjadwal: cuti yang suratnya sudah terbit dan tanggalnya lewat → Selesai. */
 export async function selesaikanCutiLewat(hariIni = hariIniWita()): Promise<number> {
   const daftar = await db.pengajuanCuti.findMany({ where: { status: "SURAT_TERBIT", tanggalSelesai: { lt: hariIni } }, select: { id: true } });
+  let selesai = 0;
   for (const p of daftar) {
-    await db.$transaction([
-      db.pengajuanCuti.updateMany({ where: { id: p.id, status: "SURAT_TERBIT" }, data: { status: "SELESAI" } }),
-      db.riwayatStatusCuti.create({ data: { pengajuanId: p.id, dariStatus: "SURAT_TERBIT", keStatus: "SELESAI", olehUserId: null, catatan: "Otomatis setelah tanggal selesai cuti" } }),
-    ]);
+    const berubah = await db.$transaction(async (tx) => {
+      const r = await tx.pengajuanCuti.updateMany({ where: { id: p.id, status: "SURAT_TERBIT" }, data: { status: "SELESAI" } });
+      if (r.count === 0) return false;
+      await tx.riwayatStatusCuti.create({
+        data: { pengajuanId: p.id, dariStatus: "SURAT_TERBIT", keStatus: "SELESAI", olehUserId: null, catatan: "Otomatis setelah tanggal selesai cuti" },
+      });
+      return true;
+    });
+    if (berubah) selesai += 1;
   }
-  return daftar.length;
+  return selesai;
 }
 
 /** Saat cuti yang sudah disetujui dibatalkan: kembalikan saldo. */

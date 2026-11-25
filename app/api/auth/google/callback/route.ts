@@ -19,6 +19,7 @@ export async function GET(req: Request) {
   if (g.mode === "hubungkan") {
     const u = await penggunaSaatIni();
     if (!u) redirect("/login");
+    if (u.wajibGantiPassword) redirect("/profil?wajib=1");
     if (g.userId !== u.userId || g.sesiId !== u.sesiId) redirect("/profil?google=sesi-berubah");
     const saatIni = await db.user.findUnique({ where: { id: u.userId }, select: { googleSub: true } });
     if (!saatIni) redirect("/login");

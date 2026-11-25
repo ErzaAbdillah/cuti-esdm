@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { connection } from "next/server";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { KUKI_TEMA, normalisasiTema } from "@/lib/tema";
+import { DAFTAR_TEMA, KUKI_TEMA, normalisasiTema } from "@/lib/tema";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -20,11 +20,16 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export const viewport: Viewport = {
-  themeColor: "#0E0E10",
-  width: "device-width",
-  initialScale: 1,
-};
+export async function generateViewport(): Promise<Viewport> {
+  const kuki = await cookies();
+  const tema = normalisasiTema(kuki.get(KUKI_TEMA)?.value);
+  const info = DAFTAR_TEMA.find((t) => t.id === tema) ?? DAFTAR_TEMA[0];
+  return {
+    themeColor: info.warna.background,
+    width: "device-width",
+    initialScale: 1,
+  };
+}
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   // Semua halaman dirender dinamis agar skrip Next.js mendapat nonce CSP dari proxy.ts.

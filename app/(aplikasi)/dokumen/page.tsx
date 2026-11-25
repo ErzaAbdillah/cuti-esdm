@@ -12,20 +12,20 @@ import { namaLengkap } from "@/lib/domain/pegawai";
 import type { KategoriDokumenPribadi } from "@/lib/generated/prisma/enums";
 import { unggahDokumenPribadi } from "@/server/aksi/dokumen";
 import { catatAudit } from "@/server/audit";
-import { punyaHakAkses, punyaPeran, wajibLogin } from "@/server/auth/pengguna";
+import { punyaHakAkses, wajibLogin } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
-import { semuaPengaturan } from "@/server/pengaturan";
+import { maksUkuranDokumenMb } from "@/server/pengaturan";
 
 export const metadata: Metadata = { title: "Dokumen Saya" };
 
-/** Dokumen pribadi; Kepegawaian/Admin membuka milik pegawai lain lewat `?pegawai=`. */
+/** Dokumen pribadi; pemegang KELOLA_PEGAWAI / Superadmin membuka milik pegawai lain lewat `?pegawai=`. */
 export default async function DokumenSaya({ searchParams }: PageProps<"/dokumen">) {
   const u = await wajibLogin();
   const sp = await searchParams;
   const diminta = typeof sp.pegawai === "string" ? sp.pegawai : null;
   if (diminta && !/^[0-9a-f-]{36}$/i.test(diminta)) notFound();
   const lain = !!diminta && diminta !== u.pegawai?.id;
-  if (lain && !punyaHakAkses(u, "KELOLA_PEGAWAI") && !punyaPeran(u, "KEPEGAWAIAN", "ADMIN")) redirect("/akses-ditolak");
+  if (lain && !punyaHakAkses(u, "KELOLA_PEGAWAI")) redirect("/akses-ditolak");
   const pemilikId = diminta ?? u.pegawai?.id;
   if (!pemilikId) redirect("/akses-ditolak");
   const pemilik = lain ? await db.pegawai.findUnique({ where: { id: pemilikId } }) : null;
@@ -33,15 +33,14 @@ export default async function DokumenSaya({ searchParams }: PageProps<"/dokumen"
 
   const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 100) : "";
   const kat = KATEGORI_PRIBADI.includes(sp.kategori as KategoriDokumenPribadi) ? (sp.kategori as KategoriDokumenPribadi) : null;
-  const [dokumen, peng] = await Promise.all([
+  const [dokumen, maksMb] = await Promise.all([
     db.dokumen.findMany({
       where: { ruang: "PRIBADI", pemilikPegawaiId: pemilikId, dihapusPada: null, ...(kat ? { kategoriPribadi: kat } : {}), ...(q ? { namaTampilan: { contains: q, mode: "insensitive" } } : {}) },
       orderBy: [{ kategoriPribadi: "asc" }, { diunggahPada: "desc" }],
     }),
-    semuaPengaturan(),
+    maksUkuranDokumenMb(),
   ]);
   if (lain) await catatAudit({ userId: u.userId, aksi: "LIHAT_DOKUMEN_PEGAWAI", entitas: "pegawai", entitasId: pemilikId });
-  const maksMb = Math.min(Number(peng.get("dokumen.maks_ukuran_mb")) || 10, 10);
 
   return (
     <div className="grid gap-5">

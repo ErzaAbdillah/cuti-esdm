@@ -14,12 +14,13 @@ import { namaLengkap } from "@/lib/domain/pegawai";
 import { LABEL_LEVEL_SURAT, LABEL_STATUS_CUTI, LABEL_TAHAP } from "@/lib/label";
 import { formatTanggal, formatTanggalJam, hariIniWita } from "@/lib/tanggal";
 import { cn } from "@/lib/utils";
-import { punyaHakAkses, punyaPeran, wajibLogin } from "@/server/auth/pengguna";
+import { punyaHakAkses, wajibLogin } from "@/server/auth/pengguna";
 import { bolehLihatPengajuan } from "@/server/layanan/akses-cuti";
 import { tahapPengajuan } from "@/server/layanan/cuti";
 import { bolehPutuskan, modeTahap } from "@/server/layanan/wewenang-cuti";
 import { detailPengajuan } from "@/server/kueri/cuti";
 import { daftarSuratPengajuan } from "@/server/kueri/surat";
+import { maksUkuranDokumenMb } from "@/server/pengaturan";
 
 export const metadata: Metadata = { title: "Detail Cuti" };
 
@@ -45,10 +46,10 @@ export default async function DetailCuti({ params, searchParams }: PageProps<"/c
   const eksternal = tahap === "PEJABAT_BERWENANG" && (await modeTahap(p.levelSurat, tahap)) === "EKSTERNAL";
   const pemutus = tahap ? await bolehPutuskan(u, p, tahap) : false;
   const pemohon = u.pegawai?.id === p.pegawaiId;
-  const bolehTolak = bisaDitolak(p.status) && !pemohon && (pemutus || punyaHakAkses(u, "PROSES_CUTI") || punyaPeran(u, "KEPEGAWAIAN"));
+  const bolehTolak = bisaDitolak(p.status) && !pemohon && (pemutus || punyaHakAkses(u, "PROSES_CUTI"));
   const tujuanEksternal = p.levelSurat === "ESELON_II" ? "Gubernur" : "Kepala BKD";
   const nota = perluNotaDinas(p.levelSurat);
-  const daftarSurat = await daftarSuratPengajuan(p);
+  const [daftarSurat, maksMb] = await Promise.all([daftarSuratPengajuan(p), eksternal && pemutus ? maksUkuranDokumenMb() : Promise.resolve(4)]);
 
   return (
     <div className="grid gap-5">
@@ -96,7 +97,7 @@ export default async function DetailCuti({ params, searchParams }: PageProps<"/c
       {!tahap && pemohon && bisaDibatalkan(p.status, p.tanggalMulai, hariIniWita()) && (
         <AksiPengajuan id={p.id} bolehSetujui={false} bolehTolak={false} bolehBatal />
       )}
-      {eksternal && pemutus && <FormKeputusanEksternal id={p.id} tujuan={tujuanEksternal} />}
+      {eksternal && pemutus && <FormKeputusanEksternal id={p.id} tujuan={tujuanEksternal} maksMb={maksMb} />}
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-sky-200 bg-white/80 p-4">
         <ClipboardListIcon className="size-5 text-primary" aria-hidden />
@@ -115,7 +116,7 @@ export default async function DetailCuti({ params, searchParams }: PageProps<"/c
             </a>
           </Button>
         )}
-        {p.status === "DIAJUKAN" && (pemohon || punyaHakAkses(u, "PROSES_CUTI") || punyaPeran(u, "KEPEGAWAIAN", "ADMIN")) && (
+        {p.status === "DIAJUKAN" && (pemohon || punyaHakAkses(u, "PROSES_CUTI")) && (
           <Button asChild variant="outline" className="bg-white">
             <Link href={`/cuti/${p.id}/formulir`}>
               <PencilIcon data-icon="inline-start" /> Ubah formulir

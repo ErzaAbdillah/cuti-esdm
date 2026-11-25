@@ -6,15 +6,16 @@ import { urlFotoProfil } from "@/lib/foto-profil";
 import { adalahAkunSuperadmin, HAK_AKSES_BAWAAN_KEPEGAWAIAN, type HakAkses, SEMUA_HAK_AKSES } from "@/lib/hak-akses";
 import { samarkanAlamat, samarkanHp, samarkanNik } from "@/lib/samaran";
 import { hariIniWita } from "@/lib/tanggal";
-import { type PenggunaSaatIni, punyaHakAkses, punyaPeran } from "../auth/pengguna";
+import { type PenggunaSaatIni, punyaHakAkses } from "../auth/pengguna";
 import { db } from "../db";
 
 export function bolehLihatPegawai(u: PenggunaSaatIni, pegawaiId: string): boolean {
-  return (
-    punyaHakAkses(u, "KELOLA_PEGAWAI", "PENGATURAN_ADMIN") ||
-    punyaPeran(u, "KEPEGAWAIAN", "ADMIN") ||
-    u.pegawai?.id === pegawaiId
-  );
+  return punyaHakAkses(u, "KELOLA_PEGAWAI", "PENGATURAN_ADMIN") || u.pegawai?.id === pegawaiId;
+}
+
+/** Membuka data sensitif (NIK, alamat, HP): hanya pemilik sendiri, pemegang KELOLA_PEGAWAI, atau Superadmin. */
+export function bolehLihatDataSensitif(u: PenggunaSaatIni, pegawaiId: string): boolean {
+  return punyaHakAkses(u, "KELOLA_PEGAWAI") || u.pegawai?.id === pegawaiId;
 }
 
 export async function detailPegawai(id: string) {

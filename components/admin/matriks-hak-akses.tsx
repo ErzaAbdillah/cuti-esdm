@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { DAFTAR_HAK_AKSES, type HakAkses } from "@/lib/hak-akses";
+import { DAFTAR_HAK_AKSES, type HakAkses, inisialMatriks } from "@/lib/hak-akses";
 import { cn } from "@/lib/utils";
 import { aturHakAkses } from "@/server/aksi/akun";
 
@@ -45,13 +45,6 @@ const IKON_KOLOM: Record<HakAkses, React.ComponentType<{ className?: string }>> 
 };
 
 type TipeFilter = "semua" | "admin" | "khusus" | "biasa";
-
-function dapatkanInisial(nama: string): string {
-  const kata = nama.trim().split(/\s+/).filter(Boolean);
-  if (kata.length === 0) return "P";
-  if (kata.length === 1) return kata[0].slice(0, 2).toUpperCase();
-  return (kata[0][0] + kata[1][0]).toUpperCase();
-}
 
 export function MatriksHakAkses({ awal, bolehKelola = true }: { awal: BarisHakAksesPegawai[]; bolehKelola?: boolean }) {
   const [baris, setBaris] = useState<BarisHakAksesPegawai[]>(awal);
@@ -94,12 +87,14 @@ export function MatriksHakAkses({ awal, bolehKelola = true }: { awal: BarisHakAk
   async function ubahCentang(target: BarisHakAksesPegawai, kode: HakAkses, centang: boolean) {
     if (!bolehKelola || target.adminUtama || prosesSimpan?.userId === target.userId) return;
     const sebelumnya = target.hakAkses;
+    const adalahAdminSebelumnya = target.adalahAdmin;
     const baru = centang
       ? [...new Set([...sebelumnya, kode])]
       : sebelumnya.filter((h) => h !== kode);
+    const adalahAdminBaru = !target.adminUtama && baru.includes("PENGATURAN_ADMIN");
 
     setBaris((daftar) =>
-      daftar.map((item) => (item.userId === target.userId ? { ...item, hakAkses: baru } : item)),
+      daftar.map((item) => (item.userId === target.userId ? { ...item, hakAkses: baru, adalahAdmin: adalahAdminBaru } : item)),
     );
     setProsesSimpan({ userId: target.userId, kode });
 
@@ -107,7 +102,9 @@ export function MatriksHakAkses({ awal, bolehKelola = true }: { awal: BarisHakAk
       const hasil = await aturHakAkses(target.userId, baru);
       if (hasil.galat) {
         setBaris((daftar) =>
-          daftar.map((item) => (item.userId === target.userId ? { ...item, hakAkses: sebelumnya } : item)),
+          daftar.map((item) =>
+            item.userId === target.userId ? { ...item, hakAkses: sebelumnya, adalahAdmin: adalahAdminSebelumnya } : item,
+          ),
         );
         toast.error(hasil.galat);
       } else {
@@ -115,7 +112,9 @@ export function MatriksHakAkses({ awal, bolehKelola = true }: { awal: BarisHakAk
       }
     } catch {
       setBaris((daftar) =>
-        daftar.map((item) => (item.userId === target.userId ? { ...item, hakAkses: sebelumnya } : item)),
+        daftar.map((item) =>
+          item.userId === target.userId ? { ...item, hakAkses: sebelumnya, adalahAdmin: adalahAdminSebelumnya } : item,
+        ),
       );
       toast.error("Gagal menyimpan perubahan hak akses.");
     } finally {
@@ -207,7 +206,9 @@ export function MatriksHakAkses({ awal, bolehKelola = true }: { awal: BarisHakAk
           Menampilkan <b>{terfilter.length}</b> dari {baris.length} pegawai berakun
         </p>
         <p className="hidden sm:block">
-          💡 Centang langsung tersimpan secara instan tanpa perlu reload halaman.
+          {bolehKelola
+            ? "💡 Centang langsung tersimpan secara instan tanpa perlu reload halaman."
+            : "🔒 Mode lihat saja — hanya Superadmin yang dapat mengubah hak akses pegawai."}
         </p>
       </div>
 
@@ -289,7 +290,7 @@ export function MatriksHakAkses({ awal, bolehKelola = true }: { awal: BarisHakAk
                           )}
                           aria-hidden
                         >
-                          {dapatkanInisial(b.nama)}
+                          {inisialMatriks(b.nama)}
                         </span>
 
                         <div className="min-w-0 flex-1">

@@ -13,9 +13,9 @@ const PERAN_AKSES_VALID = new Set<PeranAkses>(["PEGAWAI", "ATASAN", "KEPEGAWAIAN
 const peranAkses = (u: PenggunaSaatIni) =>
   [...u.peran].filter((p): p is PeranAkses => PERAN_AKSES_VALID.has(p as PeranAkses));
 
-/** Hak pengguna atas folder: gabungan hak semua perannya. Admin atau pemilik hak KELOLA_DOKUMEN_ORGANISASI selalu boleh. */
+/** Hak pengguna atas folder: pemilik hak KELOLA_DOKUMEN_ORGANISASI (dan Superadmin) selalu boleh. */
 export async function hakFolder(u: PenggunaSaatIni, folderId: string): Promise<HakFolder> {
-  if (punyaPeran(u, "ADMIN") || punyaHakAkses(u, "KELOLA_DOKUMEN_ORGANISASI")) {
+  if (punyaHakAkses(u, "KELOLA_DOKUMEN_ORGANISASI")) {
     return { lihat: true, kelola: true };
   }
   const akses = await db.aksesFolder.findMany({ where: { folderId, peran: { in: peranAkses(u) } } });
@@ -25,7 +25,7 @@ export async function hakFolder(u: PenggunaSaatIni, folderId: string): Promise<H
 
 /** Semua folder yang boleh dilihat, beserta hak kelolanya. */
 export async function folderTerlihat(u: PenggunaSaatIni) {
-  const kelolaPenuh = punyaPeran(u, "ADMIN") || punyaHakAkses(u, "KELOLA_DOKUMEN_ORGANISASI");
+  const kelolaPenuh = punyaHakAkses(u, "KELOLA_DOKUMEN_ORGANISASI");
   const folder = await db.folderDokumen.findMany({
     where: kelolaPenuh ? {} : { akses: { some: { peran: { in: peranAkses(u) }, OR: [{ bolehLihat: true }, { bolehKelola: true }] } } },
     include: { akses: true, _count: { select: { dokumen: { where: { dihapusPada: null } } } } },
@@ -37,13 +37,9 @@ export async function folderTerlihat(u: PenggunaSaatIni) {
   }));
 }
 
-/** Dokumen pribadi: pemilik, Kepegawaian (KELOLA_PEGAWAI), dan Admin (spesifikasi [10], UU PDP). */
+/** Dokumen pribadi: hanya pemilik sendiri, pemegang KELOLA_PEGAWAI, atau Superadmin (UU PDP). */
 export function bolehDokumenPribadi(u: PenggunaSaatIni, pemilikPegawaiId: string | null): boolean {
-  return (
-    (!!u.pegawai && u.pegawai.id === pemilikPegawaiId) ||
-    punyaHakAkses(u, "KELOLA_PEGAWAI") ||
-    punyaPeran(u, "KEPEGAWAIAN", "ADMIN")
-  );
+  return (!!u.pegawai && u.pegawai.id === pemilikPegawaiId) || punyaHakAkses(u, "KELOLA_PEGAWAI");
 }
 
 type DokumenAkses = {
@@ -62,7 +58,7 @@ export async function bolehLihatDokumen(u: PenggunaSaatIni, d: DokumenAkses): Pr
     case "LAMPIRAN_CUTI":
       return !!d.pengajuanCuti && (await bolehLihatPengajuan(u, d.pengajuanCuti));
     case "LAMPIRAN_KETERANGAN":
-      return punyaPeran(u, "KEPEGAWAIAN", "ATASAN", "ADMIN") || u.pegawai?.id === d.pemilikPegawaiId;
+      return punyaHakAkses(u, "KELOLA_PEGAWAI") || punyaPeran(u, "ATASAN") || u.pegawai?.id === d.pemilikPegawaiId;
   }
 }
 

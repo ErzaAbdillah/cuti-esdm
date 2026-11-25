@@ -16,10 +16,10 @@ export async function semuaGrup(): Promise<GrupPegawai[]> {
   return [...units.map((u) => ({ id: u.id, judul: u.judulDaftarHadir! })), { id: GRUP_PJLP, judul: "PENYEDIA JASA LAINNYA PERORANGAN (PJLP)" }];
 }
 
-/** Kepegawaian & Kepala Dinas: semua grup. Atasan lain: grup unitnya sendiri. */
+/** Pemegang KELOLA_SALDO_CUTI & Kepala Dinas: semua grup. Atasan lain: grup unitnya sendiri. */
 export async function grupUntuk(u: PenggunaSaatIni): Promise<GrupPegawai[]> {
   const semua = await semuaGrup();
-  if (punyaHakAkses(u, "KELOLA_SALDO_CUTI") || punyaPeran(u, "KEPEGAWAIAN")) return semua;
+  if (punyaHakAkses(u, "KELOLA_SALDO_CUTI")) return semua;
   if (!punyaPeran(u, "ATASAN") || !u.pegawai) return [];
   const units = await db.unitKerja.findMany({ select: { id: true, parentId: true } });
   const grupSaya = unitDaftarHadir(u.pegawai.unitId, new Map(units.map((x) => [x.id, x])));

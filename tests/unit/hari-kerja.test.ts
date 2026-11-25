@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adalahHariKerja, hitungHariKalender, hitungHariKerja, tanggalDari } from "@/lib/domain/hari-kerja";
+import { adalahHariKerja, cekRentangTanggalCuti, hitungHariKalender, hitungHariKerja, tanggalDari } from "@/lib/domain/hari-kerja";
 
 const t = tanggalDari;
 
@@ -52,5 +52,31 @@ describe("adalahHariKerja & hitungHariKalender", () => {
 
   it("hari kalender menghitung semua hari termasuk akhir pekan", () => {
     expect(hitungHariKalender(t("2026-07-01"), t("2026-07-10"))).toBe(10);
+  });
+});
+
+describe("cekRentangTanggalCuti & efisiensi hitungHariKerja", () => {
+  it("menolak tahun ekstrem seperti 9026 atau 1999 dengan cepat tanpa menghitung jutaan hari", () => {
+    const mulaiMs = performance.now();
+    const g9026 = cekRentangTanggalCuti(t("2026-07-01"), t("9026-07-10"));
+    const durasi = performance.now() - mulaiMs;
+    expect(g9026).toContain("2000");
+    expect(g9026).toContain("2100");
+    expect(durasi).toBeLessThan(50);
+
+    expect(cekRentangTanggalCuti(t("1999-12-31"), t("2000-01-05"))).toContain("2000");
+  });
+
+  it("menolak rentang melebihi 1.100 hari kalender tetapi mengizinkan CLTN 3 tahun (~1.096 hari)", () => {
+    expect(cekRentangTanggalCuti(t("2026-01-01"), t("2028-12-31"))).toBeNull();
+    expect(cekRentangTanggalCuti(t("2026-01-01"), t("2030-01-01"))).toContain("1100");
+    expect(cekRentangTanggalCuti(t("2026-07-10"), t("2026-07-01"))).toContain("sebelum");
+  });
+
+  it("menghitung hari kerja rentang 3 tahun dengan cepat dan akurat", () => {
+    // 2026-01-01 (Kamis) s.d. 2028-12-31 (Minggu) = 1.096 hari kalender
+    const hasil = hitungHariKerja(t("2026-01-01"), t("2028-12-31"), TANPA_LIBUR);
+    expect(hasil).toBeGreaterThan(750);
+    expect(hasil).toBeLessThan(800);
   });
 });

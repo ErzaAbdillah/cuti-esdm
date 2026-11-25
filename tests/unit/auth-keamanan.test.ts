@@ -47,6 +47,7 @@ interface UserRow {
   wajibGantiPassword: boolean;
   terakhirLogin: Date | null;
   peran: { peran: "ADMIN" | "KEPEGAWAIAN" }[];
+  hakAkses?: { hakAkses: string }[];
 }
 
 const dbState = {
@@ -108,7 +109,7 @@ vi.mock("@/server/db", () => {
   const lampirPegawai = (u: UserRow | undefined) => {
     if (!u) return null;
     const p = dbState.pegawai.find((x) => x.id === u.pegawaiId);
-    return { ...u, pegawai: p ? { aktif: p.aktif } : null };
+    return { ...u, hakAkses: u.hakAkses ?? [], pegawai: p ? { aktif: p.aktif } : null };
   };
   const tx = {
     $executeRaw: vi.fn(async () => 0),
@@ -187,6 +188,33 @@ vi.mock("@/server/db", () => {
         dbState.logLogin.push({ ...data, waktu: new Date() });
       },
     },
+    userPeran: {
+      deleteMany: async ({ where }: { where: { userId: string } }) => {
+        const u = dbState.users.find((x) => x.id === where.userId);
+        if (u) u.peran = [];
+      },
+      createMany: async ({ data }: { data: { userId: string; peran: "ADMIN" | "KEPEGAWAIAN" }[] }) => {
+        for (const d of data) {
+          const u = dbState.users.find((x) => x.id === d.userId);
+          if (u) u.peran.push({ peran: d.peran });
+        }
+      },
+    },
+    userHakAkses: {
+      deleteMany: async ({ where }: { where: { userId: string } }) => {
+        const u = dbState.users.find((x) => x.id === where.userId);
+        if (u) u.hakAkses = [];
+      },
+      createMany: async ({ data }: { data: { userId: string; hakAkses: string }[] }) => {
+        for (const d of data) {
+          const u = dbState.users.find((x) => x.id === d.userId);
+          if (u) {
+            u.hakAkses ??= [];
+            u.hakAkses.push({ hakAkses: d.hakAkses });
+          }
+        }
+      },
+    },
     auditLog: {
       create: async ({ data }: { data: { aksi: string; entitasId?: string | null } }) => {
         dbState.auditLog.push({ aksi: data.aksi, entitasId: data.entitasId ?? null });
@@ -203,7 +231,7 @@ vi.mock("@/server/db", () => {
 
 import { GET as googleCallbackGet } from "@/app/api/auth/google/callback/route";
 import { GET as googleStartGet } from "@/app/api/auth/google/route";
-import { resetPassword } from "@/server/aksi/akun";
+import { aturAktifAkun, aturHakAkses, aturPeran, resetPassword } from "@/server/aksi/akun";
 import { aktivasiDenganGoogle, aturPasswordBaru, hubungkanGoogleAkunLama, keluar, masuk, pulihkanDenganGoogle, putuskanGoogle } from "@/server/aksi/auth";
 import { asalSah } from "@/server/auth/csrf";
 import { simpanIdentitasTertunda } from "@/server/auth/google";
@@ -449,26 +477,77 @@ describe("Keamanan Login, Sign Up, Akun Google & Anti-Eskalasi", () => {
     expect(dbState.users.find((u) => u.id === USER_GOOGLE_ONLY_ID)?.googleSub).toBeNull();
   });
 
-  it("3. Pegawai Admin biasa atau pemegang PENGATURAN_ADMIN tidak bisa mereset password Superadmin", async () => {
-    // Sub-admin / pemegang hak PENGATURAN_ADMIN dengan peran ADMIN biasa
+  it("3. Pemegang PENGATURAN_ADMIN tidak bisa menindak Superadmin/Admin lain atau mengatur hak akses, tetapi Superadmin membersihkan peran lama saat aturHakAkses", async () => {
+    // Sub-admin / pemegang hak PENGATURAN_ADMIN (non-Superadmin)
     penggunaMock = {
       userId: USER_ADMIN_BIASA_ID,
       sesiId: sesiAktifId,
       loginId: "198205122006042902",
       googleEmail: null,
       wajibGantiPassword: false,
-      peran: new Set(["ADMIN", "PEGAWAI"]),
+      peran: new Set(["PEGAWAI"]),
       hakAkses: new Set(["PENGATURAN_ADMIN"]),
       pegawai: null,
     };
 
+    // Tidak boleh mereset password Superadmin
     const tolakReset = await resetPassword(USER_SUPERADMIN_ID);
     expect(tolakReset.galat).toContain("Superadmin dilindungi");
 
-    // Non-admin murni (hanya hak PENGATURAN_ADMIN tanpa peran ADMIN) juga ditolak wajibAdmin
-    penggunaMock.peran = new Set(["PEGAWAI"]);
-    const tolakNonAdmin = await resetPassword(USER_AKTIF_LAMA_ID);
-    expect(tolakNonAdmin.galat).toBe("Hanya Admin yang bisa mereset password.");
+    // Tidak boleh mengatur hak akses atau peran (khusus Superadmin)
+    const tolakHak = await aturHakAkses(USER_AKTIF_LAMA_ID, ["PENGATURAN_ADMIN"]);
+    expect(tolakHak.galat).toContain("Superadmin");
+    const tolakPeran = await aturPeran(USER_AKTIF_LAMA_ID, ["ADMIN"]);
+    expect(tolakPeran.galat).toContain("Superadmin");
+
+    // Boleh membantu mereset password pegawai biasa
+    const suksesResetPegawai = await resetPassword(USER_AKTIF_LAMA_ID);
+    expect(suksesResetPegawai.rahasia).toBeTruthy();
+
+    // Tidak boleh menonaktifkan sesama pemegang PENGATURAN_ADMIN
+    const targetAdminLain = dbState.users.find((u) => u.id === USER_AKTIF_LAMA_ID)!;
+    targetAdminLain.hakAkses = [{ hakAkses: "PENGATURAN_ADMIN" }];
+    const tolakNonaktifAdmin = await aturAktifAkun(USER_AKTIF_LAMA_ID, false);
+    expect(tolakNonaktifAdmin.galat).toContain("Superadmin");
+
+    // Pegawai biasa tanpa PENGATURAN_ADMIN ditolak mereset password siapa pun
+    penggunaMock.hakAkses = new Set();
+    const tolakPegawaiBiasa = await resetPassword(USER_AKTIF_LAMA_ID);
+    expect(tolakPegawaiBiasa.galat).toBe("Hanya Admin yang bisa mereset password.");
+
+    // Superadmin menyimpan PENGATURAN_ADMIN saja: membersihkan peran lama ADMIN/KEPEGAWAIAN agar tidak bocor
+    penggunaMock = {
+      userId: USER_SUPERADMIN_ID,
+      sesiId: sesiAktifId,
+      loginId: "admin",
+      googleEmail: "eerza311@gmail.com",
+      wajibGantiPassword: false,
+      peran: new Set(["SUPERADMIN"]),
+      hakAkses: new Set(["KELOLA_SALDO_CUTI", "PROSES_CUTI", "KELOLA_PEGAWAI", "KELOLA_DOKUMEN_ORGANISASI", "PENGATURAN_ADMIN"]),
+      pegawai: null,
+    };
+    targetAdminLain.peran = [{ peran: "ADMIN" }, { peran: "KEPEGAWAIAN" }];
+    const simpanHak = await aturHakAkses(USER_AKTIF_LAMA_ID, ["PENGATURAN_ADMIN"]);
+    expect(simpanHak.pesan).toContain("disimpan");
+    expect(targetAdminLain.peran).toEqual([]);
+    expect(targetAdminLain.hakAkses).toEqual([{ hakAkses: "PENGATURAN_ADMIN" }]);
+  });
+
+  it("3b. Akun dengan wajibGantiPassword ditolak menautkan Google (mode=hubungkan)", async () => {
+    penggunaMock = {
+      userId: USER_AKTIF_LAMA_ID,
+      sesiId: sesiAktifId,
+      loginId: "198501012010011901",
+      googleEmail: null,
+      wajibGantiPassword: true,
+      peran: new Set(["PEGAWAI"]),
+      hakAkses: new Set(),
+      pegawai: null,
+    };
+
+    await expect(
+      googleStartGet(new Request("http://localhost:3000/api/auth/google?mode=hubungkan")),
+    ).rejects.toThrow("NEXT_REDIRECT:/profil?wajib=1");
   });
 
   it("4. State OAuth mode=hubungkan terikat ke sesi user dan tidak boleh menimpa Google yang sudah terhubung", async () => {

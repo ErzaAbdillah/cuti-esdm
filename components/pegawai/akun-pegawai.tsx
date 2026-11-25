@@ -43,6 +43,8 @@ interface Props {
   } | null;
   kodeAktivasiAktifSampai: string | null;
   bolehKelolaAkun: boolean;
+  /** Hanya Superadmin yang berwenang mengubah kotak centang hak akses modular. */
+  bolehAturHakAkses?: boolean;
   bolehBuatKode: boolean;
 }
 
@@ -83,7 +85,7 @@ const AKSEN_HAK: Record<
   },
 };
 
-export function AkunPegawai({ pegawaiId, akun, kodeAktivasiAktifSampai, bolehKelolaAkun, bolehBuatKode }: Props) {
+export function AkunPegawai({ pegawaiId, akun, kodeAktivasiAktifSampai, bolehKelolaAkun, bolehAturHakAkses = false, bolehBuatKode }: Props) {
   const [proses, mulai] = useTransition();
   const [rahasia, setRahasia] = useState<{ judul: string; nilai: string; pesan?: string } | null>(null);
   const [hakAkses, setHakAkses] = useState<HakAkses[]>(akun?.hakAkses ?? []);
@@ -92,8 +94,10 @@ export function AkunPegawai({ pegawaiId, akun, kodeAktivasiAktifSampai, bolehKel
   const adalahAdminBiasa = Boolean(
     akun && !adalahAdminUtama && (akun.peran.includes("ADMIN") || hakAkses.includes("PENGATURAN_ADMIN")),
   );
+  const dilindungiNonSuperadmin = !bolehAturHakAkses && (adalahAdminUtama || adalahAdminBiasa);
   const awal = akun?.hakAkses ?? [];
   const adaPerubahan =
+    bolehAturHakAkses &&
     !adalahAdminUtama &&
     (hakAkses.length !== awal.length || hakAkses.some((k) => !awal.includes(k)));
 
@@ -224,7 +228,7 @@ export function AkunPegawai({ pegawaiId, akun, kodeAktivasiAktifSampai, bolehKel
                   variant="outline"
                   size="sm"
                   className="bg-white/80 shadow-xs hover:bg-white dark:bg-slate-800"
-                  disabled={proses}
+                  disabled={proses || dilindungiNonSuperadmin}
                   onClick={() => jalankan("Password sementara", () => resetPassword(akun.id))}
                 >
                   <KeyRoundIcon data-icon="inline-start" /> Reset password
@@ -235,7 +239,7 @@ export function AkunPegawai({ pegawaiId, akun, kodeAktivasiAktifSampai, bolehKel
                     variant="outline"
                     size="sm"
                     className="bg-white/80 shadow-xs hover:bg-white dark:bg-slate-800"
-                    disabled={proses}
+                    disabled={proses || dilindungiNonSuperadmin}
                     onClick={() => jalankan("", () => bukaKunci(akun.id))}
                   >
                     <LockOpenIcon data-icon="inline-start" /> Buka kunci
@@ -246,11 +250,16 @@ export function AkunPegawai({ pegawaiId, akun, kodeAktivasiAktifSampai, bolehKel
                   size="sm"
                   variant={akun.aktif ? "destructive" : "outline"}
                   className="shadow-xs"
-                  disabled={proses || (adalahAdminUtama && akun.aktif)}
+                  disabled={proses || (adalahAdminUtama && akun.aktif) || dilindungiNonSuperadmin}
                   onClick={() => jalankan("", () => aturAktifAkun(akun.id, !akun.aktif))}
                 >
                   <PowerIcon data-icon="inline-start" /> {akun.aktif ? "Nonaktifkan akun" : "Aktifkan akun"}
                 </Button>
+                {dilindungiNonSuperadmin && (
+                  <p className="w-full text-xs text-slate-600 dark:text-slate-400">
+                    Akun Admin/Superadmin dilindungi dan hanya dapat ditindak oleh Superadmin.
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -297,7 +306,13 @@ export function AkunPegawai({ pegawaiId, akun, kodeAktivasiAktifSampai, bolehKel
                 </div>
               )}
 
-              {!adalahAdminUtama && (
+              {!adalahAdminUtama && !bolehAturHakAkses && (
+                <p className="rounded-xl border border-sky-100 bg-sky-50/70 p-3 text-xs text-slate-700 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-300">
+                  Mode lihat saja — pengaturan centang hak akses pegawai hanya dapat diubah oleh <b>Superadmin</b>.
+                </p>
+              )}
+
+              {!adalahAdminUtama && bolehAturHakAkses && (
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-slate-600 dark:text-slate-400">
                     Atur kewenangan fitur modular untuk pegawai ini:
@@ -343,6 +358,7 @@ export function AkunPegawai({ pegawaiId, akun, kodeAktivasiAktifSampai, bolehKel
               <div className="grid gap-3 sm:grid-cols-2">
                 {DAFTAR_HAK_AKSES.map((item) => {
                   const aktif = adalahAdminUtama || hakAkses.includes(item.kode);
+                  const terkunci = proses || adalahAdminUtama || !bolehAturHakAkses;
                   const Ikon = IKON_HAK[item.kode];
                   const aksen = AKSEN_HAK[item.kode];
 
@@ -354,19 +370,20 @@ export function AkunPegawai({ pegawaiId, akun, kodeAktivasiAktifSampai, bolehKel
                         aktif
                           ? "border-primary/50 bg-sky-50/70 shadow-xs ring-1 ring-primary/20 dark:border-primary/40 dark:bg-sky-950/20"
                           : "border-sky-100 bg-white/80 hover:border-sky-200 hover:bg-white hover:shadow-xs dark:border-white/10 dark:bg-white/5",
-                        adalahAdminUtama && "cursor-default opacity-90",
+                        (adalahAdminUtama || !bolehAturHakAkses) && "cursor-default opacity-90",
                         proses && "pointer-events-none opacity-60",
                       )}
                     >
                       <div className="pt-0.5">
                         <Checkbox
                           checked={aktif}
-                          disabled={proses || adalahAdminUtama}
-                          onCheckedChange={(c) =>
+                          disabled={terkunci}
+                          onCheckedChange={(c) => {
+                            if (!bolehAturHakAkses) return;
                             setHakAkses((prev) =>
                               c ? [...prev, item.kode] : prev.filter((k) => k !== item.kode),
-                            )
-                          }
+                            );
+                          }}
                           className="transition-transform group-hover:scale-105"
                         />
                       </div>
@@ -411,7 +428,7 @@ export function AkunPegawai({ pegawaiId, akun, kodeAktivasiAktifSampai, bolehKel
               </div>
 
               {/* Bar Tombol Simpan & Status Perubahan */}
-              {!adalahAdminUtama && (
+              {!adalahAdminUtama && bolehAturHakAkses && (
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-sky-100 pt-3 dark:border-slate-800">
                   <div className="flex items-center gap-2">
                     {adaPerubahan && (

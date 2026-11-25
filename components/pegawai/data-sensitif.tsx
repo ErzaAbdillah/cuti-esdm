@@ -10,10 +10,12 @@ interface Props {
   samaran: { nik: string | null; alamatDomisili: string | null; noHp: string | null };
   /** Dilihat oleh pegawai ybs (tidak dicatat sebagai akses orang lain). */
   milikSendiri: boolean;
+  /** Hanya pemilik sendiri, pemegang KELOLA_PEGAWAI, atau Superadmin yang boleh membuka nilai asli. */
+  bolehBuka?: boolean;
 }
 
 /** NIK, alamat, HP disamarkan; tombol "Tampilkan" mengambil nilai asli lewat aksi yang diaudit. */
-export function DataSensitif({ pegawaiId, samaran, milikSendiri }: Props) {
+export function DataSensitif({ pegawaiId, samaran, milikSendiri, bolehBuka = true }: Props) {
   const [asli, setAsli] = useState<{ nik: string | null; alamatDomisili: string | null; noHp: string | null } | null>(null);
   const [proses, mulai] = useTransition();
   const nilai = asli ?? samaran;
@@ -30,7 +32,7 @@ export function DataSensitif({ pegawaiId, samaran, milikSendiri }: Props) {
         <p className="flex items-center gap-2 text-sm font-semibold text-amber-950">
           <ShieldIcon className="size-4" aria-hidden /> Data pribadi (UU PDP)
         </p>
-        {!asli && (
+        {bolehBuka && !asli && (
           <Button
             type="button"
             size="sm"
@@ -51,7 +53,11 @@ export function DataSensitif({ pegawaiId, samaran, milikSendiri }: Props) {
           </div>
         ))}
       </dl>
-      {!milikSendiri && <p className="mt-3 text-xs text-amber-900">Membuka data asli tercatat di audit log.</p>}
+      {!milikSendiri && (
+        <p className="mt-3 text-xs text-amber-900">
+          {bolehBuka ? "Membuka data asli tercatat di audit log." : "Data disamarkan — hanya pemegang hak Kelola Pegawai atau Superadmin yang dapat membuka nilai asli."}
+        </p>
+      )}
     </div>
   );
 }

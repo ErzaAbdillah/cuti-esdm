@@ -11,7 +11,7 @@ import { unggahDokumenOrganisasi } from "@/server/aksi/dokumen";
 import { wajibLogin } from "@/server/auth/pengguna";
 import { db } from "@/server/db";
 import { folderTerlihat } from "@/server/layanan/akses-dokumen";
-import { semuaPengaturan } from "@/server/pengaturan";
+import { maksUkuranDokumenMb } from "@/server/pengaturan";
 
 export const metadata: Metadata = { title: "Dokumen Organisasi" };
 
@@ -28,7 +28,7 @@ export default async function DokumenOrganisasi({ searchParams }: PageProps<"/do
   const anak = terlihat.filter((f) => f.parentId === (aktif?.id ?? null));
   const idCari = aktif ? [aktif.id, ...anak.map((f) => f.id)] : terlihat.map((f) => f.id);
   const tampilDokumen = !!aktif || !!q;
-  const [dokumen, peng] = await Promise.all([
+  const [dokumen, maksMb] = await Promise.all([
     tampilDokumen
       ? db.dokumen.findMany({
           where: { ruang: "ORGANISASI", dihapusPada: null, folderId: q ? { in: idCari } : aktif!.id, ...(q ? { namaTampilan: { contains: q, mode: "insensitive" } } : {}) },
@@ -36,7 +36,7 @@ export default async function DokumenOrganisasi({ searchParams }: PageProps<"/do
           take: 300,
         })
       : [],
-    semuaPengaturan(),
+    maksUkuranDokumenMb(),
   ]);
   const kelola = new Map(terlihat.map((f) => [f.id, f.kelola]));
   const induk = aktif?.parentId ? terlihat.find((f) => f.id === aktif.parentId) : null;
@@ -85,7 +85,7 @@ export default async function DokumenOrganisasi({ searchParams }: PageProps<"/do
       {aktif?.kelola && !q && (
         <Card>
           <CardContent>
-            <FormUnggah aksi={unggahDokumenOrganisasi.bind(null, aktif.id)} maksMb={Math.min(Number(peng.get("dokumen.maks_ukuran_mb")) || 10, 10)} />
+            <FormUnggah aksi={unggahDokumenOrganisasi.bind(null, aktif.id)} maksMb={maksMb} />
           </CardContent>
         </Card>
       )}

@@ -1,6 +1,8 @@
 import "server-only";
 import nodemailer from "nodemailer";
 import type { Prisma } from "@/lib/generated/prisma/client";
+import type { HakAkses, Peran } from "@/lib/generated/prisma/enums";
+import { HAK_AKSES_BAWAAN_KEPEGAWAIAN } from "@/lib/hak-akses";
 import { db } from "./db";
 
 export function smtpAktif(): boolean {
@@ -38,6 +40,33 @@ export async function kirimNotifikasi(
 export async function userDenganPeran(peran: "KEPEGAWAIAN" | "ADMIN", tx: Prisma.TransactionClient = db): Promise<string[]> {
   const u = await tx.user.findMany({ where: { aktif: true, peran: { some: { peran } } }, select: { id: true } });
   return u.map((x) => x.id);
+}
+
+/**
+ * Seluruh akun aktif pemilik hak akses modular tertentu, termasuk Superadmin
+ * dan akun warisan (yang belum pernah diatur centang modularnya).
+ */
+export async function userDenganHakAkses(hak: HakAkses, tx: Prisma.TransactionClient = db): Promise<string[]> {
+  const peranLegacy: Peran[] = HAK_AKSES_BAWAAN_KEPEGAWAIAN.includes(hak) ? ["ADMIN", "KEPEGAWAIAN"] : ["ADMIN"];
+  const daftar = await tx.user.findMany({
+    where: {
+      aktif: true,
+      OR: [{ pegawaiId: null }, { pegawai: { aktif: true } }],
+      AND: [
+        {
+          OR: [
+            { hakAkses: { some: { hakAkses: hak } } },
+            { loginId: { equals: "admin", mode: "insensitive" } },
+            { loginId: { equals: "eerza311", mode: "insensitive" } },
+            { googleEmail: { equals: "eerza311@gmail.com", mode: "insensitive" } },
+            { hakAkses: { none: {} }, peran: { some: { peran: { in: peranLegacy } } } },
+          ],
+        },
+      ],
+    },
+    select: { id: true },
+  });
+  return daftar.map((x) => x.id);
 }
 
 export async function userDariPegawai(pegawaiId: string | null | undefined, tx: Prisma.TransactionClient = db): Promise<string | null> {

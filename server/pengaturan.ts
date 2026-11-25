@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import { batasUkuranDokumenMb } from "@/lib/dokumen";
 import { HARI_KERJA_BAWAAN, kunciTanggal } from "@/lib/domain/hari-kerja";
 import { PETA_PENGATURAN } from "@/lib/pengaturan";
 import { db } from "./db";
@@ -27,4 +28,10 @@ export async function hariKerja(): Promise<number[]> {
 export async function setLibur(dari: Date, sampai: Date): Promise<Set<string>> {
   const libur = await db.hariLibur.findMany({ where: { tanggal: { gte: dari, lte: sampai } }, select: { tanggal: true } });
   return new Set(libur.map((l) => kunciTanggal(l.tanggal)));
+}
+
+/** Batas ukuran unggahan dokumen aktif (MB): otomatis maks. 4 MB di Vercel, maks. 10 MB di lokal. */
+export async function maksUkuranDokumenMb(): Promise<number> {
+  const nilai = (await semuaPengaturan()).get("dokumen.maks_ukuran_mb");
+  return batasUkuranDokumenMb(nilai, process.env.VERCEL === "1");
 }

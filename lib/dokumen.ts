@@ -20,6 +20,21 @@ export const ACCEPT_DOKUMEN = ".pdf,.jpg,.jpeg,.png,.docx,.xlsx";
 /** Maksimal berkas & total ukuran sekali cetak gabungan. */
 export const MAKS_GABUNG = { berkas: 30, byte: 60 * 1024 * 1024 };
 
+/** Batas ukuran unggahan (MB): Vercel membatasi payload request ~4,5 MB sehingga dijaga di 4 MB. */
+export const MAKS_MB_VERCEL = 4;
+export const MAKS_MB_LOKAL = 10;
+
+export function batasUkuranDokumenMb(nilaiPengaturan: unknown, diVercel: boolean): number {
+  const batasLingkungan = diVercel ? MAKS_MB_VERCEL : MAKS_MB_LOKAL;
+  const angka = typeof nilaiPengaturan === "number" ? nilaiPengaturan : Number(nilaiPengaturan);
+  if (!Number.isFinite(angka) || angka <= 0) return batasLingkungan;
+  return Math.max(1, Math.min(Math.floor(angka), batasLingkungan));
+}
+
+export function batasUkuranDokumenByte(mb: number): number {
+  return mb * 1024 * 1024;
+}
+
 export function formatUkuran(byte: number): string {
   if (byte < 1024) return `${byte} B`;
   if (byte < 1024 * 1024) return `${Math.round(byte / 1024)} KB`;

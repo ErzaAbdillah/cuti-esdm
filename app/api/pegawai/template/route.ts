@@ -1,4 +1,4 @@
-import { penggunaSaatIni, punyaHakAkses, punyaPeran } from "@/server/auth/pengguna";
+import { penggunaSaatIni, punyaHakAkses } from "@/server/auth/pengguna";
 import { bukuTemplate } from "@/server/excel/buku-pegawai";
 
 const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -6,7 +6,8 @@ const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.s
 export async function GET() {
   const u = await penggunaSaatIni();
   if (!u) return new Response("Belum masuk", { status: 401 });
-  if (!punyaHakAkses(u, "KELOLA_PEGAWAI") && !punyaPeran(u, "KEPEGAWAIAN", "ADMIN")) return new Response("Akses ditolak", { status: 403 });
+  if (u.wajibGantiPassword) return new Response("Ganti password sementara terlebih dahulu di halaman Profil.", { status: 403 });
+  if (!punyaHakAkses(u, "KELOLA_PEGAWAI")) return new Response("Akses ditolak", { status: 403 });
 
   return new Response(new Uint8Array(await bukuTemplate()), {
     headers: {

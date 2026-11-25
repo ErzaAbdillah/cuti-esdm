@@ -39,9 +39,9 @@
   - Background Worker: `app/api/tugas/harian/route.ts` (Cron pembaruan status cuti selesai & kirim antrean email)
 
 ## Status Saat Ini
-- **Fase Aktif:** Commit Tema Ke-4 **Notion Monokrom** Selesai (`typecheck`, `lint`, 138/138 `npm test`, `npm run build` 44 rute, & uji browser lulus 100%) — Paket Bagian I (`705016c` & `4f5f445`) Sudah di GitHub `main`, Siap Push Tema Baru & Verifikasi Akhir Produksi
-- **Fitur/Modul Aktif:** Penambahan & Polesan Tema Tampilan Ke-4 — **Notion Monokrom** (`notion-monokrom`) (`2026-11-26`)
-- **Penanggung Jawab Terakhir:** Coder
+- **Fase Aktif:** Selesai Dirilis & Terverifikasi Live di Produksi (`https://cuti-esdm.vercel.app`, Commit `705016c`, `4f5f445`, & `42ba5b5` Sinkron di GitHub `origin/main` & Vercel)
+- **Fitur/Modul Aktif:** Paket Keamanan/Penyimpanan `dokumen_berkas` + Cron (Bagian I) & Tema Ke-4 **Notion Monokrom** (Bagian J) — Lulus Verifikasi Produksi (`2026-11-26`)
+- **Penanggung Jawab Terakhir:** Debugger / QA
 
 ## 1. Cetak Biru & Skema Data (Diisi oleh Conversation 3 - Architect)
 *Rancangan alur sistem, struktur tabel/database, dan daftar file yang harus dibuat/dieksekusi oleh Coder:*
@@ -636,11 +636,18 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 
 ## 4. Antrean Bug & Evaluasi QA (Diisi oleh Conversation 2 - Debugger)
 *Daftar error logika, masalah tampilan, atau perbaikan yang dibutuhkan:*
-- [ ] **[PENDING RILIS - Belum Push & Tayang di Produksi] [GitHub `main` / Vercel / Neon]**: Pengecekan langsung `git ls-remote origin refs/heads/main` membuktikan commit `705016c` baru tersimpan di komputer lokal (`main...origin/main [ahead 1]`), sedangkan GitHub `main` dan website online `https://cuti-esdm.vercel.app` masih menjalankan versi lama `b2cdbcb` (inisial `eerza311 (Superadmin)` masih `E(`, 6 cuti lama masih *Surat Terbit*, dan pengaturan `dokumen.maks_ukuran_mb` di `/admin/pengaturan` masih bernilai `1` MB). Perlu: (1) kirim/push commit ke GitHub `main`, (2) pastikan build & deploy terbaru hijau di Vercel, (3) pastikan migrasi `dokumen_berkas` sudah aktif di Neon dan variabel `BERKAS_KUNCI` + `CRON_SECRET` terpasang di Vercel, (4) jalankan Cron `/api/tugas/harian` sekali di Vercel, (5) opsional ubah batas unggah dari `1` ke `4` MB di **Admin → Pengaturan**, lalu (6) verifikasi ulang oleh Debugger/QA.
+- [ ] **[OPERASIONAL - Pengaturan Dashboard Vercel / Neon / Admin]**: Kode rilis `42ba5b5` sudah tayang normal di produksi, namun dari pengecekan langsung terlihat 2 hal pengaturan operasional: (1) 6 pengajuan cuti lama di `/cuti/proses` masih *Surat Terbit* (`0 Selesai`) — klik **Run** sekali pada Cron Job `/api/tugas/harian` di dashboard Vercel (atau tunggu jadwal otomatis pukul 01:00 WITA) sambil memastikan tabel `dokumen_berkas` di Neon dan env `BERKAS_KUNCI` + `CRON_SECRET` di Vercel sudah aktif; (2) bila ingin batas unggah naik dari `1 MB` ke `4 MB`, ubah angka **Ukuran maks. unggahan (MB)** di menu **Admin → Pengaturan** dari `1` ke `4` lalu klik **Simpan**.
 - [ ] **[CATATAN DESAIN] [server/auth/pengguna.ts:~38-45 vs app/(aplikasi)/admin/hak-akses/page.tsx:34]**: Peran legacy `KEPEGAWAIAN` saat ini otomatis menginjeksi 3 hak akses (`KELOLA_SALDO_CUTI`, `PROSES_CUTI`, `KELOLA_PEGAWAI`) hanya jika baris `user_hak_akses` kosong; begitu Superadmin menyimpan centang di `/admin/hak-akses`, peran lama otomatis dibersihkan.
 - [ ] **[CATATAN] [DEV_SYNC.md bagian 1.C]**: Blueprint awal menyebut route `/cuti/rekap`, namun rekap terintegrasi pada `/cuti/saldo` dan `/cetak/rekap-cuti`.
 
 ## 5. Riwayat Selesai (Resolved)
+- [x] **[VERIFIKASI QA PASCA-RILIS PRODUKSI - Paket Bagian I (`705016c`, `4f5f445`) & Tema Ke-4 "Notion Monokrom" (`42ba5b5`)] [2026-11-26]**:
+  - **Sinkronisasi GitHub & Deploy Vercel:** `git ls-remote origin refs/heads/main` terkonfirmasi menunjuk tepat ke commit terbaru **`42ba5b5`** (`main...origin/main` sinkron), dan website produksi `https://cuti-esdm.vercel.app` aktif menayangkan rilis penuh Bagian I + Bagian J.
+  - **Uji Browser Langsung Produksi (100% Hanya Baca, Nol Perubahan Data, 0 Galat Konsol, 0 Gagal HTTP `>= 400`):**
+    - **Tema Ke-4 Notion Monokrom Live (`/beranda`, `/admin/hak-akses`, `/cuti/proses`, `/cetak/rekap-cuti`):** Menu dropdown *Pilih Tema Tampilan* menampilkan lengkap **4 tema** (*Cursor Dark*, *Langit Pagi*, *Mossy Stone*, *Notion Monokrom*). Saat **Notion Monokrom** dipilih (`data-tema="notion-monokrom"`, `meta[name="theme-color"]="#FBFBFA"`), permukaan tampil datar putih kertas & hitam arang minimalis, 5 kartu ikon serasi, lencana status cuti tampil pastel lembut, dan halaman cetak `/cetak/rekap-cuti` tetap putih bersih teks hitam pekat dengan bilah cetak hitam arang tanpa efek kabut tombol.
+    - **Bukti Paket Bagian I Aktif di Produksi (`/admin/hak-akses`):** Inisial `eerza311 (Superadmin)` kini tampil rapi **`ES`** (tidak lagi `E(`), seluruh **5 kolom centang** muat utuh di layar laptop (`951,2 px <= 951,2 px`), tombol filter cepat punya garis tepi tegas, dan tampilan layar HP (`390×844`) bebas gulir halaman ke samping (`375,2 px <= 390 px`).
+    - **Keutuhan Data Produksi Neon (100% Aman):** **93 pegawai aktif** (`/pegawai`), **saldo cuti 2026** lengkap di 6 unit kerja tanpa peringatan kosong (`/cuti/saldo`), **12 pengajuan cuti** utuh (`/cuti/proses`: `1 Diajukan`, `6 Surat Terbit`, `4 Disetujui`, `1 Dibatalkan`), **4 folder Dokumen Organisasi** utuh (`0 dokumen`, `/dokumen/organisasi` menampilkan `maks. 1 MB` mengikuti nilai `1` di `/admin/pengaturan`), **6 akun** + foto profil `admin` tampil normal, dan `/dokumen` mengarahkan akun `admin` dengan rapi ke `/akses-ditolak`.
+  - **Catatan Operasional Ringan:** Item `[PENDING RILIS]` kode telah ditutup; tersisa 2 langkah opsional di dashboard (klik **Run** sekali pada Cron `/api/tugas/harian` di Vercel / tunggu 01:00 WITA agar 6 cuti lama beralih ke *Selesai*, serta ubah batas unggah `1 → 4` MB di *Admin → Pengaturan* bila diinginkan).
 - [x] **[VERIFIKASI QA - Tema Ke-4 "Notion Monokrom", 8 Lencana Status Cuti, & Regresi 4 Tema] [2026-11-26]**:
   - **Tes Otomatis & Build Produksi:** Audit seluruh 10 file perubahan + `npm run typecheck` OK, `npm run lint` OK (0 error/warning), `npm test` **138/138 lulus** (16 file test, termasuk 5 unit test `tests/unit/tema.test.ts`), dan `npm run build` **OK (44/44 rute)** siap rilis.
   - **Uji Browser Lokal dengan 8 Data Pengajuan Cuti Uji (`1280×800` Laptop & `390×844` HP, 0 galat konsol, 0 gagal HTTP):**

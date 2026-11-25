@@ -39,9 +39,9 @@
   - Background Worker: `app/api/tugas/harian/route.ts` (Cron pembaruan status cuti selesai & kirim antrean email)
 
 ## Status Saat Ini
-- **Fase Aktif:** Commit Sistem 4 Tema Simetris (**Notion Light** Bawaan, **Notion Dark**, **Langit Pagi**, **Langit Malam**) & Sakelar **Siang / Malam** Dikirim ke GitHub (`main`) untuk Tayang Otomatis di Vercel — Siap Cek Pasca-Rilis oleh Debugger / QA (Opsional)
-- **Fitur/Modul Aktif:** Pembaruan Sistem Tema — **Notion Light (Bawaan)**, **Notion Dark**, **Langit Pagi / Langit Malam**, Penghapusan Cursor Dark & Mossy Stone, serta Sakelar **Siang / Malam** (`2026-11-26`)
-- **Penanggung Jawab Terakhir:** Coder
+- **Fase Aktif:** Selesai Dirilis & Terverifikasi Live di Produksi (`https://cuti-esdm.vercel.app`, Commit `55dce69` Sinkron di GitHub `origin/main` & Vercel — Sistem **4 Tema Simetris** & Sakelar **Siang / Malam** Aktif Mulus)
+- **Fitur/Modul Aktif:** Pembaruan Sistem Tema — **Notion Light (Bawaan)**, **Notion Dark**, **Langit Pagi / Langit Malam**, Penghapusan Cursor Dark & Mossy Stone, serta Sakelar **Siang / Malam** — Lulus Verifikasi Produksi (`2026-11-26`)
+- **Penanggung Jawab Terakhir:** Debugger / QA
 
 ## 1. Cetak Biru & Skema Data (Diisi oleh Conversation 3 - Architect)
 *Rancangan alur sistem, struktur tabel/database, dan daftar file yang harus dibuat/dieksekusi oleh Coder:*
@@ -753,6 +753,12 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 - [ ] **[CATATAN] [DEV_SYNC.md bagian 1.C]**: Blueprint awal menyebut route `/cuti/rekap`, namun rekap terintegrasi pada `/cuti/saldo` dan `/cetak/rekap-cuti`.
 
 ## 5. Riwayat Selesai (Resolved)
+- [x] **[VERIFIKASI QA PASCA-RILIS PRODUKSI - Sistem 4 Tema Simetris & Sakelar Siang/Malam (`55dce69`)] [2026-11-26]**:
+  - **Sinkronisasi GitHub & Vercel:** `git ls-remote origin refs/heads/main` terkonfirmasi tepat pada commit **`55dce69`** (`main...origin/main` sinkron), dan rilis terbaru aktif tayang di `https://cuti-esdm.vercel.app`.
+  - **Uji Browser Langsung Produksi (100% Hanya Baca, Nol Perubahan Data, 0 Galat Konsol, 0 Gagal HTTP `>= 400`):**
+    - **Pengalihan Cookie Tema Lama Nyata di Produksi:** Saat `/beranda` pertama kali dibuka (dengan sisa cookie sesi sebelumnya `tema=notion-monokrom`), aplikasi otomatis beralih mulus ke **`data-tema="notion-light"`** (`meta[name="theme-color"]="#FBFBFA"`) tanpa error; `/login` & `/daftar` juga mengarahkan sesi aktif dengan bersih pada `notion-light`.
+    - **Sakelar Cepat 1-Klik Siang/Malam & Menu Palet (Laptop `1280×800` & HP `390×844`):** Tombol 1-klik Bulan/Matahari langsung menukar **Notion Light ↔ Notion Dark** (`#191919`) dan **Langit Pagi** (`#F0F9FF`) **↔ Langit Malam** (`#0B1526`), sedangkan menu Palet (*Tampilan Aplikasi*) menampilkan segmen **Siang / Malam** + 2 pilihan gaya (**Notion** & **Langit**) yang mempertahankan mode aktif. Di layar HP `390×844`, judul **`Cuti ESDM`** tampil utuh tanpa terpotong bersama 5 kontrol bilah atas (`max right edge 367,6 px <= 390 px`), laci menu HP *Notion Dark* (`#202020`) & dropdown tampil rapi tanpa gulir samping.
+    - **Isolasi Halaman Cetak di Mode Malam & Keutuhan Data Produksi:** Halaman `/cetak/rekap-cuti` tetap putih murni bertulisan hitam pekat tanpa efek kabut tombol saat **Notion Dark** maupun **Langit Malam** aktif (bilah cetak hitam arang di Notion, biru di Langit), serta halaman inti (`/beranda`, `/cuti/proses` antrean utuh, `/admin/hak-akses` 6 akun + inisial `ES`) terbuka normal tanpa galat. Tampilan dikembalikan rapi ke bawaan **Notion Light** di akhir pengecekan.
 - [x] **[VERIFIKASI QA - Sistem 4 Tema Simetris (Notion Light/Dark & Langit Pagi/Malam), Sakelar Siang/Malam, & 8 Status Cuti] [2026-11-26]**:
   - **Audit Kode, Penghapusan Tema Lama, & Build Produksi:** Pencarian kode (`git grep -i`) memastikan **0 sisa referensi** `cursor-dark`, `mossy-stone`, maupun `notion-monokrom` di seluruh kode aplikasi (hanya tersisa pengujian pengalihan resmi di `tests/unit/tema.test.ts`). Seluruh pemeriksaan otomatis lulus bersih: `npm run typecheck` OK, `npm run lint` OK (0 error/warning), `npm test` **141/141 lulus** (16 file test, termasuk 8 unit test `tests/unit/tema.test.ts` yang memverifikasi pengalihan `cursor-dark`, `mossy-stone`, `notion-monokrom`, & kosong → `notion-light`), serta `npm run build` **OK (44/44 rute)**.
   - **Pengalihan Cookie Tema Lama & Pengunjung Baru Tanpa Kilatan Warna:** Audit alur server `app/layout.tsx` (`generateViewport` + `RootLayout`), `app/(aplikasi)/layout.tsx`, dan `PenyediaTema` bersama uji langsung `/login` membuktikan pengunjung baru maupun pemilik cookie tema lama langsung dirender sejak server pada `data-tema="notion-light"` (`meta[name="theme-color"]="#FBFBFA"`) tanpa error maupun kedipan warna.

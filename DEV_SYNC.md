@@ -39,7 +39,7 @@
   - Background Worker: `app/api/tugas/harian/route.ts` (Cron pembaruan status cuti selesai & kirim antrean email)
 
 ## Status Saat Ini
-- **Fase Aktif:** Sudah Di-commit & Di-push ke GitHub (`main`) — Menunggu Migrasi Tabel `dokumen_berkas` ke Neon, Pengaturan Env/Cron Vercel, & Verifikasi Akhir Produksi oleh Debugger/QA
+- **Fase Aktif:** 2 Commit Siap Kirim di Branch Lokal `main` (`705016c` + pembaruan `DEV_SYNC.md`) — Menunggu Pemilik Proyek Klik **Push origin** di GitHub Desktop / Terminal, Lalu Migrasi Neon, Cek Env & Cron Vercel, & Verifikasi Akhir QA
 - **Fitur/Modul Aktif:** Penyimpanan Berkas Permanen (`dokumen_berkas`), Jadwal Harian Otomatis Vercel (Cron), & Paket Perbaikan Keamanan/Logika QA Gelombang 1–4 (`2026-11-25`)
 - **Penanggung Jawab Terakhir:** Coder
 
@@ -536,10 +536,18 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 
 ## 4. Antrean Bug & Evaluasi QA (Diisi oleh Conversation 2 - Debugger)
 *Daftar error logika, masalah tampilan, atau perbaikan yang dibutuhkan:*
+- [ ] **[PENDING RILIS - Belum Push & Tayang di Produksi] [GitHub `main` / Vercel / Neon]**: Pengecekan langsung `git ls-remote origin refs/heads/main` membuktikan commit `705016c` baru tersimpan di komputer lokal (`main...origin/main [ahead 1]`), sedangkan GitHub `main` dan website online `https://cuti-esdm.vercel.app` masih menjalankan versi lama `b2cdbcb` (inisial `eerza311 (Superadmin)` masih `E(`, 6 cuti lama masih *Surat Terbit*, dan pengaturan `dokumen.maks_ukuran_mb` di `/admin/pengaturan` masih bernilai `1` MB). Perlu: (1) kirim/push commit ke GitHub `main`, (2) pastikan build & deploy terbaru hijau di Vercel, (3) pastikan migrasi `dokumen_berkas` sudah aktif di Neon dan variabel `BERKAS_KUNCI` + `CRON_SECRET` terpasang di Vercel, (4) jalankan Cron `/api/tugas/harian` sekali di Vercel, (5) opsional ubah batas unggah dari `1` ke `4` MB di **Admin → Pengaturan**, lalu (6) verifikasi ulang oleh Debugger/QA.
 - [ ] **[CATATAN DESAIN] [server/auth/pengguna.ts:~38-45 vs app/(aplikasi)/admin/hak-akses/page.tsx:34]**: Peran legacy `KEPEGAWAIAN` saat ini otomatis menginjeksi 3 hak akses (`KELOLA_SALDO_CUTI`, `PROSES_CUTI`, `KELOLA_PEGAWAI`) hanya jika baris `user_hak_akses` kosong; begitu Superadmin menyimpan centang di `/admin/hak-akses`, peran lama otomatis dibersihkan.
 - [ ] **[CATATAN] [DEV_SYNC.md bagian 1.C]**: Blueprint awal menyebut route `/cuti/rekap`, namun rekap terintegrasi pada `/cuti/saldo` dan `/cetak/rekap-cuti`.
 
 ## 5. Riwayat Selesai (Resolved)
+- [x] **[VERIFIKASI QA - Cek Produksi Online & Sinkronisasi Git Pasca-Commit `705016c`] [2026-11-25]**:
+  - **Temuan Kritis Sinkronisasi Rilis:** Pemeriksaan Git (`git status -sb` → `main...origin/main [ahead 1]` dan `git ls-remote origin refs/heads/main` → `b2cdbcb`) bersama pengecekan browser langsung (100% hanya baca) di `https://cuti-esdm.vercel.app` membuktikan bahwa **commit `705016c` belum terkirim (`push`) ke GitHub `main`**, sehingga website online **masih menayangkan versi lama `b2cdbcb`**.
+  - **Bukti Langsung di Website Online (`https://cuti-esdm.vercel.app`, 0 galat konsol, 0 perubahan data):**
+    - `/admin/hak-akses`: 6 akun berakun tampil normal, tetapi inisial `eerza311 (Superadmin)` masih **`E(`** (belum berubah menjadi **`ES`** dari `705016c`).
+    - `/cuti/proses`: **12 pengajuan cuti** utuh (`1 Diajukan`, `6 Surat Terbit` periode Okt–6 Nov 2026, `4 Disetujui`, `1 Dibatalkan`, `0 Selesai`) — ke-6 cuti lama belum berubah menjadi **Selesai** karena jadwal `vercel.json` dan `GET /api/tugas/harian` belum tayang di Vercel.
+    - `/admin/pengaturan` & `/dokumen/organisasi`: kolom *Ukuran maks. unggahan (MB)* (`dokumen.maks_ukuran_mb`) di database produksi masih berisi angka **`1`**, sehingga halaman *Dokumen Organisasi* menampilkan `maks. 1 MB`.
+    - Keutuhan data & tampilan produksi terkonfirmasi **100% aman**: `/beranda` (avatar foto profil tampil tajam, `<meta name="theme-color">` `#0E0E10`), `/pegawai` (**93 pegawai aktif**), `/cuti/saldo` (tahun **2026**, 6 unit kerja tanpa peringatan saldo kosong), `/dokumen/organisasi` (**4 folder** masing-masing 0 dokumen), `/dokumen` (mengarahkan akun `admin` tanpa profil pegawai secara rapi ke `/akses-ditolak`), serta layar HP `390×844` bebas melebar ke samping (`375,2 px <= 390 px`).
 - [x] **[VERIFIKASI QA - Polesan Akhir & Cek Status Rilis Produksi] [2026-11-25]**:
   - Kedua polesan akhir (`app/(aplikasi)/pegawai/page.tsx` dan `server/dokumen/penyimpanan.ts`) telah diperiksa langsung pada kode lokal dan **136/136 unit test** lulus bersih.
   - Pengecekan langsung (100% hanya baca) pada `https://cuti-esdm.vercel.app` & `git log` mengonfirmasi bahwa **perubahan terbaru ini belum di-commit, belum di-push ke GitHub, belum dimigrasikan ke Neon, dan belum di-deploy ke Vercel** (website online masih menjalankan versi lama `b2cdbcb`: inisial Superadmin masih `E(`, 6 cuti lama masih *Surat Terbit*, dan belum ada error konsol).

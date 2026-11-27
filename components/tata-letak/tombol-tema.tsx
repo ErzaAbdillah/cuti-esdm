@@ -94,7 +94,7 @@ export function TombolTema({ className }: { className?: string }) {
         onClick={() => aturTema(balikModeTema(tema))}
         aria-label={labelBalikMode}
         title={labelBalikMode}
-        className="ikon-abu relative flex size-9 items-center justify-center rounded-xl text-judul transition-colors hover:bg-white/60 focus-visible:outline-2 focus-visible:outline-ring sm:size-10"
+        className="ikon-abu relative flex size-9 items-center justify-center rounded-full text-judul transition-colors hover:bg-white/60 focus-visible:outline-2 focus-visible:outline-ring sm:size-10"
       >
         {sedangSiang ? (
           <MoonIcon className="size-5" aria-hidden />
@@ -107,24 +107,24 @@ export function TombolTema({ className }: { className?: string }) {
         <DropdownMenuTrigger
           aria-label={`Tampilan aplikasi (${aktif.nama})`}
           title={`Tampilan aplikasi: ${aktif.nama}`}
-          className="ikon-abu relative flex size-9 items-center justify-center rounded-xl text-judul transition-colors hover:bg-white/60 focus-visible:outline-2 focus-visible:outline-ring sm:size-10"
+          className="ikon-abu relative flex size-9 items-center justify-center rounded-full text-judul transition-colors hover:bg-white/60 focus-visible:outline-2 focus-visible:outline-ring sm:size-10"
         >
           <PaletteIcon className="size-5" aria-hidden />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-64 min-w-64">
+        <DropdownMenuContent align="end" className="w-64 min-w-64 rounded-2xl">
           <DropdownMenuLabel>Tampilan Aplikasi</DropdownMenuLabel>
           <div className="px-1.5 pb-1.5 pt-0.5">
             <div
               role="group"
               aria-label="Mode pencahayaan"
-              className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1"
+              className="grid grid-cols-2 gap-1 rounded-full bg-muted p-1"
             >
               <button
                 type="button"
                 aria-pressed={sedangSiang}
                 onClick={() => aturTema(temaDari(gayaAktif, "siang"))}
                 className={cn(
-                  "flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-ring",
+                  "flex items-center justify-center gap-1.5 rounded-full px-2 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-ring",
                   sedangSiang
                     ? "bg-primary text-primary-foreground shadow-xs"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
@@ -138,7 +138,7 @@ export function TombolTema({ className }: { className?: string }) {
                 aria-pressed={!sedangSiang}
                 onClick={() => aturTema(temaDari(gayaAktif, "malam"))}
                 className={cn(
-                  "flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-ring",
+                  "flex items-center justify-center gap-1.5 rounded-full px-2 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-ring",
                   !sedangSiang
                     ? "bg-primary text-primary-foreground shadow-xs"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",

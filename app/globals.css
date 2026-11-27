@@ -89,7 +89,7 @@
   --chart-2: #55534e;
   --chart-3: #8c8a85;
   --chart-4: #c4554d;
-  --chart-5: #b8b7b2;
+  --chart-5: #787774;
   --radius: 0.875rem;
   --sidebar: #f7f7f5;
   --sidebar-foreground: #2f2e2a;
@@ -145,7 +145,7 @@ html[data-tema="notion-light"] {
   --chart-2: #55534e;
   --chart-3: #8c8a85;
   --chart-4: #c4554d;
-  --chart-5: #b8b7b2;
+  --chart-5: #787774;
   --sidebar: #f7f7f5;
   --sidebar-foreground: #2f2e2a;
   --sidebar-primary: #191919;
@@ -263,10 +263,10 @@ html[data-tema="notion-dark"] {
   --input: #3f3f3f;
   --ring: #d6d5d0;
   --chart-1: #ebebe8;
-  --chart-2: #b8b7b2;
-  --chart-3: #8c8a85;
-  --chart-4: #e06c65;
-  --chart-5: #6b6a66;
+  --chart-2: #a6d0ec;
+  --chart-3: #e6c37a;
+  --chart-4: #f0a5a0;
+  --chart-5: #8ec9aa;
   --sidebar: #202020;
   --sidebar-foreground: #e6e6e3;
   --sidebar-primary: #ebebe8;
@@ -441,7 +441,7 @@ html[data-tema="langit-malam"] {
   --input: #2e4a73;
   --ring: #38bdf8;
   --chart-1: #38bdf8;
-  --chart-2: #0ea5e9;
+  --chart-2: #34d399;
   --chart-3: #f5c542;
   --chart-4: #f87171;
   --chart-5: #93b0ce;
@@ -600,12 +600,6 @@ html[data-tema="notion-light"] .kaca {
   box-shadow: 0 1px 2px rgb(25 25 25 / 0.04);
 }
 
-html[data-tema="notion-light"] aside.kaca {
-  background-color: #f7f7f5;
-  border-color: #e5e5e2;
-  box-shadow: none;
-}
-
 html[data-tema="notion-light"] header > .kaca {
   background-color: #ffffff;
   backdrop-filter: none;
@@ -625,12 +619,6 @@ html[data-tema="notion-dark"] .kaca {
   -webkit-backdrop-filter: none;
   border-color: #333333;
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.32);
-}
-
-html[data-tema="notion-dark"] aside.kaca {
-  background-color: #202020;
-  border-color: #333333;
-  box-shadow: none;
 }
 
 html[data-tema="notion-dark"] header > .kaca {

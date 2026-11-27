@@ -14,6 +14,8 @@ export type NamaIkon =
 export interface ItemMenu {
   href: string;
   label: string;
+  /** Label lebih ringkas untuk kapsul bilah navigasi atas desktop (laci HP & dropdown tetap pakai `label`). */
+  labelRingkas?: string;
   ikon: NamaIkon;
   /** Kosong (bersama hakAkses kosong) = semua pengguna yang login. */
   peran?: PeranEfektif[];
@@ -38,13 +40,13 @@ export const MENU: GrupMenu[] = [
   },
   {
     judul: "Kepegawaian",
-    item: [{ href: "/pegawai", label: "Data Pegawai", ikon: "pegawai", hakAkses: ["KELOLA_PEGAWAI"] }],
+    item: [{ href: "/pegawai", label: "Data Pegawai", labelRingkas: "Pegawai", ikon: "pegawai", hakAkses: ["KELOLA_PEGAWAI"] }],
   },
   {
     judul: "Dokumen",
     item: [
       { href: "/dokumen", label: "Dokumen Saya", ikon: "dokumen", peran: ["PEGAWAI"] },
-      { href: "/dokumen/organisasi", label: "Dokumen Organisasi", ikon: "folder" },
+      { href: "/dokumen/organisasi", label: "Dokumen Organisasi", labelRingkas: "Dokumen", ikon: "folder" },
     ],
   },
   { judul: "Sistem", item: [{ href: "/admin", label: "Admin", ikon: "admin", hakAkses: ["PENGATURAN_ADMIN"] }] },

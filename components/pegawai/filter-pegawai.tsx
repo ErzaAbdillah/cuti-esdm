@@ -27,7 +27,7 @@ export function FilterPegawaiForm({ f, opsi }: { f: FilterPegawai; opsi: OpsiPeg
         Unit kerja
         <Pilihan name="unit" defaultValue={f.unit ?? ""} onChange={kirim}>
           <option value="">Semua unit</option>
-          {opsi.unit.map((u) => (
+          {opsi.unitFilter.map((u) => (
             <option key={u.id} value={u.id}>
               {u.label}
             </option>

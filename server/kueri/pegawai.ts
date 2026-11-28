@@ -3,7 +3,7 @@ import { z } from "zod";
 import { tentukanLevelSurat } from "@/lib/domain/level-surat";
 import { formatNip } from "@/lib/domain/nip";
 import { namaLengkap, pangkatTampil } from "@/lib/domain/pegawai";
-import { idTurunan, urutkanPohon } from "@/lib/domain/unit";
+import { FILTER_UNIT_PJLP, idTurunan, susunOpsiUnitFilterPegawai, urutkanPohon } from "@/lib/domain/unit";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import type { LevelSurat } from "@/lib/generated/prisma/enums";
 import { LEVEL_SURAT, STATUS_KEPEGAWAIAN } from "@/lib/validasi/pegawai";
@@ -15,7 +15,7 @@ const KOLOM_URUT = ["nama", "nip", "unit", "jabatan", "pangkat"] as const;
 
 export const skemaFilterPegawai = z.object({
   q: z.string().trim().max(60).optional().catch(undefined),
-  unit: z.uuid().optional().catch(undefined),
+  unit: z.union([z.literal(FILTER_UNIT_PJLP), z.uuid()]).optional().catch(undefined),
   jabatan: z.uuid().optional().catch(undefined),
   level: z.enum(LEVEL_SURAT).optional().catch(undefined),
   pangkat: z.uuid().optional().catch(undefined),
@@ -63,7 +63,9 @@ export async function kondisiFilter(f: FilterPegawai): Promise<Prisma.PegawaiWhe
   if (f.status) dan.push({ statusKepegawaian: f.status });
   if (f.jabatan) dan.push({ jabatanId: f.jabatan });
   if (f.pangkat) dan.push({ pangkatGolonganId: f.pangkat });
-  if (f.unit) {
+  if (f.unit === FILTER_UNIT_PJLP) {
+    dan.push({ statusKepegawaian: "NON_ASN" });
+  } else if (f.unit) {
     const units = await db.unitKerja.findMany({ select: { id: true, parentId: true, nama: true, urutan: true } });
     dan.push({ unitKerjaId: { in: [...idTurunan(f.unit, units)] } });
   }
@@ -159,7 +161,10 @@ export async function opsiPegawai() {
     db.pangkatGolongan.findMany({ orderBy: { urutan: "asc" } }),
   ]);
   return {
+    /** Daftar lengkap unit (termasuk subbagian & seksi) untuk form Tambah/Ubah Pegawai. */
     unit: urutkanPohon(units).map((u) => ({ id: u.id, label: `${"  ".repeat(u.kedalaman)}${u.nama}`, kode: u.kode })),
+    /** Daftar ringkas (5 unit utama + PJLP) khusus dropdown filter di halaman Data Pegawai. */
+    unitFilter: susunOpsiUnitFilterPegawai(units),
     jabatan: jabatan.map((j) => ({ id: j.id, label: j.nama, jenis: j.jenis, kelas: j.kelasJabatan })),
     pangkat: pangkat.map((p) => ({ id: p.id, label: pangkatTampil(p), untuk: p.untuk })),
   };

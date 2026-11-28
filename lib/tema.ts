@@ -12,7 +12,6 @@ export interface InfoTema {
   mode: ModeTema;
   namaGaya: string;
   nama: string;
-  keterangan: string;
   warna: {
     background: string;
     foreground: string;
@@ -22,38 +21,11 @@ export interface InfoTema {
 
 export const DAFTAR_TEMA: readonly InfoTema[] = [
   {
-    id: "notion-light",
-    gaya: "notion",
-    mode: "siang",
-    namaGaya: "Notion",
-    nama: "Notion Light",
-    keterangan: "Putih bersih & hitam arang minimalis",
-    warna: {
-      background: "#FBFBFA",
-      foreground: "#191919",
-      accent: "#787774",
-    },
-  },
-  {
-    id: "notion-dark",
-    gaya: "notion",
-    mode: "malam",
-    namaGaya: "Notion",
-    nama: "Notion Dark",
-    keterangan: "Arang gelap minimalis nyaman mata",
-    warna: {
-      background: "#191919",
-      foreground: "#E6E6E3",
-      accent: "#787774",
-    },
-  },
-  {
     id: "langit-pagi",
     gaya: "langit",
     mode: "siang",
     namaGaya: "Langit",
     nama: "Langit Pagi",
-    keterangan: "Biru cerah bersih",
     warna: {
       background: "#F0F9FF",
       foreground: "#0F172A",
@@ -66,16 +38,39 @@ export const DAFTAR_TEMA: readonly InfoTema[] = [
     mode: "malam",
     namaGaya: "Langit",
     nama: "Langit Malam",
-    keterangan: "Biru malam tenang",
     warna: {
       background: "#0B1526",
       foreground: "#E8F1FA",
       accent: "#38BDF8",
     },
   },
+  {
+    id: "notion-light",
+    gaya: "notion",
+    mode: "siang",
+    namaGaya: "Notion",
+    nama: "Notion Light",
+    warna: {
+      background: "#FBFBFA",
+      foreground: "#191919",
+      accent: "#787774",
+    },
+  },
+  {
+    id: "notion-dark",
+    gaya: "notion",
+    mode: "malam",
+    namaGaya: "Notion",
+    nama: "Notion Dark",
+    warna: {
+      background: "#191919",
+      foreground: "#E6E6E3",
+      accent: "#787774",
+    },
+  },
 ] as const;
 
-export const TEMA_BAWAAN: IdTema = "notion-light";
+export const TEMA_BAWAAN: IdTema = "langit-pagi";
 
 export function normalisasiTema(nilai: string | undefined | null): IdTema {
   if (
@@ -117,6 +112,9 @@ export function gantiGayaTema(idSaatIni: IdTema, gayaBaru: GayaTema): IdTema {
 }
 
 export function warnaBilahBrowser(id: IdTema): string {
-  const info = DAFTAR_TEMA.find((t) => t.id === id) ?? DAFTAR_TEMA[0];
+  const info =
+    DAFTAR_TEMA.find((t) => t.id === id) ??
+    DAFTAR_TEMA.find((t) => t.id === TEMA_BAWAAN) ??
+    DAFTAR_TEMA[0];
   return info.warna.background;
 }

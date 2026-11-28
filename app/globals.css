@@ -54,64 +54,64 @@
 }
 
 /*
- * Variabel dasar bawaan (Notion Light — putih kertas & hitam arang minimalis).
- * Skala warna Tailwind (--color-sky-*, --color-slate-*, dsb.) sengaja tidak ditimpa
+ * Variabel dasar bawaan (Langit Pagi — biru cerah bersih khas ESDM Kalsel).
+ * Skala warna Tailwind (--color-sky-*, --color-slate-*, dsb.) tidak ditimpa
  * di :root agar tema Langit Pagi tetap memakai warna Tailwind bawaan yang jernih.
  */
 :root {
   color-scheme: light;
 
-  --brand: #2f2e2a;
-  --judul: #191919;
-  --emas: #2f2e2a;
-  --emas-foreground: #ffffff;
-  --merah: #c4554d;
+  --brand: #0ea5e9;
+  --judul: #0c4a6e;
+  --emas: #e8b923;
+  --emas-foreground: #422006;
+  --merah: #c81e1e;
 
-  --background: #fbfbfa;
-  --foreground: #2f2e2a;
-  --card: #ffffff;
-  --card-foreground: #2f2e2a;
+  --background: #f0f9ff;
+  --foreground: #0f172a;
+  --card: rgb(255 255 255 / 0.78);
+  --card-foreground: #0f172a;
   --popover: #ffffff;
-  --popover-foreground: #2f2e2a;
-  --primary: #191919;
+  --popover-foreground: #0f172a;
+  --primary: #0369a1;
   --primary-foreground: #ffffff;
-  --secondary: #f1f1ef;
-  --secondary-foreground: #191919;
-  --muted: #f1f1ef;
-  --muted-foreground: #6b6a66;
-  --accent: #efefed;
-  --accent-foreground: #191919;
-  --destructive: #c4554d;
-  --border: #e5e5e2;
-  --input: #d3d3ce;
-  --ring: #2f2e2a;
-  --chart-1: #191919;
-  --chart-2: #55534e;
-  --chart-3: #8c8a85;
-  --chart-4: #c4554d;
-  --chart-5: #787774;
+  --secondary: #e0f2fe;
+  --secondary-foreground: #0c4a6e;
+  --muted: #f1f5f9;
+  --muted-foreground: #475569;
+  --accent: #e0f2fe;
+  --accent-foreground: #0c4a6e;
+  --destructive: #c81e1e;
+  --border: #cfe8f7;
+  --input: #7a8ca0;
+  --ring: #0284c7;
+  --chart-1: #0ea5e9;
+  --chart-2: #0369a1;
+  --chart-3: #e8b923;
+  --chart-4: #c81e1e;
+  --chart-5: #64748b;
   --radius: 0.875rem;
-  --sidebar: #f7f7f5;
-  --sidebar-foreground: #2f2e2a;
-  --sidebar-primary: #191919;
+  --sidebar: rgb(255 255 255 / 0.72);
+  --sidebar-foreground: #0f172a;
+  --sidebar-primary: #0369a1;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #efefed;
-  --sidebar-accent-foreground: #191919;
-  --sidebar-border: #e5e5e2;
-  --sidebar-ring: #2f2e2a;
+  --sidebar-accent: #e0f2fe;
+  --sidebar-accent-foreground: #0c4a6e;
+  --sidebar-border: #cfe8f7;
+  --sidebar-ring: #0284c7;
 
-  /* Token kabut "abu terbawa angin" — kabut arang tipis & kilau putih halus untuk Notion Light */
-  --abu-kabut: rgb(25 25 25 / 0.08);
-  --abu-kabut-terang: rgb(255 255 255 / 0.18);
-  --abu-kabut-emas: rgb(255 255 255 / 0.18);
-  --abu-aksen-emas: rgb(25 25 25 / 0.24);
-  --abu-kabut-merah: rgb(196 85 77 / 0.14);
-  --abu-aksen: rgb(25 25 25 / 0.18);
-  --abu-pendar: rgb(25 25 25 / 0.08);
+  /* Token kabut "abu terbawa angin" — embun biru muda & kilau putih halus untuk Langit Pagi */
+  --abu-kabut: rgb(14 165 233 / 0.16);
+  --abu-kabut-terang: rgb(255 255 255 / 0.2);
+  --abu-kabut-emas: rgb(255 252 235 / 0.34);
+  --abu-aksen-emas: rgb(217 160 16 / 0.36);
+  --abu-kabut-merah: rgb(200 30 30 / 0.16);
+  --abu-aksen: rgb(2 132 199 / 0.24);
+  --abu-pendar: rgb(14 165 233 / 0.16);
 }
 
 /*
- * 1) Tema "Notion Light" (Bawaan) — Putih kertas bersih & hitam arang minimalis.
+ * 1) Tema "Notion Light" — Putih kertas bersih & hitam arang minimalis.
  * Background: #FBFBFA, Card: #FFFFFF, Sidebar: #F7F7F5, Foreground: #2F2E2A, Primary: #191919.
  */
 html[data-tema="notion-light"] {
@@ -355,7 +355,7 @@ html[data-tema="notion-dark"] {
 }
 
 /*
- * 3) Tema "Langit Pagi" — Biru cerah bersih khas ESDM Kalsel (mode Siang gaya Langit).
+ * 3) Tema "Langit Pagi" (Bawaan) — Biru cerah bersih khas ESDM Kalsel (mode Siang gaya Langit).
  * #0EA5E9 (brand) dipakai untuk aksen; tombol utama memakai #0369A1 (5,9:1, lulus WCAG AA).
  */
 html[data-tema="langit-pagi"] {
@@ -546,14 +546,17 @@ html[data-tema="langit-malam"] {
   }
 }
 
-/* Latar halaman fixed agar gulir mulus di HP; bawaan polos Notion Light tanpa kilatan biru. */
+/* Latar halaman fixed agar gulir mulus di HP; bawaan Langit Pagi agar tidak berkedip saat baru dibuka. */
 .latar-langit {
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-color: var(--background);
-  background-image: none;
+  background-color: #f0f9ff;
+  background-image: url("/motif-awan.svg"), linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 45%, #bae6fd 100%);
+  background-repeat: repeat-x, no-repeat;
+  background-size: 1200px auto, cover;
+  background-position: top center, center;
 }
 
 html[data-tema="notion-light"] .latar-langit {
@@ -585,11 +588,13 @@ html[data-tema="langit-malam"] .latar-langit {
   background-position: center;
 }
 
-/* Permukaan kartu & bilah atas — datar rapi untuk gaya Notion, kaca lembut untuk gaya Langit */
+/* Permukaan kartu & bilah atas — bawaan kaca lembut Langit Pagi, datar rapi untuk gaya Notion */
 .kaca {
   background-color: var(--card);
-  border: 1px solid var(--border);
-  box-shadow: 0 1px 2px rgb(25 25 25 / 0.04);
+  backdrop-filter: blur(16px) saturate(145%);
+  -webkit-backdrop-filter: blur(16px) saturate(145%);
+  border: 1px solid rgb(255 255 255 / 0.7);
+  box-shadow: 0 8px 30px -12px rgb(12 74 110 / 0.18), 0 1px 2px rgb(12 74 110 / 0.06);
 }
 
 html[data-tema="notion-light"] .kaca {

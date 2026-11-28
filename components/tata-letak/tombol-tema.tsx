@@ -37,7 +37,7 @@ const TemaContext = createContext<KonteksTema>({
   aturTema: () => {},
 });
 
-const URUTAN_GAYA: readonly GayaTema[] = ["notion", "langit"];
+const URUTAN_GAYA: readonly GayaTema[] = ["langit", "notion"];
 
 function terapkanKeDom(id: IdTema) {
   if (typeof document === "undefined") return;
@@ -111,9 +111,9 @@ export function TombolTema({ className }: { className?: string }) {
         >
           <PaletteIcon className="size-5" aria-hidden />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-64 min-w-64 rounded-2xl">
+        <DropdownMenuContent align="end" className="w-52 min-w-52 rounded-2xl p-1.5">
           <DropdownMenuLabel>Tampilan Aplikasi</DropdownMenuLabel>
-          <div className="px-1.5 pb-1.5 pt-0.5">
+          <div className="px-1 pb-1.5 pt-0.5">
             <div
               role="group"
               aria-label="Mode pencahayaan"
@@ -156,7 +156,7 @@ export function TombolTema({ className }: { className?: string }) {
             onValueChange={(v) => aturTema(gantiGayaTema(tema, v === "langit" ? "langit" : "notion"))}
           >
             {opsiGaya.map((t) => (
-              <DropdownMenuRadioItem key={t.gaya} value={t.gaya} className="cursor-pointer py-2">
+              <DropdownMenuRadioItem key={t.gaya} value={t.gaya} className="cursor-pointer rounded-xl py-2">
                 <div className="flex items-center gap-2.5">
                   <span className="flex shrink-0 items-center -space-x-1" aria-hidden>
                     <span
@@ -175,10 +175,7 @@ export function TombolTema({ className }: { className?: string }) {
                       title={`Aksen ${t.warna.accent}`}
                     />
                   </span>
-                  <span className="leading-tight">
-                    <span className="block text-sm font-semibold">{t.nama}</span>
-                    <span className="block text-xs text-muted-foreground">{t.keterangan}</span>
-                  </span>
+                  <span className="text-sm font-semibold leading-none">{t.nama}</span>
                 </div>
               </DropdownMenuRadioItem>
             ))}

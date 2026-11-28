@@ -50,7 +50,7 @@ export function MenuPengguna({ nama, keterangan, fotoUrl }: { nama: string; kete
               }}
               className="cursor-pointer rounded-xl px-2.5 py-2"
             >
-              <DownloadIcon /> Pasang Aplikasi
+              <DownloadIcon /> Download Aplikasi
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />

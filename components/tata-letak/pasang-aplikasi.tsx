@@ -174,7 +174,7 @@ export function DialogPanduanPasang({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-judul">
             <SmartphoneIcon className="size-4 text-primary" aria-hidden />
-            Pasang Aplikasi Cuti ESDM
+            Download Aplikasi Cuti ESDM
           </DialogTitle>
           <DialogDescription>
             Ikuti 3 langkah singkat untuk memasang aplikasi di <b>{judulPerangkat}</b>:
@@ -253,7 +253,7 @@ export function TombolPasangPublik() {
           className="bg-white/80 text-judul"
         >
           <DownloadIcon data-icon="inline-start" aria-hidden />
-          Pasang Aplikasi di Perangkat Ini
+          Download Aplikasi
         </Button>
       </div>
       <DialogPanduanPasang buka={bukaPanduan} onOpenChange={setBukaPanduan} perangkat={perangkat} />

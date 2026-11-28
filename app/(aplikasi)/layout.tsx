@@ -28,7 +28,7 @@ export default async function LayoutAplikasi({ children }: LayoutProps<"/">) {
   return (
     <PenyediaTema awal={tema}>
       <div className="min-h-dvh">
-        <header className="sticky top-0 z-20 px-4 pt-3 sm:px-6">
+        <header className="safe-header sticky top-0 z-20">
           <div className="kaca mx-auto flex h-14 w-full max-w-7xl items-center justify-between gap-1.5 rounded-2xl px-1.5 sm:gap-2 sm:px-3 lg:h-15 lg:rounded-full lg:px-4">
             <div className="flex min-w-0 items-center gap-1 lg:shrink-0">
               <MenuSeluler menu={menu} />
@@ -59,7 +59,7 @@ export default async function LayoutAplikasi({ children }: LayoutProps<"/">) {
             </div>
           </div>
         </header>
-        <main id="konten" className="mx-auto w-full max-w-7xl px-4 pb-10 pt-5 sm:px-6">
+        <main id="konten" className="safe-main mx-auto w-full max-w-7xl pt-5">
           {children}
         </main>
       </div>

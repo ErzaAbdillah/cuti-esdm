@@ -686,6 +686,7 @@ html[data-tema="notion-dark"] .bg-white:not(.lembar-cetak):not(.lembar-cetak *):
 html[data-tema="notion-dark"] .bg-white\/95:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *),
 html[data-tema="notion-dark"] .bg-white\/90:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *),
 html[data-tema="notion-dark"] .bg-white\/80:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *),
+html[data-tema="notion-dark"] .bg-white\/75:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *),
 html[data-tema="notion-dark"] .bg-white\/70:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *),
 html[data-tema="notion-dark"] .bg-white\/60:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *) {
   background-color: #222222;
@@ -702,6 +703,7 @@ html[data-tema="notion-dark"] [data-slot="sheet-content"][data-side="left"] {
   html[data-tema="notion-dark"] :is(button, a, [role="button"]).bg-white\/95:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *):not(:disabled):hover,
   html[data-tema="notion-dark"] :is(button, a, [role="button"]).bg-white\/90:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *):not(:disabled):hover,
   html[data-tema="notion-dark"] :is(button, a, [role="button"]).bg-white\/80:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *):not(:disabled):hover,
+  html[data-tema="notion-dark"] :is(button, a, [role="button"]).bg-white\/75:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *):not(:disabled):hover,
   html[data-tema="notion-dark"] :is(button, a, [role="button"]).bg-white\/70:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *):not(:disabled):hover,
   html[data-tema="notion-dark"] :is(button, a, [role="button"]).bg-white\/60:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *):not(:disabled):hover,
   html[data-tema="notion-dark"] .hover\:bg-white:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *):hover {
@@ -735,6 +737,7 @@ html[data-tema="langit-malam"] .bg-white:not(.lembar-cetak):not(.lembar-cetak *)
 html[data-tema="langit-malam"] .bg-white\/95:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *),
 html[data-tema="langit-malam"] .bg-white\/90:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *),
 html[data-tema="langit-malam"] .bg-white\/80:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *),
+html[data-tema="langit-malam"] .bg-white\/75:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *),
 html[data-tema="langit-malam"] .bg-white\/70:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *),
 html[data-tema="langit-malam"] .bg-white\/60:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *) {
   background-color: #101e34;
@@ -751,6 +754,7 @@ html[data-tema="langit-malam"] [data-slot="sheet-content"][data-side="left"] {
   html[data-tema="langit-malam"] :is(button, a, [role="button"]).bg-white\/95:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *):not(:disabled):hover,
   html[data-tema="langit-malam"] :is(button, a, [role="button"]).bg-white\/90:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *):not(:disabled):hover,
   html[data-tema="langit-malam"] :is(button, a, [role="button"]).bg-white\/80:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *):not(:disabled):hover,
+  html[data-tema="langit-malam"] :is(button, a, [role="button"]).bg-white\/75:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *):not(:disabled):hover,
   html[data-tema="langit-malam"] :is(button, a, [role="button"]).bg-white\/70:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *):not(:disabled):hover,
   html[data-tema="langit-malam"] :is(button, a, [role="button"]).bg-white\/60:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *):not(:disabled):hover,
   html[data-tema="langit-malam"] .hover\:bg-white:not(.lembar-cetak):not(.lembar-cetak *):not(.editor-surat):not(.editor-surat *):hover {
@@ -1092,6 +1096,67 @@ html[data-tema="langit-malam"] select:not(.lembar-cetak *):not(.editor-surat *) 
   }
 }
 
+/* Ruang aman layar HP berponi (notch / Dynamic Island) & garis gestur bawah; bernilai 0px di browser biasa */
+.safe-header {
+  padding-top: calc(0.75rem + env(safe-area-inset-top));
+  padding-left: calc(1rem + env(safe-area-inset-left));
+  padding-right: calc(1rem + env(safe-area-inset-right));
+}
+
+@media (min-width: 640px) {
+  .safe-header {
+    padding-left: calc(1.5rem + env(safe-area-inset-left));
+    padding-right: calc(1.5rem + env(safe-area-inset-right));
+  }
+}
+
+.safe-main {
+  padding-bottom: calc(2.5rem + env(safe-area-inset-bottom));
+  padding-left: calc(1rem + env(safe-area-inset-left));
+  padding-right: calc(1rem + env(safe-area-inset-right));
+}
+
+@media (min-width: 640px) {
+  .safe-main {
+    padding-left: calc(1.5rem + env(safe-area-inset-left));
+    padding-right: calc(1.5rem + env(safe-area-inset-right));
+  }
+}
+
+.safe-publik {
+  padding-top: calc(2rem + env(safe-area-inset-top));
+  padding-bottom: calc(2.5rem + env(safe-area-inset-bottom));
+  padding-left: calc(1rem + env(safe-area-inset-left));
+  padding-right: calc(1rem + env(safe-area-inset-right));
+}
+
+@media (min-width: 640px) {
+  .safe-publik {
+    padding-top: calc(3rem + env(safe-area-inset-top));
+    padding-bottom: calc(3rem + env(safe-area-inset-bottom));
+    padding-left: calc(1.5rem + env(safe-area-inset-left));
+    padding-right: calc(1.5rem + env(safe-area-inset-right));
+  }
+}
+
+.safe-laci {
+  padding-top: calc(1rem + env(safe-area-inset-top));
+  padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+}
+
+.safe-bilah-cetak {
+  padding-top: calc(0.5rem + env(safe-area-inset-top));
+  padding-left: calc(1rem + env(safe-area-inset-left));
+  padding-right: calc(1rem + env(safe-area-inset-right));
+}
+
+@media (display-mode: standalone) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+}
+
 /* Lembar cetak A4/Legal selalu putih bersih dengan teks hitam pekat di tema apa pun */
 .lembar-cetak {
   color-scheme: light;
@@ -1126,6 +1191,7 @@ html[data-tema="notion-dark"] .lembar-cetak .bilah-cetak {
   --judul: #191919;
   --primary: #191919;
   --primary-foreground: #ffffff;
+  --border: #d3d3ce;
   --ring: #2f2e2a;
   --color-sky-100: #e5e5e2;
 }

@@ -7,7 +7,15 @@ import { type NextRequest, NextResponse } from "next/server";
  * Proxy juga memasang CSP dengan nonce per permintaan: hanya skrip inline
  * milik Next.js (yang diberi nonce) yang boleh berjalan.
  */
-const PUBLIK = ["/login", "/daftar", "/api/sehat", "/api/tugas", "/api/auth/google"];
+const PUBLIK = [
+  "/login",
+  "/daftar",
+  "/api/sehat",
+  "/api/tugas",
+  "/api/auth/google",
+  "/manifest.webmanifest",
+  "/icons",
+];
 
 function kebijakanKeamanan(nonce: string): string {
   const dev = process.env.NODE_ENV !== "production";
@@ -49,6 +57,8 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  // Lewati aset statis & berkas di /public.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|lambang-kalsel.png|motif-awan.svg).*)"],
+  // Lewati aset statis & berkas publik PWA di /public.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|lambang-kalsel.png|motif-awan.svg|manifest.webmanifest|icons/|apple-icon.png|icon.png).*)",
+  ],
 };

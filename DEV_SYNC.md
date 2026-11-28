@@ -39,12 +39,87 @@
   - Background Worker: `app/api/tugas/harian/route.ts` (Cron pembaruan status cuti selesai & kirim antrean email)
 
 ## Status Saat Ini
-- **Fase Aktif:** Commit Pembaruan Filter Unit Kerja Data Pegawai (5 Unit Utama + PJLP) & Tema Bawaan **Langit Pagi** Tanpa Deskripsi Dikirim ke GitHub (`main`) untuk Tayang Otomatis di Vercel (Tanpa Migrasi Database / Variabel Baru) — Siap Cek Singkat Pasca-Rilis oleh Debugger / QA
-- **Fitur/Modul Aktif:** Penyederhanaan Filter Unit Kerja Data Pegawai (5 Unit Utama + PJLP) & Tema Bawaan **Langit Pagi** Tanpa Deskripsi Tema (`2026-11-28`)
-- **Penanggung Jawab Terakhir:** Coder
+- **Fase Aktif:** Fitur PWA Lulus Verifikasi Akhir (`build` 45/45 rute), Di-commit, & Di-push ke GitHub `main` (Deploy Otomatis Vercel, Tanpa Migrasi DB/Env Baru) — Siap Cek Singkat Pasca-Rilis Produksi (Debugger / QA)
+- **Fitur/Modul Aktif:** Dukungan Aplikasi Terpasang (**PWA**) untuk Windows, Mac, Android, & iOS (`2026-11-28`)
+- **Penanggung Jawab Terakhir:** Coder (Conversation 1)
 
 ## 1. Cetak Biru & Skema Data (Diisi oleh Conversation 3 - Architect)
 *Rancangan alur sistem, struktur tabel/database, dan daftar file yang harus dibuat/dieksekusi oleh Coder:*
+
+### M. Dukungan Aplikasi Terpasang (PWA) untuk Windows, Mac, Android, & iOS (`2026-11-28`)
+1. **Ringkasan & Dampak bagi Pegawai/Admin:**
+   - Memungkinkan website **Layanan Cuti ESDM Kalsel** dipasang langsung ke layar utama HP (**Android & iPhone/iPad**) maupun layar desktop (**Windows & Mac**) layaknya aplikasi resmi — lengkap dengan ikon lambang Provinsi Kalimantan Selatan dan jendela penuh tanpa bilah alamat browser (`standalone`).
+   - Pembaruan fitur tetap otomatis mengikuti versi online di Vercel (pegawai tidak perlu unduh ulang dari Play Store / App Store).
+   - **Keamanan Data ASN Dijaga 100%:** Aplikasi **sengaja tidak memasang penyimpanan offline (*Service Worker cache*)** untuk halaman aplikasi maupun data pribadi pegawai. Seluruh data cuti, NIP/NIK, dan dokumen tetap diambil langsung dari server dengan pengecekan sesi login resmi — nol data sensitif tertinggal di penyimpanan offline browser. *(Browser modern Chrome, Edge, Android, Safari Mac, dan Safari iOS sudah mendukung pemasangan PWA penuh cukup dengan Web App Manifest + HTTPS + ikon lengkap tanpa cache offline).*
+   - **Tanpa perubahan tabel database.**
+
+2. **Identitas Aplikasi PWA (`app/manifest.ts`) & Aset Ikon Resmi (`public/icons/`):**
+   - **File Manifest (`app/manifest.ts` — disajikan Next.js 16 di `/manifest.webmanifest`):**
+     - `id: "/"`
+     - `name: "Layanan Cuti ESDM Kalsel"`
+     - `short_name: "Cuti ESDM"` *(ringkas agar tidak terpotong di bawah ikon layar utama HP/desktop)*
+     - `description: "Aplikasi internal pengelolaan cuti dan dokumen kepegawaian Dinas ESDM Provinsi Kalimantan Selatan."`
+     - `lang: "id"`, `dir: "ltr"`
+     - `start_url: "/"` *(mengarah otomatis ke `/beranda` bila sudah login atau `/login` bila belum)*
+     - `scope: "/"`
+     - `display: "standalone"` dan `display_override: ["standalone", "minimal-ui"]`
+     - **Jangan mengunci `orientation`** agar tampilan tetap leluasa di laptop/PC, tablet, maupun HP posisi miring saat membaca tabel rekap cuti.
+     - Warna bawaan **Langit Pagi**: `background_color: "#F0F9FF"` (warna layar pembuka/*splash screen*) dan `theme_color: "#0369A1"` (warna bilah judul aplikasi).
+   - **4 File Ikon Resmi PNG dari `public/lambang-kalsel.png` (dibuat presisi dengan latar lembut `#F0F9FF` agar tidak terpotong atau berubah hitam):**
+     1. `public/icons/icon-192.png` (`192×192`, `purpose: "any"`) — untuk Android, Windows, dan tab browser (ruang tepi ~12%).
+     2. `public/icons/icon-512.png` (`512×512`, `purpose: "any"`) — untuk layar pembuka (*splash screen*) dan ikon tajam Windows/Mac (ruang tepi ~12%).
+     3. `public/icons/icon-maskable-512.png` (`512×512`, `purpose: "maskable"`) — khusus potongan bulat/kotak adaptif Android: latar penuh solid `#F0F9FF` dengan lambang Kalsel di **zona aman tengah (~70%)** supaya ujung perisai dan bintang tidak pernah terpotong.
+     4. `public/icons/apple-touch-icon.png` (`180×180`) — khusus layar utama iPhone/iPad: latar solid `#F0F9FF` tanpa area transparan (karena iOS mengubah latar transparan menjadi hitam).
+     - *(Catatan: pisahkan entri `purpose: "any"` dan `purpose: "maskable"` di `app/manifest.ts`, jangan digabung `"any maskable"`).*
+
+3. **Aturan Akses Publik Manifest & Ikon di `proxy.ts` (Wajib Agar Bisa Di-install Sebelum Login):**
+   - Saat ini `proxy.ts` mengalihkan semua jalur non-publik ke `/login` jika belum ada cookie sesi. Jika `/manifest.webmanifest` atau `/icons/*` teralihkan ke `/login`, maka sistem HP dan browser gagal mengenali aplikasi PWA.
+   - **Pengamanan ganda di `proxy.ts`:**
+     1. Tambahkan `manifest.webmanifest`, `icons/`, `apple-icon.png`, dan `icon.png` ke pengecualian `config.matcher` (sejajar dengan `lambang-kalsel.png`).
+     2. Tambahkan juga `"/manifest.webmanifest"` dan `"/icons"` ke daftar `PUBLIK` sebagai cadangan pengaman.
+   - **Tetap aman:** Hanya file manifest (nama dinas) & gambar lambang Kalsel yang dibuka; seluruh halaman aplikasi dan rute API data pegawai tetap wajib login.
+
+4. **Tampilan Layar HP Berponi (*Safe-Area*), Metadata Apple, & Pengaman Cetak di Mode Aplikasi (`standalone`):**
+   - **Metadata & Viewport (`app/layout.tsx`):**
+     - Tambahkan pada `metadata`: `applicationName: "Layanan Cuti ESDM Kalsel"`, `manifest: "/manifest.webmanifest"`, `icons` (menunjuk `icon-192.png`, `icon-512.png`, `lambang-kalsel.png`, serta `apple: "/icons/apple-touch-icon.png"`), `appleWebApp: { capable: true, title: "Cuti ESDM", statusBarStyle: "default" }`, dan `formatDetection: { telephone: false }` *(agar NIP 18 digit tidak disalahartikan Safari iOS sebagai nomor telepon)*.
+     - Pada `generateViewport()`: tambahkan `viewportFit: "cover"` agar latar menyatu penuh hingga tepi layar HP berponi (*notch* / *Dynamic Island*), sambil tetap memakai `themeColor: warnaBilahBrowser(tema)` yang otomatis mengikuti tema aktif.
+   - **Ruang Aman Tepi Layar (`app/globals.css`, `app/(aplikasi)/layout.tsx`, `app/(publik)/layout.tsx`, `components/tata-letak/navigasi.tsx`):**
+     - Tambahkan kelas pembantu safe-area berbasis `env(safe-area-inset-*)` (bernilai `0px` di browser biasa, otomatis memberi ruang aman di HP berponi/iPhone):
+       - Header aplikasi (`app/(aplikasi)/layout.tsx`): `padding-top: calc(0.75rem + env(safe-area-inset-top))` dan ruang aman kiri-kanan saat layar miring.
+       - Konten utama (`app/(aplikasi)/layout.tsx` & `app/(publik)/layout.tsx`): `padding-bottom: calc(2.5rem + env(safe-area-inset-bottom))` agar tombol paling bawah tidak tertutupi garis gestur bawah HP.
+       - Laci menu HP (`MenuSeluler` di `components/tata-letak/navigasi.tsx`): menghormati safe-area atas dan bawah.
+       - Mode aplikasi (`@media (display-mode: standalone)`): setel `overscroll-behavior-y: none;` pada `html, body` agar layar tidak memantul putih canggung saat mentok atas/bawah.
+     - **Isolasi Cetak Tetap Utuh:** Seluruh aturan safe-area dan `display-mode: standalone` dilarang menyentuh kertas cetak `.lembar-cetak` maupun `@media print`.
+   - **Pengaman Cetak & Unduh di Mode `standalone` (`components/cetak/tombol-cetak.tsx`):**
+     - *Masalah yang dicegah:* Saat aplikasi dibuka dalam mode jendela penuh (`standalone`, tanpa bilah alamat/tombol Back browser), halaman cetak (`/cetak/formulir/...`, `/cetak/surat/...`, `/cetak/rekap-cuti`, `/cetak/pegawai`) sebelumnya hanya punya tombol **Cetak / Simpan PDF** tanpa tombol **Kembali** — sehingga pegawai bisa terjebak di halaman cetak setelah mencetak.
+     - *Solusi:* Tambahkan tombol **"Kembali"** (`variant="outline"`, `size="sm"`) di sisi kiri `BilahCetak` (`print:hidden`) yang memanggil `window.history.back()` bila ada riwayat, atau `window.close()` dengan cadangan pindah ke `/beranda` bila dibuka dari jendela baru, plus padding safe-area atas di layar (tidak ikut tercetak).
+     - Pastikan unduh PDF, Excel, berkas dokumen (`/api/dokumen/[id]/berkas?unduh=1`), dan cetak gabungan (`DaftarDokumen`) tetap berfungsi mulus di mode `standalone`.
+
+5. **Petunjuk & Tombol Pasang Aplikasi Ramah Pemula (`components/tata-letak/pasang-aplikasi.tsx`):**
+   - Dibuat ringan dan sopan (tanpa pop-up iklan mengganggu):
+     - **Otomatis sembunyi** apabila aplikasi sudah berjalan di mode terpasang (`display-mode: standalone` atau `navigator.standalone === true`).
+     - Di **Chrome / Edge (Windows, Mac, Android)**: menangkap event `beforeinstallprompt` sehingga saat pegawai menekan **Pasang Aplikasi**, dialog pemasangan resmi browser langsung muncul dalam 1 klik.
+     - Di **Safari iPhone/iPad**, **Safari Mac**, atau browser lain saat tombol 1-klik belum tersedia: membuka dialog panduan super singkat **3 langkah ramah pemula** sesuai perangkatnya (mis. iOS: *Ketuk Bagikan → Tambah ke Layar Utama → Tambah*; Safari Mac: *Menu File → Tambahkan ke Dock*).
+   - **Penempatan rapi tanpa memadati bilah atas:**
+     - Di dalam dropdown **Menu Akun** pojok kanan atas (`components/tata-letak/menu-pengguna.tsx`), tepat di bawah *"Profil & password"*.
+     - Serta satu tombol kapsul kecil tenang di bawah kolom login (`app/(publik)/layout.tsx`) agar pegawai yang membuka tautan dari WhatsApp kantor bisa langsung memasangnya.
+
+6. **Daftar File Target (untuk Coder):**
+   1. **`app/manifest.ts`** *(Baru)*: Definisi Web App Manifest resmi Next.js 16 (nama, `short_name`, `display: "standalone"`, warna bawaan Langit Pagi `#F0F9FF` / `#0369A1`, dan 3 ukuran/purpose ikon).
+   2. **`public/icons/icon-192.png`, `public/icons/icon-512.png`, `public/icons/icon-maskable-512.png`, `public/icons/apple-touch-icon.png`** *(Baru)*: 4 berkas ikon PNG tajam yang dihasilkan dari `public/lambang-kalsel.png` dengan proporsi & zona aman yang tepat.
+   3. **`proxy.ts`** *(Ubah)*: Kecualikan `/manifest.webmanifest`, `/icons/*`, `apple-icon.png`, dan `icon.png` pada `config.matcher` dan `PUBLIK` agar terbaca sebelum login tanpa membuka data pegawai apa pun.
+   4. **`app/layout.tsx`** *(Ubah)*: Lengkapi `metadata` (`applicationName`, `manifest`, `icons.icon` + `icons.apple`, `appleWebApp`, `formatDetection`) dan tambah `viewportFit: "cover"` pada `generateViewport()`.
+   5. **`app/globals.css`, `app/(aplikasi)/layout.tsx`, `app/(publik)/layout.tsx`, `components/tata-letak/navigasi.tsx`** *(Ubah)*: Tambahkan kelas safe-area atas/bawah/samping (`env(safe-area-inset-*)`) dan `overscroll-behavior-y: none` khusus `display-mode: standalone` tanpa memengaruhi `.lembar-cetak` / `@media print`.
+   6. **`components/cetak/tombol-cetak.tsx`** *(Ubah)*: Tambahkan tombol **Kembali** ramah mode `standalone` + padding safe-area atas pada `BilahCetak` (`print:hidden`).
+   7. **`components/tata-letak/pasang-aplikasi.tsx`** *(Baru)* & **`components/tata-letak/menu-pengguna.tsx`** *(Ubah)*: Tombol/menu *"Pasang Aplikasi"* 1-klik + dialog panduan 3 langkah untuk iOS/Mac/browser lain, otomatis tersembunyi saat sudah terpasang.
+   8. **`tests/unit/manifest.test.ts`** *(Baru)*: Pengujian unit Vitest untuk memverifikasi isi `manifest()` (nama, `standalone`, warna Langit Pagi, 3 ikon), keberadaan 4 file PNG ikon, serta aturan lolos publik di `proxy.ts` (sementara halaman terproteksi tetap teralihkan ke `/login`).
+
+7. **Skenario Pengecekan Wajib (Coder, UI/UX Stylist, & Debugger/QA):**
+   - **Akses Sebelum Login:** Dalam kondisi belum login (jendela penyamaran / tanpa cookie), akses `GET /manifest.webmanifest`, `GET /icons/icon-192.png`, `GET /icons/icon-512.png`, `GET /icons/icon-maskable-512.png`, dan `GET /icons/apple-touch-icon.png` → semua wajib membalas **HTTP 200** (bukan `307` ke `/login`), sementara `/beranda` tetap dialihkan ke `/login`.
+   - **Verifikasi Installability PWA (Chrome/Edge DevTools → Application → Manifest):** Zero warning/error pada manifest, semua ikon tampil proporsional (lambang Kalsel di `maskable` utuh saat pratinjau potongan lingkaran), dan tombol pasang aplikasi browser muncul.
+   - **Verifikasi Nol Cache Data Sensitif:** Cek DevTools → Application → Cache Storage & Service Workers → kosong (tidak ada data pegawai/cuti/dokumen yang disimpan offline).
+   - **Verifikasi Mode Aplikasi (`standalone`), Layar HP Berponi, & Cetak/Unduh:** Cek tampilan `390×844` & `1280×800`, cek tombol **Pasang Aplikasi** di menu akun & halaman login (tersembunyi di mode `standalone`), cek halaman `/cetak/formulir/...` & `/cetak/rekap-cuti` (tombol **Kembali** dan **Cetak / Simpan PDF** bekerja mulus, kertas cetak A4 tetap putih murni tanpa terpotong), serta uji unduh berkas/Excel/PDF tetap lancar.
+   - Jalankan `npm run typecheck`, `npm run lint`, `npm test`, dan `npm run build` — lulus bersih tanpa galat.
 
 ### L. Tata Letak Menu Atas Desktop, Tombol Membulat, & Halaman Beranda Analitik (`2026-11-28`)
 1. **Ringkasan & Dampak bagi Pegawai/Admin:**
@@ -589,6 +664,17 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 ## 2. Catatan Perubahan Logika (Diisi oleh Conversation 1 - Coder)
 *Daftar file yang baru dibuat/diubah dan ringkasan logika backend/sistemnya:*
 
+### File Baru/Diubah (Dukungan Aplikasi Terpasang / PWA — `2026-11-28`)
+- `public/icons/icon-192.png`, `public/icons/icon-512.png`, `public/icons/icon-maskable-512.png`, & `public/icons/apple-touch-icon.png` *(Baru)*: 4 berkas ikon PNG tajam dihasilkan dari `public/lambang-kalsel.png` di atas latar solid lembut Langit Pagi (`#F0F9FF`, bebas transparansi untuk iOS) dengan zona aman ~68% tengah pada ikon `maskable` agar lambang Kalsel tidak pernah terpotong di Android.
+- `app/manifest.ts` *(Baru)*: Definisi Web App Manifest resmi Next.js 16 (`○ /manifest.webmanifest`) dengan nama `"Layanan Cuti ESDM Kalsel"`, `short_name: "Cuti ESDM"`, `start_url: "/"`, `scope: "/"`, `display: "standalone"`, `display_override: ["standalone", "minimal-ui"]`, warna `#F0F9FF` / `#0369A1`, tanpa mengunci `orientation`, dan 3 entri ikon terpisah (`any` 192, `any` 512, `maskable` 512). **Tanpa Service Worker cache offline** agar nol data pribadi ASN tersimpan offline.
+- `proxy.ts`: Mengecualikan `manifest.webmanifest`, `icons/`, `apple-icon.png`, dan `icon.png` pada `config.matcher` serta menambahkan `"/manifest.webmanifest"` dan `"/icons"` di `PUBLIK` agar terbaca sebelum login tanpa melonggarkan proteksi halaman maupun API data pegawai.
+- `app/layout.tsx`: Menambahkan `applicationName`, `manifest`, `icons` (PNG 192/512 + `apple-touch-icon.png`), `appleWebApp`, `formatDetection: { telephone: false }` (mencegah NIP 18 digit dianggap nomor telepon di Safari iOS), serta `viewportFit: "cover"` pada `generateViewport()`.
+- `app/globals.css`, `app/(aplikasi)/layout.tsx`, `app/(publik)/layout.tsx`, & `components/tata-letak/navigasi.tsx`: Menambahkan kelas ruang aman *safe-area* (`safe-header`, `safe-main`, `safe-publik`, `safe-laci`, `safe-bilah-cetak` memakai `env(safe-area-inset-*)`) dan `overscroll-behavior-y: none` khusus `@media (display-mode: standalone)` tanpa menyentuh kertas cetak `.lembar-cetak` maupun `@media print`.
+- `components/cetak/tombol-cetak.tsx`: Menambahkan tombol **Kembali** (`variant="outline"`, `size="sm"`, `window.history.back()` → `window.close()` → cadangan `router.push("/beranda")`) + `safe-bilah-cetak` pada `BilahCetak` (`print:hidden`) agar pengguna di mode aplikasi penuh tidak terjebak di layar cetak.
+- `components/tata-letak/pasang-aplikasi.tsx` *(Baru)*, `components/tata-letak/menu-pengguna.tsx`, & `app/(publik)/layout.tsx`: Membuat hook `usePasangAplikasi()` (otomatis tersembunyi di mode `standalone`, menangkap `beforeinstallprompt` untuk pasang 1-klik di Chrome/Edge), dialog panduan 3 langkah ramah pemula untuk Safari iPhone/iPad, Safari Mac, dan browser lain, lalu memasangnya di dropdown **Menu Akun** (di bawah *Profil & password*) serta tombol kapsul ringan di bawah kartu login.
+- `tests/unit/manifest.test.ts` *(Baru)*: Pengujian unit Vitest (3 skenario) memverifikasi isi `manifest()`, keabsahan & dimensi 4 file PNG ikon, ketiadaan file Service Worker, serta akses publik manifest/ikon di `proxy.ts` sambil memastikan `/beranda`, `/pegawai`, `/cuti`, dan `/api/dokumen/...` tetap membalas `307` ke `/login` tanpa sesi.
+- **Verifikasi Lokal Coder (`2026-11-28`, Node.js v22.23.5 Laragon):** `npm run typecheck` OK, `npm run lint` OK (0 error, 0 warning), `npm test` **152/152 lulus** (19 file uji), dan `npm run build` OK (**45/45** rute termasuk `○ /manifest.webmanifest`).
+
 ### File Baru/Diubah (Filter Unit Kerja Data Pegawai & Tema Bawaan Langit Pagi — `2026-11-28`)
 - `lib/domain/unit.ts`: Menambahkan konstanta `FILTER_UNIT_PJLP = "PJLP"` dan fungsi murni `susunOpsiUnitFilterPegawai()` untuk menyusun tepat 6 pilihan ringkas dropdown filter Data Pegawai (**Sekretariat**, **Geologi**, **Pertambangan**, **Energi**, **Ketenagalistrikan**, dan **PJLP**), terpisah penuh dari `urutkanPohon()` yang tetap mempertahankan seluruh daftar seksi/subbagian untuk form Tambah/Ubah Pegawai.
 - `server/kueri/pegawai.ts` & `components/pegawai/filter-pegawai.tsx`:
@@ -793,6 +879,15 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 
 ## 3. Catatan Polesan Visual (Diisi oleh Conversation 4 - UI/UX Stylist)
 *Daftar komponen UI, styling, responsivitas, atau animasi yang baru diperbarui:*
+- **Perbaikan Kontras Tombol Pasang PWA di Tema Gelap & Polesan CSS Safe-Area (`2026-11-28`):**
+  - `components/tata-letak/pasang-aplikasi.tsx` & `app/globals.css`:
+    - **Kontras tombol *"Pasang Aplikasi di Perangkat Ini"* di `/login` pada mode gelap:** Mengubah latar tombol dari `bg-white/75` menjadi `bg-white/80` (seragam tombol *outline* lain di aplikasi), sekaligus menambahkan `.bg-white\/75` (dan efek `:hover`-nya) ke blok penyesuaian `notion-dark` (`#222222` / `#2F2F2F`) dan `langit-malam` (`#101E34` / `#1C3458`) di `app/globals.css` (tetap mengecualikan `.lembar-cetak` dan `.editor-surat`). Tombol di bawah kartu login kini gelap rapi bertulisan putih terang tajam di *Notion Dark* (`#222222` / `#E6E6E3`) & *Langit Malam* (`#101E34` / `#E8F1FA`), serta terang bertulisan gelap tajam di *Langit Pagi* & *Notion Light*.
+  - `app/(publik)/layout.tsx` & `app/globals.css`:
+    - **Penyelarasan jarak `.safe-publik` pada layar tablet/desktop (`≥ 640px`):** Memindahkan jarak atas/bawah `3rem` (pengganti `sm:py-12` yang sebelumnya tertimpa `.safe-publik`) dan jarak samping `1.5rem` ke `@media (min-width: 640px)` di dalam `.safe-publik` sambil tetap menjaga ruang aman `env(safe-area-inset-*)`, lalu menghapus kelas `sm:py-12` yang tidak aktif di `app/(publik)/layout.tsx`.
+  - *Verifikasi:* `npm run typecheck`, `npm run lint` (0 error/warning), dan `npm test` (**152/152 lulus** pada 19 file uji) berjalan bersih. Pengecekan langsung di browser lokal (**Laptop `1280×800` & HP `390×844`**, **0 galat konsol**, **0 gagal HTTP**) pada **seluruh 4 tema** (**Langit Pagi**, **Langit Malam**, **Notion Light**, **Notion Dark**) memverifikasi:
+    - Tombol *"Pasang Aplikasi di Perangkat Ini"* di `/login` tajam terbaca di keempat tema (normal & hover), jarak `.safe-publik` aktif `48px` di desktop dan `32px/40px` di HP tanpa gulir samping (`overflowX = false`).
+    - Dialog panduan 3 langkah **Pasang Aplikasi Cuti ESDM** terbaca jelas di mode gelap maupun terang dan pas rapi di HP `390×844`.
+    - Bilah cetak `/cetak/rekap-cuti` (`← Kembali` + judul + `Cetak / Simpan PDF` / `Cetak / PDF`) sejajar 1 baris rapi di laptop maupun HP `390×844` di keempat tema, sedangkan kertas cetak `.lembar-cetak` tetap putih murni `#FFFFFF` bertulisan hitam pekat `#000000`.
 - **Polesan & Verifikasi Browser Menu Navigasi Atas Desktop, Tombol Membulat Kapsul, & Beranda Analitik (`2026-11-28`):**
   - `components/beranda/grafik-beranda.tsx`:
     - **Interaksi sentuh & klik grafik lebih alami (`GrafikBatangBulanan`, `GrafikTrenSaldo`, `GrafikTrenPengajuanDinas`, & `GrafikDonatKomposisi`):** Memisahkan status sorotan sementara saat kursor melintas (*hover/focus*) dari status pilihan terkunci saat diklik/diketuk (`terarah ?? terpilih`). Sebelumnya di komputer, mengarahkan kursor lalu mengklik segmen/legenda justru langsung mematikan rincian; kini klik sekali mengunci rincian (tetap tampil walau kursor digeser menjauh) dan klik ulang mengembalikan ke tampilan ringkas, sementara ketuk di layar HP tetap bekerja mulus.
@@ -885,11 +980,20 @@ Sistem hak akses modular berbasis centang (checkbox) yang dapat dikelola oleh Ad
 
 ## 4. Antrean Bug & Evaluasi QA (Diisi oleh Conversation 2 - Debugger)
 *Daftar error logika, masalah tampilan, atau perbaikan yang dibutuhkan:*
+- [x] **[BUG VISUAL - KONTRAS TEMA GELAP] [components/tata-letak/pasang-aplikasi.tsx:253 & app/globals.css:685-760]** *(Tuntas `2026-11-28` oleh UI/UX Stylist)*: Tombol **"Pasang Aplikasi di Perangkat Ini"** di `/login` diubah ke `bg-white/80 text-judul` dan `.bg-white\/75` (beserta `:hover`-nya) ditambahkan ke blok penyesuaian `notion-dark` & `langit-malam` di `app/globals.css`. Terverifikasi di browser kontras tajam di keempat tema (`Notion Dark`: `#222222`/`#E6E6E3`, `Langit Malam`: `#101E34`/`#E8F1FA`).
+- [x] **[POLESAN RINGAN - CSS] [app/(publik)/layout.tsx:6 & app/globals.css:1126-1140]** *(Tuntas `2026-11-28` oleh UI/UX Stylist)*: Jarak `3rem` (`≥ 640px`) dipindahkan ke `@media (min-width: 640px)` di `.safe-publik` sambil tetap menyertakan `env(safe-area-inset-*)`, dan kelas `sm:py-12` yang tertimpa sudah dihapus dari `app/(publik)/layout.tsx`.
 - [ ] **[OPERASIONAL - Pengaturan Dashboard Vercel / Neon / Admin]**: Kode rilis `42ba5b5` sudah tayang normal di produksi, namun dari pengecekan langsung terlihat 2 hal pengaturan operasional: (1) 6 pengajuan cuti lama di `/cuti/proses` masih *Surat Terbit* (`0 Selesai`) — klik **Run** sekali pada Cron Job `/api/tugas/harian` di dashboard Vercel (atau tunggu jadwal otomatis pukul 01:00 WITA) sambil memastikan tabel `dokumen_berkas` di Neon dan env `BERKAS_KUNCI` + `CRON_SECRET` di Vercel sudah aktif; (2) bila ingin batas unggah naik dari `1 MB` ke `4 MB`, ubah angka **Ukuran maks. unggahan (MB)** di menu **Admin → Pengaturan** dari `1` ke `4` lalu klik **Simpan**.
 - [ ] **[CATATAN DESAIN] [server/auth/pengguna.ts:~38-45 vs app/(aplikasi)/admin/hak-akses/page.tsx:34]**: Peran legacy `KEPEGAWAIAN` saat ini otomatis menginjeksi 3 hak akses (`KELOLA_SALDO_CUTI`, `PROSES_CUTI`, `KELOLA_PEGAWAI`) hanya jika baris `user_hak_akses` kosong; begitu Superadmin menyimpan centang di `/admin/hak-akses`, peran lama otomatis dibersihkan.
 - [ ] **[CATATAN] [DEV_SYNC.md bagian 1.C]**: Blueprint awal menyebut route `/cuti/rekap`, namun rekap terintegrasi pada `/cuti/saldo` dan `/cetak/rekap-cuti`.
 
 ## 5. Riwayat Selesai (Resolved)
+- [x] **[VERIFIKASI QA - Dukungan Aplikasi Terpasang (PWA) Bagian 1 Huruf M (Lokal)] [2026-11-28]**:
+  - **Audit Kode, Ikon PNG, & Pengujian Otomatis Lokal (Node.js v22 Laragon):** Audit seluruh file baru/diubah (`app/manifest.ts`, `proxy.ts`, `app/layout.tsx`, `app/globals.css`, `app/(aplikasi)/layout.tsx`, `app/(publik)/layout.tsx`, `components/tata-letak/navigasi.tsx`, `components/tata-letak/menu-pengguna.tsx`, `components/tata-letak/pasang-aplikasi.tsx`, `components/cetak/tombol-cetak.tsx`, `tests/unit/manifest.test.ts`). Pemeriksaan visual langsung ke-4 ikon PNG (`icon-192.png`, `icon-512.png`, `icon-maskable-512.png` dengan zona aman ~70% anti terpotong, `apple-touch-icon.png` 180×180 latar solid `#F0F9FF`) tajam dan proporsional. Pemeriksaan otomatis lulus bersih: `npm run typecheck` OK, `npm run lint` OK (0 error/warning), dan `npm test` **152/152 lulus** (19 file uji).
+  - **Uji Browser Lokal (`http://localhost:3000`, Laptop `1280×800` & HP `390×844` — 0 Galat Konsol, 0 Gagal HTTP `>= 400`, 0 Perubahan Data):**
+    - **Akses Publik Sebelum Login & Keamanan Data:** Tanpa cookie sesi, `GET /manifest.webmanifest` membalas **HTTP `200`** (JSON sah, warna `#F0F9FF`/`#0369A1`, 3 entri ikon) dan ke-4 ikon `/icons/*.png` membalas **HTTP `200`** sesuai dimensi aslinya; sementara `/beranda`, `/pegawai`, dan `/api/dokumen/.../berkas` tetap dialihkan aman ke `/login`. Nol berkas maupun permintaan Service Worker (`sw.js`) — nol data pribadi ASN tersimpan offline.
+    - **Metadata `<head>` & Dialog Panduan 3 Langkah:** `<link rel="manifest">`, `apple-touch-icon`, `viewport-fit=cover`, `apple-mobile-web-app-title="Cuti ESDM"`, dan `format-detection="telephone=no"` aktif benar. Menu **Pasang Aplikasi** di **Menu Akun** (di antara *Profil & password* dan *Keluar*) dan tombol di `/login` membuka dialog panduan 3 langkah dengan rapi di laptop & HP `390×844` (`357,3 px <= 390 px`), tajam terbaca di ke-4 tema, serta menutupnya lewat **Mengerti** tidak membekukan interaksi halaman (*Radix Dropdown → Dialog* aman). Audit logika `cekTerpasang()` + `useSyncExternalStore` juga mengonfirmasi tombol otomatis sembunyi pada mode `display-mode: standalone`, `navigator.standalone === true`, maupun event `appinstalled`.
+    - **Halaman Cetak (`BilahCetak`) & Laci HP (`MenuSeluler`):** Di `/cetak/pegawai` dan `/cetak/rekap-cuti`, tombol **Kembali** berfungsi normal kembali ke halaman sebelumnya, tetap terang & jelas saat diarahkan kursor di tema gelap (*Notion Dark*), muat rapi **1 baris** bersama judul terpotong rapi & tombol **Cetak / PDF** di layar HP `390×844`, kertas A4 `.lembar-cetak` tetap putih bersih bertulisan hitam pekat, dan laci menu HP (`MenuSeluler`) pas di dalam layar (`292,8 px <= 390 px`).
+  - **Temuan untuk Diperbaiki UI/UX Stylist (tercatat di Bagian 4):** 1 bug kontras nyata pada tombol **"Pasang Aplikasi di Perangkat Ini"** di halaman `/login` saat tema gelap (**Notion Dark** & **Langit Malam**) aktif (`bg-white/75 text-judul` tampil putih-di-atas-putih), plus 1 polesan kecil `sm:py-12` vs `.safe-publik`.
 - [x] **[VERIFIKASI QA - Filter Unit Kerja Data Pegawai (6 Pilihan + PJLP) & Tema Bawaan Langit Pagi Tanpa Deskripsi] [2026-11-28]**:
   - **Audit Kode & Pengujian Otomatis Lokal (Node.js v22 Laragon):** Audit menyeluruh 8 file perubahan (`lib/domain/unit.ts`, `server/kueri/pegawai.ts`, `components/pegawai/filter-pegawai.tsx`, `lib/tema.ts`, `app/globals.css`, `components/tata-letak/tombol-tema.tsx`, `tests/unit/filter-pegawai.test.ts`, `tests/unit/tema.test.ts`) beserta halaman/rute terkait (`app/(aplikasi)/pegawai/page.tsx`, `components/pegawai/form-pegawai.tsx`, `app/api/ekspor/pegawai/route.ts`, `app/(cetak)/cetak/pegawai/page.tsx`, `app/layout.tsx`). Seluruh pemeriksaan lulus bersih: `npm run typecheck` OK, `npm run lint` OK (0 error/warning), dan `npm test` **149/149 lulus** (18 file uji, termasuk pengalihan aman cookie tema lama & validasi `unit=PJLP`).
   - **Uji Browser Lokal (`http://localhost:3000`, Laptop `1280×800` & HP `390×844` — 0 Galat Konsol, 0 Gagal HTTP `>= 400`, 0 Perubahan Data):**

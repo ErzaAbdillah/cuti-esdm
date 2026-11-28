@@ -14,9 +14,26 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
+  applicationName: "Layanan Cuti ESDM Kalsel",
   title: { default: "Layanan Cuti ESDM Kalsel", template: "%s · Layanan Cuti ESDM Kalsel" },
   description: "Aplikasi internal cuti dan dokumen pegawai Dinas ESDM Provinsi Kalimantan Selatan.",
-  icons: { icon: "/lambang-kalsel.png" },
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/lambang-kalsel.png", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Cuti ESDM",
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   robots: { index: false, follow: false },
 };
 
@@ -27,6 +44,7 @@ export async function generateViewport(): Promise<Viewport> {
     themeColor: warnaBilahBrowser(tema),
     width: "device-width",
     initialScale: 1,
+    viewportFit: "cover",
   };
 }
 

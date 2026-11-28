@@ -198,7 +198,7 @@ export function MenuSeluler({ menu }: { menu: GrupMenu[] }) {
           <MenuIcon className="size-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-72 overflow-y-auto bg-white/95 p-4">
+      <SheetContent side="left" className="safe-laci w-72 overflow-y-auto bg-white/95 px-4">
         <SheetHeader className="p-0">
           <SheetTitle className="sr-only">Menu</SheetTitle>
           <MerekLaci />

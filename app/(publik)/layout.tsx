@@ -1,8 +1,9 @@
 import Image from "next/image";
+import { TombolPasangPublik } from "@/components/tata-letak/pasang-aplikasi";
 
 export default function LayoutPublik({ children }: LayoutProps<"/">) {
   return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-8 sm:py-12">
+    <main className="safe-publik flex min-h-dvh items-center justify-center">
       <div className="grid w-full max-w-4xl items-center gap-8 md:grid-cols-[1fr_minmax(0,26rem)] md:gap-12">
         <section className="flex flex-col items-center text-center md:items-start md:text-left">
           <Image
@@ -18,7 +19,10 @@ export default function LayoutPublik({ children }: LayoutProps<"/">) {
             Layanan cuti dan dokumen pegawai Dinas Energi dan Sumber Daya Mineral Provinsi Kalimantan Selatan.
           </p>
         </section>
-        <section className="kaca rounded-2xl p-5 sm:p-7">{children}</section>
+        <div className="grid gap-3">
+          <section className="kaca rounded-2xl p-5 sm:p-7">{children}</section>
+          <TombolPasangPublik />
+        </div>
       </div>
     </main>
   );

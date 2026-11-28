@@ -12,6 +12,7 @@ Folder ini berisi file instruksi (`.md`) untuk membuka sesi chat/conversation ba
    - `/coder` → Menulis atau mengubah kode aplikasi (`Conversation 1`)
    - `/ui-ux` → Merapikan tampilan, warna, tombol, & layar HP/laptop (`Conversation 4`)
    - `/debugger` → Menguji fitur, mencari error & celah keamanan (`Conversation 2`)
+   - `/academic-document-specialist` → Menyusun, merevisi, & merapikan **dokumen akademik** (saat ini Laporan PKL) di Google Docs (`eerza211@gmail.com`)
 
 2. **Cara Manual (Menyebut File atau Copy-Paste):**  
    Buka chat baru, lalu ketik `@ai-agents/Chatbot.md` (atau pilih file yang sesuai di bawah), lalu tulis pertanyaan atau perintah Anda. Anda juga bisa menyalin isi file `.md` langsung ke pesan pembuka chat baru.
@@ -28,6 +29,7 @@ Folder ini berisi file instruksi (`.md`) untuk membuka sesi chat/conversation ba
 | **Coder** | [Coder.md](Coder.md) | `/coder` | Membuat & mengubah fitur aplikasi (`DEV_SYNC.md` Bag. 2) | **Ya** |
 | **UI/UX Stylist** | [UI-UX-Stylist.md](UI-UX-Stylist.md) | `/ui-ux` | Memoles tampilan & kenyamanan pakai (`DEV_SYNC.md` Bag. 3) | **Ya (khusus tampilan UI)** |
 | **Debugger / QA** | [Debugger-QA.md](Debugger-QA.md) | `/debugger` | Mengecek error, logika, & keamanan (`DEV_SYNC.md` Bag. 4 & 5) | Mengecek & lapor (perbaiki hanya jika diminta) |
+| **Academic Document Specialist** | [Academic-Document-Specialist.md](Academic-Document-Specialist.md) | `/academic-document-specialist` | Menyusun, merevisi, & merapikan dokumen akademik (saat ini Laporan PKL) di Google Docs | **TIDAK (Khusus dokumen Google Docs akademik)** |
 
 ---
 

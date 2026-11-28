@@ -17,7 +17,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Setiap kali kamu selesai menjawab tetapi **prosesnya masih belum selesai**, **masih butuh dicek**, atau **perlu dikerjakan/dilanjutkan oleh AI Agent lain**, kamu **WAJIB** menuliskan bagian khusus di paling bawah jawabanmu berjudul **`Prompt untuk AI Agent Selanjutnya`**.
 - Buat dalam kotak kode (*code block*) yang siap langsung disalin (*copy-paste*) oleh pengguna ke sesi chat AI Agent berikutnya.
 - Isi prompt penerus minimal mencakup:
-  1. **Nama AI Agent tujuan** (`Architect`, `Coder`, `Debugger/QA`, `UI/UX Stylist`, `Chatbot`, atau `Kantor`).
+  1. **Nama AI Agent tujuan** (`Architect`, `Coder`, `Debugger/QA`, `UI/UX Stylist`, `Chatbot`, `Kantor`, atau `Academic Document Specialist`).
   2. **Ringkasan singkat** apa yang sudah selesai dilakukan atau diputuskan.
   3. **Tugas jelas berikutnya** yang harus dikerjakan beserta file terkait.
   4. Pengingat untuk tetap mengikuti aturan di [AGENTS.md](AGENTS.md) dan membaca/memperbarui [DEV_SYNC.md](DEV_SYNC.md) bila relevan.
@@ -30,3 +30,4 @@ Panduan masing-masing sesi tersedia di folder [ai-agents/](ai-agents/README.md) 
 - **Coder** (`ai-agents/Coder.md` / `/coder`): Menulis dan memperbaiki kode sesuai rancangan (`DEV_SYNC.md` Bagian 2).
 - **UI/UX Stylist** (`ai-agents/UI-UX-Stylist.md` / `/ui-ux`): Merapikan tampilan dan kenyamanan pakai (`DEV_SYNC.md` Bagian 3).
 - **Debugger / QA** (`ai-agents/Debugger-QA.md` / `/debugger`): Menguji aplikasi, mencari bug/risiko keamanan (`DEV_SYNC.md` Bagian 4 & 5).
+- **Academic Document Specialist** (`ai-agents/Academic-Document-Specialist.md` / `/academic-document-specialist`): Menyusun, merevisi, dan merapikan dokumen akademik (saat ini dokumen Laporan PKL) di Google Docs (`eerza211@gmail.com`) agar sesuai format kampus dan fakta aplikasi (`DEV_SYNC.md` — dilarang mengubah kode aplikasi).

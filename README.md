@@ -8,10 +8,49 @@ Rancangan lengkap (struktur, skema, halaman, alur): [docs/RANCANGAN.md](docs/RAN
 
 ## Prasyarat
 
-- Node.js 24
-- Docker Desktop (untuk PostgreSQL dan Gotenberg)
+- **Node.js** (v22 LTS atau v24 — bisa memakai Node.js bawaan Laragon atau installer resmi Windows)
+- **PostgreSQL** (pilih salah satu):
+  - **Tanpa Docker (Direkomendasikan untuk laptop Windows):** PostgreSQL di **Laragon** atau installer resmi **PostgreSQL Windows** (ringan, hemat RAM, terhindar dari kendala *Vmmem* / *hypervisor*).
+  - **Memakai Docker (Alternatif):** Docker Desktop untuk PostgreSQL 17 dan Gotenberg.
 
 ## Menjalankan di komputer lokal
+
+### Opsi A — Tanpa Docker (Laragon / PostgreSQL Windows)
+
+1. **Pastikan port `5432` tidak dipakai Docker:** Tutup penuh Docker Desktop (klik kanan ikon paus di pojok kanan bawah Windows → **Quit Docker Desktop**) agar tidak bentrok dengan PostgreSQL lokal.
+2. **Nyalakan PostgreSQL di Laragon / Windows:**
+   - **Di Laragon:** Klik kanan jendela Laragon → **Tools → Quick add → postgresql** (atau ekstrak ZIP PostgreSQL ke `C:\laragon\bin\postgresql\postgresql-17`), centang **PostgreSQL** di **Menu → Preferences → Services & Ports** (port `5432`), lalu klik **Start All**.
+   - **Atau Installer PostgreSQL Windows:** Pastikan layanan `postgresql` berstatus *Running* di port `5432`.
+3. **Buat akun database lokal, database `cuti_esdm`, dan aktifkan ekstensi `pg_trgm`:**
+   Buka **Terminal** di Laragon (atau *SQL Shell / psql* sebagai `postgres`), jalankan `psql -U postgres`, lalu tempel perintah SQL berikut:
+
+   ```sql
+   CREATE ROLE cuti WITH LOGIN PASSWORD 'cuti_dev' CREATEDB SUPERUSER;
+   CREATE DATABASE cuti_esdm OWNER cuti;
+   \c cuti_esdm
+   CREATE EXTENSION IF NOT EXISTS pg_trgm;
+   \q
+   ```
+
+   *(Catatan: Izin `CREATEDB` diperlukan oleh `prisma migrate dev` untuk membuat database bayangan sementara, dan `SUPERUSER` memastikan ekstensi pencarian `pg_trgm` dapat diaktifkan tanpa kendala izin. Jika Anda memilih langsung memakai akun bawaan `postgres`, cukup jalankan `CREATE DATABASE cuti_esdm;`, `\c cuti_esdm`, lalu `CREATE EXTENSION IF NOT EXISTS pg_trgm;` dan sesuaikan nama user di `DATABASE_URL`).*
+
+4. **Siapkan file `.env` lokal:**
+   Salin `.env.example` menjadi `.env` (jika belum ada), lalu pastikan pengaturannya seperti berikut:
+   - `APP_ENV=development`
+   - `DATABASE_URL=postgresql://cuti:cuti_dev@localhost:5432/cuti_esdm` *(wajib mengarah ke **`localhost`**, jangan pernah mengisi alamat database produksi/kantor di sini!)*
+   - `GOTENBERG_URL=` *(biarkan **kosong** agar aplikasi tidak mencari Docker Gotenberg; pencetakan formulir & surat otomatis memakai dialog cetak browser → **Save as PDF / Simpan sebagai PDF**, dan cetak gabungan dokumen PDF/JPG/PNG tetap berjalan)*
+   - `BERKAS_KUNCI=` *(isi 64 karakter hex acak; cara membuatnya ada di `.env.example`)*
+
+5. **Pasang paket, jalankan migrasi tabel, isi data awal, dan nyalakan aplikasi:**
+
+   ```bash
+   npm install                   # memasang paket & menjalankan prisma generate
+   npm run db:migrate            # membuat seluruh tabel di database lokal cuti_esdm
+   npm run db:seed               # mengisi data master dinas + data pegawai contoh (dummy)
+   npm run dev                   # buka http://localhost:3000 → login dengan akun demo
+   ```
+
+### Opsi B — Memakai Docker Desktop (Alternatif)
 
 ```bash
 cp .env.example .env          # lalu isi BERKAS_KUNCI (perintahnya ada di .env.example)
@@ -22,7 +61,7 @@ npm run db:seed               # data master + data dummy fiktif
 npm run dev                   # http://localhost:3000 → login dengan akun demo
 ```
 
-Unduh PDF surat memerlukan Gotenberg (`docker compose -f docker-compose.dev.yml --profile pdf up -d`, port 3100, `GOTENBERG_URL` di `.env`). Tanpa Gotenberg, surat tetap bisa dicetak atau disimpan sebagai PDF dari dialog cetak browser.
+Unduh PDF surat langsung dari server memerlukan Gotenberg (`docker compose -f docker-compose.dev.yml --profile pdf up -d`, port 3100, isi `GOTENBERG_URL=http://localhost:3100` di `.env`). Tanpa Gotenberg (`GOTENBERG_URL=` kosong), surat tetap bisa dicetak atau disimpan sebagai PDF dengan rapi lewat dialog cetak browser.
 
 ## Data seed
 
